@@ -1,4 +1,4 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! ../bin/python3
 
 # Transverse packages
 import sys
