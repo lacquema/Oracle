@@ -2,4 +2,4 @@ Oracle
 
 Readme
 
-test sign out
+test in local
