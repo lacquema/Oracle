@@ -16,8 +16,7 @@ LDFLAGS = -O3
 #LIBGAG = -L$(GAG_EXEC_DIR)/lib -lgio -lginc
 #LOCAL_GAG = /home/ciment/lacquema/greg
 
-BIN_DIR = /Users/lacquema/Oracle/bin
-SWIFT_DIR_LIB = /Users/lacquema/Oracle/lib
+BIN_DIR = ./
 
 ifeq ($(DEBUGGING),YES)
 FFLAGS += $(DEBUG)
@@ -26,9 +25,6 @@ endif
 ifeq ($(PARALLEL),YES)
 FFLAGS += -fopenmp
 LDFLAGS += -fopenmp
-LOADLIBES = -L$(SWIFT_DIR_LIB) -lswiftp
-else
-LOADLIBES = -L$(SWIFT_DIR_LIB) -lswift
 endif
 FC = gfortran
 
@@ -49,7 +45,6 @@ clean:
 # Simulation
 
 MCMC = mcmc/utils.o mcmc/mcmc.o mcmc/mrqfit.o mcmc/radvel.o mcmc/astrometry.o
-KEPU = mcmc/kepu.o
 astrom_mcmco: $(MCMC) astrom_mcmco.o
 
 
