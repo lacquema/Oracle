@@ -16,7 +16,7 @@ LDFLAGS = -O3
 #LIBGAG = -L$(GAG_EXEC_DIR)/lib -lgio -lginc
 #LOCAL_GAG = /home/ciment/lacquema/greg
 
-BIN_DIR = ./
+BIN_DIR = ./bin
 
 ifeq ($(DEBUGGING),YES)
 FFLAGS += $(DEBUG)

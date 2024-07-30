@@ -39,7 +39,7 @@ class WindowSetNewSimu(QMainWindow):
         self.Tab1 = TabSimuSet()
         self.Container.addTab(self.Tab1, 'Simulation settings')
         self.Tab1.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
-        self.Tab1.InputFileName.EditParam.textChanged.connect(self.ChangeStartOrder)
+        self.Tab1.SimuName.EditParam.textChanged.connect(self.ChangeStartOrder)
 
         # Tab 2
         self.Tab2 = TabDataSet()
@@ -77,22 +77,25 @@ class WindowSetNewSimu(QMainWindow):
         self.SignalCloseWindowSetNewSimu.emit() 
 
     def ChangeStartOrder(self):
-        self.Tab4.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.Tab4.NbHours.SpinParam.value()} --project dynapla {self.Tab1.SimuPath.EditPath.text()+self.Tab1.InputFileName.EditParam.text()}')
+        self.Tab4.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.Tab4.NbHours.SpinParam.value()} --project dynapla {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/{self.Tab1.InputFileName.EditParam.text()}')
     
     def StartSimulation(self):
         if len(self.Tab1.SimuPath.EditPath.text())==0:
             print('Simulation path not given.')
             print('Check your inputs.')
+            print('\n')
         else:
             if os.path.exists(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()):
                 print('This directory already exists.')
                 print('Check your inputs.')
+                print('\n')
             else: 
                 os.makedirs(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
                 if len(self.Tab2.PathData.EditPath.text())==0:
                     os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
                     print('Data file not given.')
                     print('Check your inputs.')
+                    print('\n')
                 else:
                     if (self.Tab2.RelAstro.CheckData.isChecked() and self.Tab2.RelAstro.FormatData.currentIndex()==0) \
                         or (self.Tab2.AbsAstro.CheckData.isChecked() and self.Tab2.AbsAstro.FormatData.currentIndex()==0) \
@@ -101,20 +104,27 @@ class WindowSetNewSimu(QMainWindow):
                         os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
                         print('Data format not given.')
                         print('Check your inputs.')
+                        print('\n')
                     else:
-                        print(f'{self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}\ directory was created.')
+                        print(f'{self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/ directory was created.')
                         shutil.copy(self.Tab2.PathData.EditPath.text(), self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab2.DataFileName.EditParam.text())                    
                         print('Data file was copied.')
                         self.DoInputShell()
                         print('Input shell file was created.')
                         if self.Tab4.CheckOrder.CheckParam.isChecked():
-                            result = subprocess.run(self.Tab4.StartOrder.EditParam.text(), shell=True, capture_output=True, text=True)
+                            command = 'cd '+self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+';chmod u+x '+self.Tab1.InputFileName.EditParam.text()+';'+self.Tab4.StartOrder.EditParam.text()
+                            print(command)
+                            result = subprocess.run(command, shell=True, text=True)
+                            print('Simulation launched')
+                            print('\n')
                             error = result.stderr
-                            if len(error)!=0:
+                            if type(error)!= type(None):
                                 print(result.stderr)
-                                print('Simulation not launched but you can still launch yourself the input shell file created in the desired directory.')
+                                print('Simulation not launched but you can still launch yourself the input shell file created in the desired directory.\n')
+                                print('\n')
                         else:
                             print('All you have to do is launch the input shell file created in the desired directory.')
+                            print('\n')
 
                     
     
@@ -122,7 +132,7 @@ class WindowSetNewSimu(QMainWindow):
 
     def DoInputShell(self):
         with open(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab1.InputFileName.EditParam.text(), "w") as file:
-            file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n./astrom_mcmcop <<!') # Header
+            file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n'+self.DirPath+'/../../Algorithm/bin/astrom_mcmcop <<!') # Header
             file.write('\n')
             if self.Tab4.CheckLM.isChecked() and self.Tab4.CheckMCMC.isChecked(): # Choice
                 file.write('2')
