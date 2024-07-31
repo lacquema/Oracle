@@ -110,37 +110,64 @@ class TabDataSet(GeneralTab):
 
     def InitWidgets(self):
 
-        self.RelAstro = DataClass('Relative Astrometry')
-        self.Layout.addWidget(self.RelAstro)
-        self.RelAstro.CheckData.setChecked(True)
-        self.RelAstro.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+        self.Layout.addWidget(QLabel('Astrometric data :'), alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.AbsAstro = DataClass('Absolute Astrometry')
-        self.Layout.addWidget(self.AbsAstro)
-        self.AbsAstro.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+        self.WidgetAstroH = QWidget()
+        self.LayoutAstroH = QHBoxLayout()
+        self.LayoutAstroV = QVBoxLayout()
 
-        self.RelRV = DataClass('Relative RV')
+        self.RelAstro = CheckBox('Relative Astrometry', 'If you want use relative astrometric data')
+        self.LayoutAstroV.addWidget(self.RelAstro)
+        # self.RelAstro.CheckData.setCheckState()
+        self.RelAstro.CheckParam.setChecked(True)
+        self.RelAstro.CheckParam.clicked.connect(lambda: self.RelAstro.CheckParam.setChecked(True))
+
+        self.AbsAstro = CheckBox('Absolute Astrometry', 'If you want use absolute astrometric data')
+        self.LayoutAstroV.addWidget(self.AbsAstro)
+        # self.AbsAstro.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+
+        self.LayoutAstroH.addLayout(self.LayoutAstroV)
+
+        self.FormatAstro = ComboBox(None, 'Format of astrometric data', ['Format', 'Dec RA', 'Sep PA'], 0)
+        self.LayoutAstroH.addWidget(self.FormatAstro)
+
+        self.WidgetAstroH.setLayout(self.LayoutAstroH)
+        self.Layout.addWidget(self.WidgetAstroH)
+
+        self.Layout.addWidget(QProgressBar())
+        self.Layout.addWidget(QLabel('Radial velocity data :'), alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.RelRV = CheckBox('Relative RV', 'If you want use relative radial velocity data')
         self.Layout.addWidget(self.RelRV)
-        self.RelRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+        # self.RelRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
 
-        self.AbsRV = DataClass('Absolute RV')
+        self.AbsRV = CheckBox('Absolute RV', 'If you want use absolute radial velocity data')
         self.Layout.addWidget(self.AbsRV)
-        self.AbsRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+        # self.AbsRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
+
+        self.Layout.addWidget(QProgressBar())
+
+        self.FormatDate = ComboBox('Dates format', 'Format of dates', ['Day Month Year', 'MJD'])
+        self.Layout.addWidget(self.FormatDate)
+
+        self.CheckCorrCoef = CheckBox('Correlation', 'If you wish to use a correlation coefficient between parameters of the same type.')
+        self.Layout.addWidget(self.CheckCorrCoef)
 
         self.PathData = PathBrowser('Path to data file', 'Path to the existing data file', 1)
         self.Layout.addWidget(self.PathData)
-        self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+        # self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
 
         self.DataFileName = LineEdit(' --> \t Data file', 'Name you want to give to the data file', 'data.txt')
         self.PathData.Layout.addWidget(self.DataFileName)
-        self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+        # self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
 
+        self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-    def EnableOrNotPutDataPath(self):
-        self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
-        self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
-        if not self.AbsAstro.CheckData.isChecked() and not self.RelAstro.CheckData.isChecked() and not self.AbsRV.CheckData.isChecked() and not self.RelRV.CheckData.isChecked():
-            print('Adjustments need data.')
+    # def EnableOrNotPutDataPath(self):
+    #     self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+    #     self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+    #     if not self.AbsAstro.CheckData.isChecked() and not self.RelAstro.CheckData.isChecked() and not self.AbsRV.CheckData.isChecked() and not self.RelRV.CheckData.isChecked():
+    #         print('Adjustments need data.')
 
 
 class TabPriorSet(GeneralTab):
