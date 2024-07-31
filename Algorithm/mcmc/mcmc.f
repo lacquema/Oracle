@@ -393,7 +393,7 @@ C
      &          'long = ',long,' chi2 = ',sngl(chn(1:nch)%chi2)
         IF (INFCRIT.AND.(.NOT.INFER)) THEN
            INFER = .TRUE.
-           PROBINFER = NINFER*100.d0/(4.d0*LONG)
+           PROBINFER = MAX(NINFER*100.d0/(4.d0*LONG),MINPROB)
            WRITE(SD,*)
      &          'Inference now, sampling probability = ',probinfer
         END IF
@@ -1139,7 +1139,8 @@ C
      &                  CI,SI,          ! cos(i), sin(i)
      &                  MUF,            ! Planet masses
      &                  MFRAC,          ! Fractional masses
-     &                  AMPC,AMPS,      ! Partial radial velocity amplitudes
+     &                  AMC,AMS,        ! Partial radial velocity amplitudes 
+     &                  AMPC,AMPS,      ! Same x MFRAC
      &                  POSX,POSY       ! Fitted positions
         REAL*8, DIMENSION(2,NPLA) ::
      &                  E1,E2           ! Vecteurs de la base propre
@@ -1170,14 +1171,18 @@ c...  Compute fractional masses
 c...  Define vectors & amplitudes (formulas differ depending on whether
 c...                             there are radial velocities or not)        
         IF (RADVEL) THEN
-           V0 = P(NEL*NPLA+1)
-           IF (JITNUM.EQ.1) SIGJV = EXP(P(NEL*NPLA+2))
+           IF (ISDATA(2)) THEN              
+              V0 = P(NEL*NPLA+1)
+              IF (JITNUM.EQ.1) SIGJV = EXP(P(NEL*NPLA+2))
+           END IF
            E1(1,:) = COM*CO-SOM*CI*SO
            E1(2,:) = COM*SO+SOM*CI*CO
            E2(1,:) = -SOM*CO-COM*CI*SO
            E2(2,:) = -SOM*SO+COM*CO*CI
-           AMPS = -NN*A*SI*MFRAC*SOM
-           AMPC = +NN*A*SI*EXQ*MFRAC*COM
+           AMS = -NN*A*SI*SOM
+           AMC = +NN*A*SI*EXQ*COM
+           AMPS = AMS*MFRAC
+           AMPC = AMC*MFRAC
         ELSE
            E1(1,:) = CI2*CW+SI2*CP
            E1(2,:) = CI2*SW-SI2*SP
@@ -1185,7 +1190,7 @@ c...                             there are radial velocities or not)
            E2(2,:) = CI2*CW-SI2*CP           
         END IF
 
-c...  Contribution of HCI to Chi2        
+c...  Contribution of HCI (type 1 data) to Chi2        
         DO I = 1,NPLA
           DO K = 1,PLA(I)%NDATAS
              CALL POSFITS(PLA(I)%TAS(K),
@@ -1197,13 +1202,26 @@ c...  Contribution of HCI to Chi2
           END DO
         END DO
 
-c...  Contribution of RV's to Chi2. Note use of jitter (=0 if no jitter)
+c...  Contribution of RV's (type 2 data) to Chi2.
+c...        Note use of jitter (=0 if no jitter)
         IF (RADVEL) THEN
-           DO K = 1,STAR%NDATVR
-              CALL VFITS(STAR%TVR(K),NN,V0,AMPS,AMPC,EXC,TP,VRAD)
-              DV = STAR%V(K)-VRAD
-              CHI2 = CHI2 + DV*DV/(STAR%SIGV2(K)+SIGJV*SIGJV)           
-           END DO
+           IF (ISDATA(2)) THEN
+              DO K = 1,STAR%NDATVR
+                 CALL VFITS(STAR%TVR(K),NN,V0,AMPS,AMPC,EXC,TP,VRAD)
+                 DV = STAR%V(K)-VRAD
+                 CHI2 = CHI2 + DV*DV/(STAR%SIGV2(K)+SIGJV*SIGJV)           
+              END DO
+           END IF
+           IF (ISDATA(3)) THEN              
+              DO I = 1,NPLA
+                 DO K = 1,PLA(I)%NDATVR
+                    CALL VFITSP(I,PLA(I)%TVR(K),NN,AMPS,AMPC,
+     &                              AMS(I),AMC(I),EXC,TP,VRAD)
+                 END DO
+                 DV = PLA(I)%V(K)-VRAD
+                 CHI2 = CHI2 + DV*DV*PLA(I)%SIGVM2(K)
+              END DO           
+           END IF
         END IF
         
         END
@@ -1307,4 +1325,223 @@ C
         
         END    
       
-C     
+
+C         
+C-----------------------------------------------------------------------------
+C    Reads a radial velocity data file
+C-----------------------------------------------------------------------------
+C
+
+        SUBROUTINE READ_RV(IDAT,FILNAM)
+
+        USE DATA
+        
+        IMPLICIT NONE
+
+        CHARACTER*(*) :: FILNAM ! File name  
+        INTEGER*4 :: IDAT       ! Type of data
+        INTEGER*4 :: NDAT       ! Current data
+        INTEGER*4 ::   MM,YR    ! Month, Year
+        REAL*8 ::      JJ,JD    ! Day, date
+        REAL*8 ::      VV,DVV   ! Radial velocity
+        REAL*8 ::      DATE_TO_JD ! Conversion function
+        INTEGER*4 ::   I,ERROR
+        LOGICAL ::     OK
+        CHARACTER*80 :: LIG 
+        
+        OPEN(15,FILE=FILNAM,STATUS='UNKNOWN')                                   
+              
+        READ(15,'(a)')LIG
+        READ(15,'(a)')LIG
+        IF (DATATYP(IDAT).EQ.2) READ(15,*)STAR%JDOFFSET
+        OK = .TRUE.    
+        STAR%NDATVR = 0
+        DO WHILE(OK)
+           SELECT CASE (DATATYP(IDAT))
+           CASE(1)
+             READ(15,*,IOSTAT=ERROR)JJ,MM,YR,VV,DVV           
+           CASE(2)
+             READ(15,*,IOSTAT=ERROR)JD,VV,DVV    
+           END SELECT
+           OK=(ERROR.EQ.0)      
+           IF (OK) STAR%NDATVR = STAR%NDATVR+1
+        END DO
+        NDAT = STAR%NDATVR
+        ALLOCATE(STAR%TVR(NDAT))
+        ALLOCATE(STAR%V(NDAT))
+        ALLOCATE(STAR%SIGV(NDAT))
+        ALLOCATE(STAR%SIGVM2(NDAT))
+        ALLOCATE(STAR%SIGV2(NDAT))
+        REWIND(15)
+        READ(15,'(a)')LIG                                                       
+        READ(15,'(a)')LIG
+        IF (DATATYP(IDAT).EQ.2) READ(15,*)STAR%JDOFFSET
+        STAR%NDATVR = 0
+        OK = .TRUE.
+        DO WHILE(OK)
+           SELECT CASE (DATATYP(IDAT))
+           CASE(1)
+             READ(15,*,IOSTAT=ERROR)JJ,MM,YR,VV,DVV           
+           CASE(2)
+             READ(15,*,IOSTAT=ERROR)JD,VV,DVV    
+           END SELECT
+           OK=(ERROR.EQ.0)      
+           IF (OK) THEN
+              STAR%NDATVR = STAR%NDATVR+1
+              NDAT = STAR%NDATVR
+c...  Conversion JJ-MM-YR -> JD
+              SELECT CASE (DATATYP(IDAT))
+              CASE(1)
+                 JD = DATE_TO_JD(JJ,MM,YR)-STAR%JDOFFSET 
+              CASE(2)
+                 JD = JD   !   +STAR%JDOFFSET
+              END SELECT
+              STAR%TVR(NDAT) = JD
+              STAR%V(NDAT) = VV*MPS ! Conversion to AU/day
+              STAR%SIGV(NDAT) = DVV*MPS 
+              STAR%SIGV2(NDAT) = STAR%SIGV(NDAT)*STAR%SIGV(NDAT)
+              STAR%SIGVM2(NDAT) = 1.d0/STAR%SIGV2(NDAT)
+           END IF
+        END DO
+        CLOSE(15)
+
+        END
+
+
+C
+C -----------------------------------------------------------------------------
+C       Fit of the velocity without derivatives
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE VFITS(TT,N,V0,AMPS,AMPC,EXC,TP,VRAD)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 :: I
+        REAL*8, DIMENSION(NPLA) ::
+     &                  TP,             ! Time for periastron passage
+     &                  N,              ! Mean motion
+     &                  EXC,            ! Eccentricity
+     &                  AMPC,AMPS       ! Partial amplitudes
+        REAL*8 ::       TT,             ! Time
+     &                  VRAD,           ! Vitesse radiale
+     &                  M,              ! Anomalie moyenne
+     &                  V0,             ! Offset velocity
+     &                  U,CU,SU        ! Anomalie excentrique
+c
+c     For each planet, AMPS = n*a*sin(i)*mfrac*sin(omega)
+c                      AMPC = -n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
+c     vrad = V0+sum((amps(i)*sin(u)+ampc(i)*cos(u))/(1-e(i)*cos(u))
+        
+        VRAD = V0
+        DO I = 1,NPLA
+           M = N(I)*(TT-TP(I))
+           CALL KEPLER0(M,EXC(I),U)
+           CU = COS(U)
+           SU = SIN(U)
+           VRAD = VRAD+(AMPS(I)*SU+AMPC(I)*CU)/(1.d0-EXC(I)*CU)
+        END DO
+        END
+
+C
+C -----------------------------------------------------------------------------
+C       Fit of relative velocity of a planet / star without derivatives
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE VFITSP(IPLA,TT,N,AMPS,AMPC,AMS,AMC,EXC,TP,VRAD)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    IPLA,            ! PLanet to be considered
+     &                  I
+        REAL*8, DIMENSION(NPLA) ::
+     &                  TP,             ! Time for periastron passage
+     &                  N,              ! Mean motion
+     &                  EXC,            ! Eccentricity
+     &                  AMPC,AMPS       ! Partial amplitudes
+        REAL*8 ::       TT,             ! Time
+     &                  VRAD,           ! Vitesse radiale
+     &                  AMS,AMC,        ! Amplitudes
+     &                  M,              ! Anomalie moyenne
+     &                  V0,             ! Offset velocity
+     &                  U,CU,SU         ! Anomalie excentrique
+c
+c     For each planet, AMPS = n*a*sin(i)*mfrac*sin(omega)
+c                      AMPC = -n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
+c                AMS, AMC = Same as AMPS,AMPC without mfrac
+c     vrad = -sum((amps(i)*sin(u)+ampc(i)*cos(u))/(1-e(i)*cos(u)),i=1..ipla-1
+c            -ams(ipla)*sin(u)+amc(ipla)*cos(u))/(1-e(ipla)*cos(u)),       
+        VRAD = 0.d0
+        DO I = 1,IPLA-1
+           M = N(I)*(TT-TP(I))
+           CALL KEPLER0(M,EXC(I),U)
+           CU = COS(U)
+           SU = SIN(U)
+           VRAD = VRAD-(AMPS(I)*SU+AMPC(I)*CU)/(1.d0-EXC(I)*CU)
+        END DO
+        M = N(IPLA)*(TT-TP(IPLA))
+        CALL KEPLER0(M,EXC(IPLA),U)
+        CU = COS(U)
+        SU = SIN(U)
+        VRAD = VRAD-(AMS*SU+AMC*CU)/(1.d0-EXC(IPLA)*CU)
+
+        END
+C
+C -----------------------------------------------------------------------------
+C       Fit of the position without derivatives
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE POSFITS(TT,N,A,EXC,EXQ,E1,E2,TP,MFRAC,POSX,POSY)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        REAl*8, DIMENSION(NPLA) ::
+     &                  JACX,JACY,      ! Jacobi positions
+     &                  A,              ! Semi-major axis
+     &                  TP,             ! Time for periastron passage
+     &                  MFRAC,          ! Fractional planetary masses
+     &                  N,              ! Mean motion
+     &                  POSX,POSY,      ! Heliocentric positions
+     &                  EXC,EXQ         ! Eccentricity + sqrt(1-e^2)
+        REAL*8, DIMENSION(2,NPLA) :: E1,E2 ! Base vectors for orbits 
+        REAL*8 ::       TT,             ! Time
+     &                  M,M0,           ! Anomalie moyenne
+     &                  U,CU,SU,        ! Anomalie excentrique
+     &                  GX,GY,          ! Partial center of mass position
+     &                  RX,RY           ! Coordonnes dans la base propre
+        INTEGER*4 ::    I
+        
+        GX = 0.d0
+        GY = 0.d0
+        DO I = 1,NPLA
+           M = N(I)*(TT-TP(I))
+           CALL KEPLER0(M,EXC(I),U)
+           CU = COS(U)
+           SU = SIN(U)
+
+           RX = A(I)*(CU-EXC(I))
+           RY = A(I)*EXQ(I)*SU
+           JACX(I) = RX*E1(1,I)+RY*E2(1,I)
+           JACY(I) = RX*E1(2,I)+RY*E2(2,I)
+c           POSX(I) = JACX(I)+SUM(MFRAC(1:I-1)*JACX(1:I-1))
+c           POSY(I) = JACY(I)+SUM(MFRAC(1:I-1)*JACY(1:I-1))
+           POSX(I) = JACX(I)+GX
+           POSY(I) = JACY(I)+GY
+c           print*,'jacs',sngl(tt),i,sngl(m),sngl(tp(i))
+           IF (MULTIPLA) THEN
+             GX = GX+MFRAC(I)*JACX(I)
+             GY = GY+MFRAC(I)*JACY(I)
+           END IF
+        END DO
+
+        END
+

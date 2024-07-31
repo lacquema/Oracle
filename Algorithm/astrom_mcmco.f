@@ -27,22 +27,23 @@ c-------------------------------------------------------------------------
 
         CHARACTER*80 ::  LIG
         CHARACTER*80, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
-c                                                #3--NFIL = data
+c                                                #3 = data
         INTEGER*4 ::         CNEW
-        LOGICAL ::          OK,NEW,CORR
+        LOGICAL ::          OK,NEW
 
-        CALL INIT_SIMU(CNEW,NMOD,FILES,NEW,CORR)
-        
+        CALL INIT_SIMU(CNEW,NMOD,FILES,NEW)
+
         IF (CNEW.EQ.5) THEN
            CALL SIMUL_DATA(1,FILES)
            CALL UTIL_EXIT()
            STOP
         END IF       
-           
+ 
         ALLOCATE(P(NPAR))
-        ALLOCATE(COV(NPAR,NPAR))
-           
+        ALLOCATE(COV(NPAR,NPAR))  
+       
         CALL INIT_DATA(NPAR,P,COV,FILES,NEW)
+
         IF (NEW) THEN           
            COV = 0.d0
            IF ((CNEW.EQ.2).OR.(CNEW.EQ.4)) THEN
@@ -111,7 +112,7 @@ c...  Store CHi2 and MAP in additional variables
            WRITE(SD,*)'exc',sngl(pla(1:npla)%exc)
            WRITE(SD,*)'i',sngl(pla(1:npla)%inc)
            WRITE(SD,*)'tp',sngl(pla(1:npla)%tp)
-           IF (RADVEL.AND.(JITNUM.EQ.1))
+           IF (ISDATA(2).AND.(JITNUM.EQ.1))
      &                WRITE(SD,*)'jitter',sngl(star%sigjv/mps)
            WRITE(SD,*)'M*',sngl(STAR%mass/smas)
         END IF

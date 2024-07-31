@@ -10,11 +10,7 @@ PARALLEL=NO
 DEBUG = -g
 FFLAGS = -O3
 LDFLAGS = -O3 
-#ulimit -s unlimited
-#GAG_EXEC_DIR = /home/ciment/lacquema/gildas-exe-feb09c/x86_64-redhatServer-ifort
-#GAG_PATH = /home/ciment/lacquema/gildas-exe-feb09c/etc
-#LIBGAG = -L$(GAG_EXEC_DIR)/lib -lgio -lginc
-#LOCAL_GAG = /home/ciment/lacquema/greg
+
 
 BIN_DIR = ./bin
 
@@ -26,7 +22,7 @@ ifeq ($(PARALLEL),YES)
 FFLAGS += -fopenmp
 LDFLAGS += -fopenmp
 endif
-FC = gfortran
+FC = gfortran-mp-13
 
 %.o : %.f
 	$(FC) -c $(FFLAGS) $< -o $@
@@ -44,7 +40,7 @@ clean:
 
 # Simulation
 
-MCMC = mcmc/utils.o mcmc/mcmc.o mcmc/mrqfit.o mcmc/radvel.o mcmc/astrometry.o
+MCMC = mcmc/utils.o mcmc/mcmc.o mcmc/mrqfit.o mcmc/io.o
 astrom_mcmco: $(MCMC) astrom_mcmco.o
 
 

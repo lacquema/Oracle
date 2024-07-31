@@ -35,7 +35,8 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
         REAL*8, PARAMETER :: TSCONV = 1d3
         REAL*8, PARAMETER :: RINF = 1.1d0
         REAL*8, PARAMETER :: TSINF = 1d2
-        REAL*8, PARAMETER :: SIGV0 = 0.1d0*MPS  ! Jitter norm = 0.1 km/s
+        REAL*8, PARAMETER :: MINPROB = 1.d-1
+        REAL*8, PARAMETER :: SIGV0 = 0.1d0*MPS ! Jitter norm = 0.1 km/s
         CHARACTER*80, PARAMETER :: LOGFILE = 'logfile.dat'
         INTEGER*4 :: FREQDUMP     ! Saving frequency
         REAL*8 :: EPS
@@ -44,7 +45,7 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
         LOGICAL, DIMENSION(NDATATYP) :: ISDATA ! types of data present
         LOGICAL :: RADVEL
         INTEGER*4 :: JITNUM     ! 1 if Jitter to be considered
-        INTEGER*4, PARAMETER :: NFIL = 2+NDATATYP ! # of files
+        INTEGER*4, PARAMETER :: NFIL = 3 ! # of files
         INTEGER*4, PARAMETER :: NLIM = 3
         INTEGER*4, PARAMETER :: NEL = 7 ! # of elements to fit per planet
         
@@ -114,5 +115,8 @@ c           Prior on sum(acof(i)*m(i))=sum(bcof(i)*mdyn(i))
         INTEGER*4 :: NFREE     ! # of degrees of freedom
         INTEGER*4 :: NPRIOR    ! # of Prior prescriptions for masses
         LOGICAL :: MULTIPLA    ! True if more than 1 planet 
-
+        INTEGER*4 :: DATEINPUT ! 1 = JJMMYYYY, 2 = JD-offset
+        INTEGER*4 :: XYFORMAT  ! 1 = (DEC,RA), 2 = (SEP,PA)
+        INTEGER*4 :: CORRNUM   ! 1 = Correlation XY, 0 = no
+        LOGICAL :: CORR        ! True if correlation
         

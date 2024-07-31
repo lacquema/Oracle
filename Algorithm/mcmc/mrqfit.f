@@ -7,10 +7,9 @@ C -----------------------------------------------------------------------------
 C
         SUBROUTINE MRQMIN(N,P,COV,CHI2,FMAP)
 
-        USE DATA
-        
         IMPLICIT NONE
 
+        INTEGER*4, PARAMETER :: SD = 6
         REAL*8, PARAMETER :: LAMBDA0 = 1d-3
         INTEGER*4       N       ! Dimension of parameter space
 
@@ -82,7 +81,7 @@ c...  Multiply diagonal by 1+lambda
         END DO        
 c        WRITE(SD,*)'a',sngl(a),'b',sngl(b)
         CALL GAUSS(N,A,B,COV,DP,TEST)
-c...   Trial step
+c...  Trial step
         
         PTRY(1:N) = P(1:N)+DP(1:N)
 c        do i=1,n
@@ -227,170 +226,6 @@ c        stop
 
         END 
 
-C     
-C -----------------------------------------------------------------------------
-C    Calculation of FMAP & derivatives (HCI part only)
-C        MAP = exp(-Chi2/2)*f(parameters) (f = priors)
-C     => Replace Chi2 with Chi2-2*ln(f(parameters)) = -2*ln(MAP) = Chi2+FMAP    
-C-----------------------------------------------------------------------------
-C
-
-        SUBROUTINE MRQMAPASTROM(N,P,FMAP,DFMAP,D2FMAP)
-
-        USE DATA
-
-        IMPLICIT NONE
-
-        INTEGER*4 ::   N               ! Dimension of parameter space
-        REAL*8, DIMENSION(N,N) :: D2FMAP ! Second derivatives
-        REAL*8, DIMENSION(N) :: DFMAP        ! First derivatives
-        REAL*8, DIMENSION(NPLA) :: MDYN         ! Dynamical masses 
-        REAL*8, DIMENSION(NPLA) :: PER2         ! Periods^2
-        REAL*8, DIMENSION(N) :: P            ! Parameters
-        REAL*8, DIMENSION(N) :: DLMUF        ! dln(mass)/dpars
-        REAL*8, DIMENSION(N,N) :: D2LMUF  ! d2ln(mass)/dpars^2
-        REAL*8 ::       FMAP,           ! Merit function
-     &                  MSTAR,          ! Stellar mass
-     &                  QQ,PP,          ! tan(i/2)*[cos(O),sin(O)]
-     &                  FM,DFM,D2FM,    ! Mass function & derivatives
-     &                  MUF,LMUF,       ! Mass prior & lna
-     &                  T2,T,           ! tan(i/2)
-     &                  SI,CI,          ! sin(i),cos(i)
-     &                  FF1,FF2,        ! Auxiliary (second der.)
-     &                  A,PER,NN,       ! Semi-major axis, Period, mean-motion
-     &                  LNA,LNP,        ! ln(semi-major axis)
-     &                  P6,P7,          ! cos(lambda),sin(lambda)/P
-     &                  CO,SO           ! cos,sin (Omega-omega)
-
-        INTEGER*4 ::    I,J,K,KM,IM          
-c
-        IF (MULTIPLA) MSTAR = EXP(P(N))
-
-        DO I = 1,NPLA
-          IM = NEL*(I-1)
-          LNA = P(IM+1)
-          P6 = P(IM+6)
-          P7 = P(IM+7)
-          PER2(I) = 1.d0/(P6*P6+P7*P7)
-          A = EXP(LNA)
-          NN = DPI/SQRT(PER2(I))
-          MDYN(I) = NN*NN*(A**3)           
-        END DO
-
-c...  Taking into account priors on masses in FMAP (-2*ln(prior(m)))    
-        DLMUF = 0.d0
-        D2LMUF = 0.d0
-        DO J = 0,NPRIOR            
-           MUF = SUM(MPRIOR(J)%BCOF(1:NPLA)*MDYN(1:NPLA))
-           IF (MULTIPLA) MUF = MUF+MPRIOR(J)%BCOF(0)*MSTAR
-           CALL FMAP_PRIOR(J,MUF,FM,DFM,D2FM)
-           IF (MULTIPLA) THEN
-              FF1 = MPRIOR(J)%BCOF(0)*MSTAR/MUF
-              DLMUF(N) =  FF1
-              D2LMUF(N,N) = FF1*(1.d0-FF1)
-           END IF
-           DO I = 1,NPLA
-              IM = NEL*(I-1)
-              FF1 = MPRIOR(J)%BCOF(I)*MDYN(I)/MUF
-              DLMUF(IM+1) = 3.d0*FF1
-              DLMUF(IM+6) = 2.d0*FF1*PER2(I)*P(IM+6)
-              DLMUF(IM+7) = 2.d0*FF1*PER2(I)*P(IM+7)
-              FF2 = FF1*(1.d0-FF1)
-              D2LMUF(IM+1,IM+1) = 9.d0*FF2
-              D2LMUF(IM+1,IM+6) = 6.d0*FF2*PER2(I)*P(IM+6)
-              D2LMUF(IM+1,IM+7) = 6.d0*FF2*PER2(I)*P(IM+7)
-              D2LMUF(IM+6,IM+6) = 2.d0*FF1*PER2(I)*
-     &             (1.d0-2.d0*FF1*PER2(I)*P(IM+6)**2)
-              D2LMUF(IM+7,IM+7) = 2.d0*FF1*PER2(I)*
-     &             (1.d0-2.d0*FF1*PER2(I)*P(IM+7)**2)              
-              D2LMUF(IM+6,IM+7) = -4.d0*FF1*FF1*PER2(I)*PER2(I)*
-     &             P(IM+6)*P(IM+7)
-              D2LMUF(IM+7,IM+6) = D2LMUF(IM+6,IM+7)
-              D2LMUF(IM+6,IM+1) = D2LMUF(IM+1,IM+6)
-              D2LMUF(IM+7,IM+1) = D2LMUF(IM+1,IM+7)
-              DO K = 1,NPLA
-                 IF (K.NE.I) THEN
-                    FF2 = FF1*MPRIOR(J)%BCOF(K)*MDYN(K)/MUF
-                    KM = NEL*(K-1)
-                    D2LMUF(IM+1,KM+1) = -9.d0*FF2
-                    D2LMUF(IM+1,KM+6) = -6.d0*PER2(K)*P(KM+6)
-                    D2LMUF(IM+1,KM+7) = -6.d0*PER2(K)*P(KM+7)
-                    D2LMUF(IM+6,KM+1) = -6.d0*FF2*PER2(I)*P(IM+6)
-                    D2LMUF(IM+7,KM+1) = -6.d0*FF2*PER2(I)*P(IM+7)
-                    D2LMUF(IM+6,KM+6) = -4.d0*FF2*PER2(I)*PER2(K)*
-     &                                              P(IM+6)*P(KM+6)
-                    D2LMUF(IM+7,KM+7) = -4.d0*FF2*PER2(I)*PER2(K)*
-     &                                              P(IM+7)*P(KM+7)
-                    D2LMUF(IM+6,KM+7) = -4.d0*FF2*PER2(I)*PER2(K)*
-     &                                              P(IM+6)*P(KM+7)
-                    D2LMUF(IM+7,KM+6) = -4.d0*FF2*PER2(I)*PER2(K)*
-     &                                              P(IM+7)*P(KM+6)
-                 END IF
-              END DO
-              IF (MULTIPLA) THEN
-                 FF2 = FF1*MPRIOR(J)%BCOF(0)*MSTAR/MUF
-                 D2LMUF(IM+1,N) = -3.d0*FF2
-                 D2LMUF(IM+6,N) = -2.d0*FF2*PER2(I)*P(IM+6)
-                 D2LMUF(IM+7,N) = -2.d0*FF2*PER2(I)*P(IM+7)
-                 D2LMUF(N,IM+1) = -3.d0*FF2
-                 D2LMUF(N,IM+6) = -2.d0*FF2*PER2(I)*P(IM+6)
-                 D2LMUF(N,IM+7) = -2.d0*FF2*PER2(I)*P(IM+7)
-              END IF
-           END DO
-           FMAP = FMAP+FM
-           DFMAP = DFMAP+DFM*DLMUF
-           DO I = 1,N
-              D2FMAP(:,I) = D2FMAP(:,I)+DFM*D2LMUF(:,I)
-     &                                 +D2FM*DLMUF(I)*DLMUF(:)
-           END DO
-        END DO
-        
-        DO I = 1,NPLA
-          IM = NEL*(I-1)
-          LNA = P(IM+1)
-          P6 = P(IM+6)
-          P7 = P(IM+7)
-          LNP = 0.5d0*LOG(PER2(I))
-          A = EXP(LNA)
-          NN = DPI/SQRT(PER2(I))
-          QQ = P(IM+4)
-          PP = P(IM+5)
-          T2 = QQ*QQ+PP*PP    
-          T = SQRT(T2)        ! Tan(i/2)
-          CI = (1.d0-T2)/(1.d0+T2)  ! cos(i)
-          SI = 2.d0*T/(1.d0+T2)      ! sin(i)           
-          CO = QQ/T
-          SO = PP/T
-
-c...  Taking into account Period and semi-major axis in FMAP
-c...  prior(P) = 1/P (logarithmic prior) => -2*ln(prior(P))=+2*ln(P)          
-c...  Idem for semi-major axis
-          FMAP = FMAP+2.d0*(LNP+LNA)
-          DFMAP(IM+1) = 2.d0
-          DFMAP(IM+6) = DFMAP(IM+6)-2.d0*P6*PER2(I)
-          DFMAP(IM+7) = DFMAP(IM+7)-2.d0*P7*PER2(I)
-          D2FMAP(IM+6,IM+6) = D2FMAP(IM+6,IM+6)
-     &                    +2.d0*(P6*P6-P7*P7)*PER2(I)*PER2(I)
-          D2FMAP(IM+7,IM+7) = D2FMAP(IM+6,IM+6)
-     &                    +2.d0*(-P6*P6+P7*P7)*PER2(I)*PER2(I)          
-          D2FMAP(IM+6,IM+7) = D2FMAP(IM+6,IM+7)
-     &                    +4.d0*P6*P7*PER2(I)*PER2(I)
-          D2FMAP(IM+7,IM+6) = D2FMAP(IM+7,IM+6)
-     &                    +4.d0*P6*P7*PER2(I)*PER2(I)
-c...  Taking into account inc prior in FMAP (-2*ln(prior(i))=-2*ln(sin(i)))
-c...        and related derivatives
-          FMAP = FMAP-2.d0*LOG(SI)
-          DFMAP(IM+4) = DFMAP(IM+4)-2.d0*CO*CI/T
-          DFMAP(IM+5) = DFMAP(IM+5)-2.d0*SO*CI/T
-          FF1 = CI/T2
-          FF2 = 2.d0*CI*CI/T2-4.d0/(T2*(1.d0+T2)*(1.d0+T2))
-          D2FMAP(IM+4,IM+4) = -2.d0*(FF2*CO*CO+FF1)
-          D2FMAP(IM+4,IM+5) = -2.d0*FF2*CO*SO
-          D2FMAP(IM+5,IM+4) = -2.d0*FF2*CO*SO
-          D2FMAP(IM+5,IM+5) = -2.d0*(FF2*SO*SO+FF1)
-        END DO
-        END
-      
 C      
 C -----------------------------------------------------------------------------
 C       Fit of the position and derivatives (for Levenberg-Marquardt)
@@ -700,6 +535,357 @@ c                                     => d(POSX,POSY)/d(ln(MSTAR)
 
         END    
 
+
+C
+C -----------------------------------------------------------------------------
+C       Computation of RV contribution to Levenberg-Marquardt coefficients
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE MRQRADVEL(N,JITTER,P,ALPHA,BETA,CHI2)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4       N               ! Dimension of parameter space
+        
+        REAL*8, DIMENSION(NPAR) :: DVF
+        REAL*8 ::       ALPHA(N,N),     ! Matrix coefficients
+     &                  BETA(N),        ! Vector
+     &                  P(N),           ! The parameters
+     &                  CHI2,           ! Chi2
+     &                  F1,F2,FS,       ! Intermediaires
+     &                  SIGJV,          ! Velocity Jitter
+     &                  SIGV2P,         ! Incertitude^2 augmentée
+     &                  VF,                ! Fitted velocity
+     &                  DV              ! Normalized difference   
+        INTEGER*4 ::      I,J,K,L,SJ,iv,jv  
+        LOGICAL ::        JITTER
+        
+c        REAL*8 ::       PB(NPAR),es,vfq,vfz ! Vitesse radiale
+
+        SJ = NEL*NPLA+2
+c        pb(1:n) = p(1:n)
+        DVF(1:N) = 0.d0
+
+        IF (JITTER) THEN
+           SIGJV = EXP(P(SJ))   ! Velocity Jitter
+        ELSE
+           SIGJV = 0.d0
+        END IF
+c     es = 1.d-8
+
+        DO I = 1,STAR%NDATVR
+c     do iv=1,n
+c          pb(iv) = p(iv)+es
+c          call mrqvfit(n,star%tvr(i),pb(1:n),vfz,dvf(1:n))
+c         pb(iv) = p(iv)-es
+c          call mrqvfit(n,star%tvr(i),pb(1:n),vfq,dvf(1:n))
+           CALL MRQVFIT(N,STAR%TVR(I),P(1:N),VF,DVF(1:N))
+c       WRITE(SD,*)iv,sngl(vfz),sngl(vfq),sngl((vfz-vfq)/(2.d0*es)),
+c     &                 sngl(dvf(iv))
+c         end do
+c         stop
+           DV = STAR%V(I)-VF
+           SIGV2P = STAR%SIGV2(I)+SIGJV*SIGJV
+           CHI2 = CHI2+DV*DV/SIGV2P
+c     WRITE(SD,*)(v(i)-vf)*AU/YEAR,SIG(I)*AU/YEAR,
+c     &(V(I)-VF)*(V(I)-VF)/(SIG(I)*SIG(I))
+c          WRITE(SD,*)sngl(x(i)),sngl(xf),sngl(y(i)),sngl(yf),
+c     &           sngl(sigm2x(i)),sngl(sigm2y(i)),sngl(chi2)
+          
+           F1 = DV/SIGV2P
+           FS = SIGJV/SIGV2P
+           BETA(1:N) = BETA(1:N)+F1*DVF(1:N)
+           DO J=1,N
+             F2 = DVF(J)/SIGV2P
+             ALPHA(J:N,J) = ALPHA(J:N,J)+F2*DVF(J:N)
+             IF (JITTER.AND.(SJ.GT.J))
+     &             ALPHA(SJ,J) = ALPHA(SJ,J)+2.d0*DV*FS*FS*DVF(J)
+           END DO  
+           IF (JITTER) THEN
+              ALPHA(N,SJ) = ALPHA(N,SJ)+2.d0*DV*FS*FS*DVF(N)
+              BETA(SJ) = BETA(SJ)+FS*FS*DV*DV
+              ALPHA(SJ,SJ) = ALPHA(SJ,SJ)
+     &                      +FS*FS*DV*DV*(4.d0*FS*SIGJV-2.d0)
+           END IF
+        END DO
+
+        END 
+
+      
+C
+C -----------------------------------------------------------------------------
+C  Computation of Relative RV contribution to Levenberg-Marquardt coefficients
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE MRQRADVELP(N,P,ALPHA,BETA,CHI2)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4       N               ! Dimension of parameter space
+        
+        REAL*8, DIMENSION(NPAR,NPLA) :: DVF
+        REAL*8, DIMENSION(NPLA) :: VF
+        REAL*8 ::       ALPHA(N,N),     ! Matrix coefficients
+     &                  BETA(N),        ! Vector
+     &                  P(N),           ! The parameters
+     &                  CHI2,           ! Chi2
+     &                  F1,F2,          ! Intermediaires
+     &                  DV              ! Normalized difference   
+        INTEGER*4       I,J,K,L,SJ,iv,jv  
+
+c        REAL*8 ::       PB(NPAR),vfz(npla),vfq(npla),es
+        
+c        pb(1:n) = p(1:n)
+        DVF = 0.d0
+c        es = 1.d-8
+        DO L = 1,NPLA
+           DO I = 1,PLA(L)%NDATVR
+c         do iv=1,n
+c         pb(iv) = p(iv)+es
+c         call mrqvfitp(n,pla(l)%tvr(i),pb(1:n),vfz,dvf(1:n,1:npla))
+c         pb(iv) = p(iv)-es
+c         call mrqvfitp(n,pla(l)%tvr(i),pb(1:n),vfq,dvq(1:n,1:npla))
+
+              CALL MRQVFITP(N,PLA(L)%TVR(I),P(1:N),
+     &                      VF(1:NPLA),DVF(1:N,1:NPLA))
+
+c     WRITE(SD,*)iv,'v', ! sngl(vfz),sngl(vfq),
+c     &         sngl((vfz-vfq)/(2.*es)),sngl(dvf(iv,:))
+c         end do
+c        stop
+
+              DV = PLA(L)%V(I)-VF(L)
+              CHI2 = CHI2 + DV*DV*PLA(L)%SIGVM2(I)          
+              F1 = DV*PLA(L)%SIGVM2(I)
+              BETA(1:N) = BETA(1:N)+F1*DVF(1:N,L)
+              DO J = 1,N
+                 F2 = DVF(J,L)*PLA(L)%SIGVM2(I)
+                 ALPHA(J:N,J) = ALPHA(J:N,J)+F2*DVF(J:N,L)
+              END DO        
+           END DO
+        END DO
+c      WRITE(SD,*)chi2,'r'
+c        stop
+
+        DO J = 2,N
+          ALPHA(1:J-1,J) = ALPHA(J,1:J-1)
+        END DO 
+
+        END 
+C      
+C -----------------------------------------------------------------------------
+C     Planet/star radial velocity fit and derivatives (for Levenberg-Marquardt)
+C -----------------------------------------------------------------------------
+C
+
+        SUBROUTINE MRQVFITP(N1,TT,P,VRADP,DVRADP)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    N1              ! Dimension of parameter space 
+        REAL*8, DIMENSION(N1) :: P       ! Parameters 
+        REAL*8, DIMENSION(NPLA) :: VRADP ! Radial velocities
+        REAL*8, DIMENSION(N1,NPLA) :: DVRADP ! Derivatives / parameters
+        REAL*8, DIMENSION(NPLA) :: JACX,JACY ! Jacobi pos
+        REAL*8, DIMENSION(7,NPLA) :: DJACX,DJACY ! Jac. deriv.
+        REAL*8, DIMENSION(NPLA) :: MDYN,PER ! Dynamical masses & Periods 
+        REAL*8, DIMENSION(NPLA) :: MFRAC ! Fractional masses
+        REAL*8, DIMENSION(NPLA) :: VJAC ! Jacobi velocities
+        REAL*8, DIMENSION(7,NPLA) :: DVJAC ! Jac. deriv.
+        INTEGER*4 ::    I,J,DKAL
+        REAL*8 ::       TT,             ! Time
+     &                  MTOT,MSTAR,     ! Total mass (partial)
+     &                  Z,A,AMP,           ! 1/2 gd axe, amplitude et ln()
+     &                  TP,             ! Tps de passage au periastre
+     &                  N,              ! Moyen mouvement
+     &                  K,H,            ! e*[cos(w),sin(w)]/sqrt(1-e^2)
+     &                  QQ,PP,          ! tan(i/2)*[cos(O),sin(O)]
+     &                  VRAD,           ! Vitesse radiale
+     &                  TI2,TII,        ! tan(i/2)
+     &                  SI,             ! sin(i)
+     &                  M,M0,           ! Anomalie moyenne
+     &                  S,S2,           ! e/sqrt(1-e^2) + carre
+     &                  EXC,EXQ,EXQ3,   ! excentricite + sqrt(1-e^2)
+     &                  COM,SOM,CO,SO,  ! cos,sin (omega,Omega)
+     &                  CL,SL,CM,SM,    ! cos,sin (lambda,M0)
+     &                  CW,SW,          ! cos, sin (w=omega+Omega)
+     &                  U,CU,SU,        ! Anomalie excentrique
+     &                  FACT,FACT2,     ! 1/(1-e*cos(u))     
+     &                  RX,RY,          ! Coordonnes dans la base propre
+     &                  VITZ,           ! Vitesse en Z
+     &                  DOMDK,DOMDH,DOMDQ,DOMDP, ! Derivees interm.     
+     &                  DWDK,DWDH, ! Derivees interm.
+     &                  DFACTU,DFACTE,     ! Derivees interm.
+     &                  DMFDM,DMFDMM,DUDH,DUDK,    !
+     &                  DEDK,DEDH,         ! Derivees de Exc
+     &                  DUDN,DUDE,DUDP6,DUDP7,! Derivees de U
+     &                  NDTPDK,NDTPDH,NDTPDP6,NDTPDP7, ! 
+     &                  DVZDU,DVZDE,DVZDOM,DVZDAMP,
+     &                  DNDA,DNDMUF,DNDP6,DNDP7,    ! Dérivées de N
+     &                  DAMPDZ,DSI,DAMPDQ,DAMPDP,DAMPDN, ! Dérivées de AMP
+     &                  DVJACP6,DVJACZ,DVJACP7,
+     &                  DVJACH,DVJACK,DVJACP,DVJACQ ! Dérivées de VJAC        
+        
+        MSTAR = EXP(P(N1))
+        MTOT = MSTAR       
+        DO I = 1,NPLA
+          DKAL = NEL*(I-1)
+          Z = P(DKAL+1)
+          K = P(DKAL+2)
+          H = P(DKAL+3)
+          QQ = P(DKAL+4)
+          PP = P(DKAL+5)
+          PER(I) = 1.d0/SQRT(P(DKAL+6)**2+P(DKAL+7)**2)
+          CL = PER(I)*P(DKAL+6)
+          SL = PER(I)*P(DKAL+7)
+          N = DPI/PER(I)         ! Mean motion
+          A = EXP(Z)            ! Semi-major axis
+          MDYN(I) = N*N*(A**3)    ! Dynamical mass
+          IF (MULTIPLA) THEN
+             MFRAC(I) = (MDYN(I)-MTOT)/MDYN(I) ! Mfrac(i) = (M(i)-M(i-1))/M(i)
+             MTOT = MDYN(I)
+          END IF
+          S2 = K*K+H*H
+          S = SQRT(S2)        ! e/sqrt(1-e^2)
+          EXC = S/SQRT(1.d0+S2)
+          EXQ = EXC/S
+          CW = K/S                   ! cos(w)
+          SW = H/S                   ! sin(w)
+          CM = CW*CL+SW*SL ! M0 = lambda-w
+          SM = CW*SL-SW*CL
+          M0 = ATAN2(SM,CM)
+          TP = -M0/N+STAR%T0 ! Tp = T0-M0/NN
+          M = N*(TT-TP)         ! Mean anomaly
+          
+          CALL KEPLER0(M,EXC,U)
+          CU = COS(U)
+          SU = SIN(U)
+          FACT = 1.d0/(1.d0-EXC*CU) 
+          EXQ3 = EXQ*EXQ*EXQ
+          TI2 = QQ*QQ+PP*PP        
+          TII = SQRT(TI2)        ! Tan(i/2)
+c          CI = (1.d0-T2)/(1.d0+T2)  ! cos(i)
+          SI = 2.d0*TII/(1.d0+TI2)      ! sin(i) 
+          CO = QQ/TII                    ! cos(Omega)
+          SO = PP/TII                    ! sin(Omega)
+          COM = CW*CO+SW*SO     ! omega = w-Omega
+          SOM = SW*CO-CW*SO              !
+          AMP = -N*A*SI
+          VJAC(I) = AMP*FACT*(SU*SOM-EXQ*CU*COM)
+          
+          DNDP6 = DPI*CL
+          DNDP7 = DPI*SL
+          
+          DWDK = -H/S2
+          DWDH = K/S2
+          NDTPDK = DWDK
+          NDTPDH = DWDH
+          NDTPDP6 = +PER(I)*SL+M0*PER(I)*CL
+          NDTPDP7 = -PER(I)*CL+M0*PER(I)*SL                    
+
+          DEDK = EXQ3*CW
+          DEDH = EXQ3*SW
+          DUDN = FACT*(TT-TP)
+          DUDP6 = DUDN*DNDP6
+          DUDP7 = DUDN*DNDP7          
+          
+          DAMPDZ = AMP
+          DAMPDN = AMP/N 
+          DSI = (1.d0-TI2)/(TI2*(1.d0+TI2))
+          DAMPDQ = AMP*DSI*QQ
+          DAMPDP = AMP*DSI*PP
+
+          FACT2 = FACT*FACT
+          DFACTU = -EXC*SU*FACT2
+          DFACTE = CU*FACT2
+
+          DUDE = FACT*SU
+          DUDK = -NDTPDK*FACT
+          DUDH = -NDTPDH*FACT
+          DUDP6 = DUDP6-NDTPDP6*FACT
+          DUDP7 = DUDP7-NDTPDP7*FACT     
+
+          DOMDK = DWDK ! -H/S2
+          DOMDH = DWDH ! K/S2
+          DOMDQ = PP/TI2 ! -dO/dK
+          DOMDP = -QQ/TI2 ! -dO/dH
+c          DNDA = -1.5d0*N/A
+c          DNDMUF = +0.5d0*N/MTOT
+  
+          DVZDU = VJAC(I)/FACT*DFACTU+AMP*FACT*(CU*SOM+EXQ*SU*COM)
+          DVZDE = DVZDU*DUDE+VJAC(I)/FACT*DFACTE+AMP*FACT*EXC/EXQ*CU*COM
+          DVZDOM = AMP*FACT*(SU*COM+EXQ*CU*SOM)
+          DVZDAMP = VJAC(I)/AMP
+          DVJACP6 = DVZDU*DUDP6+DVZDAMP*DAMPDN*DNDP6
+          DVJACP7 = DVZDU*DUDP7+DVZDAMP*DAMPDN*DNDP7
+          DVJACZ = DVZDAMP*DAMPDZ
+          DVJACK = DVZDE*DEDK+DVZDOM*DOMDK+DVZDU*DUDK
+          DVJACH = DVZDE*DEDH+DVZDOM*DOMDH+DVZDU*DUDH
+          DVJACQ = DVZDAMP*DAMPDQ+DVZDOM*DOMDQ
+          DVJACP = DVZDAMP*DAMPDP+DVZDOM*DOMDP
+
+          DVJAC(:,I) =
+     &          (/ DVJACZ,DVJACK,DVJACH,DVJACQ,DVJACP,DVJACP6,DVJACP7 /)        
+
+        END DO
+        
+        DVRADP = 0.d0
+c...  Radial velocities of planets relative to star
+        DO I = 1,NPLA
+c... Basic formula Jacobi coords => helio vels. (*(-1) for radial vels.)
+           VRADP(I) = -VJAC(I)-SUM(MFRAC(1:I-1)*VJAC(1:I-1))
+c...  Derivatives
+           DKAL = NEL*(I-1)
+           DVRADP(DKAL+1:DKAL+7,I) = -DVJAC(:,I)
+           DO J = 1,I-1
+              DKAL = NEL*(J-1)   ! Derivatives relative to VJAC(J)
+              DVRADP(DKAL+1:DKAL+7,I) = DVRADP(DKAL+1:DKAL+7,I)
+     &                -MFRAC(J)*DVJAC(:,J)
+              IF (J.GT.1) THEN   ! Derivatives relative to MFRAC(J)
+                 MTOT = MDYN(J-1)  ! MFRAC(J) = (MDYN(J)-MTOT)/MDYN(J)
+              ELSE
+                 MTOT = MSTAR
+              END IF
+              DMFDM = MTOT/MDYN(J) ! d(MFRAC(J))/d(ln(MDYN(J))
+              DMFDMM = DMFDM*PER(J)*PER(J)
+              DVRADP(DKAL+1,I) = DVRADP(DKAL+1,I)-3.d0*DMFDM*VJAC(J)
+c                        d(ln(MDYN(J))/d(ln(a(J))=3.=> d(VRADP)/d(ln(a(J))
+              DVRADP(DKAL+6,I) = DVRADP(DKAL+6,I)
+     &                             -2.d0*DMFDMM*VJAC(J)*P(DKAL+6)
+c              d(ln(MDYN(J))/d(P6(J))=2*P6/(P6^2+P7^2)=2*PER(J)^2*P6(J)
+c                                                  => d(VRADP)/d(P6(J))
+              DVRADP(DKAL+7,I) = DVRADP(DKAL+7,I)
+     &                             -2.d0*DMFDMM*VJAC(J)*P(DKAL+7)
+c              d(ln(MDYN(J))/d(P7(J))=2*P7/(P6^2+P7^2)=2*PER(J)^2*P7(J)
+c                                                  => d(POSX,POSY)/d(P7(J)         
+              IF (J.GT.1) THEN
+                 DMFDMM = DMFDM*PER(J-1)*PER(J-1)
+                 DVRADP(DKAL-6,I) = DVRADP(DKAL-6,I)+3.d0*DMFDM*VJAC(J)
+c                  d(ln(MDYN(J-1))/d(ln(a(J-1))=3.=> d(VRADP)/d(ln(a(J-1))
+                 DVRADP(DKAL-1,I) = DVRADP(DKAL-1,I)
+     &                      +2.d0*DMFDMM*VJAC(J)*P(DKAL-1)
+c            d(ln(MDYN(J-1))/d(P6(J-1))=2*P6/(P6^2+P7^2)=2*PER(J-1)^2*P6(J-1)
+c                                              => d(VRADP)/d(P6(J-1))
+                 DVRADP(DKAL,I) = DVRADP(DKAL,I)
+     &                      +2.d0*DMFDMM*VJAC(J)*P(DKAL)
+c            d(ln(MDYN(J-1))/d(P7(J-1))=2*P7/(P6^2+P7^2)=2*PER(J-1)^2*P7(J-1)
+c                                              => d(VRADP)/d(P7(J-1))
+              ELSE
+                 DVRADP(N1,I) = DVRADP(N1,I)+DMFDM*VJAC(J)
+c                d(ln(MDYN(J-1))/d(ln(MSTAR)) = 1 => d(VRADP)/d(ln(MSTAR)
+              END IF
+           END DO
+        END DO
+
+        END    
 C
 C -----------------------------------------------------------------------------
 C       Radial velocity fit and derivatives
@@ -897,6 +1083,7 @@ c                                     d(ln(MDYN(J-1))/d(ln(MSTAR)) = 1
            END IF
         END DO        
         END    
+
       
 C
 C -----------------------------------------------------------------------------
@@ -1070,10 +1257,12 @@ c
         CHI2 = 0.d0       
         ALPHA(1:N,1:N) = 0.d0
         BETA(1:N) = 0.d0
-        JITTER = RADVEL.AND.(JITNUM.EQ.1).AND.(N.EQ.NPAR)
-        IF (RADVEL) CALL MRQRADVEL(N,JITTER,P(1:N),
+        JITTER = ISDATA(2).AND.(JITNUM.EQ.1).AND.(N.EQ.NPAR)
+        IF (ISDATA(2)) CALL MRQRADVEL(N,JITTER,P(1:N),
      &                     ALPHA(1:N,1:N),BETA(1:N),CHI2)
-
+        IF (ISDATA(3)) CALL MRQRADVELP(N,P(1:N),
+     &                     ALPHA(1:N,1:N),BETA(1:N),CHI2)
+        
         CALL MRQASTROM(N,P,ALPHA(1:N,1:N),BETA(1:N),CHI2)
 
 c...  Map merit function & derivatives
@@ -1176,6 +1365,170 @@ c            FMAP = FMAP+LOG(SIGJV2+STAR%SIGV2(I))
 
         END
 
+C     
+C -----------------------------------------------------------------------------
+C    Calculation of FMAP & derivatives (HCI part only)
+C        MAP = exp(-Chi2/2)*f(parameters) (f = priors)
+C     => Replace Chi2 with Chi2-2*ln(f(parameters)) = -2*ln(MAP) = Chi2+FMAP    
+C-----------------------------------------------------------------------------
+C
+
+        SUBROUTINE MRQMAPASTROM(N,P,FMAP,DFMAP,D2FMAP)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::   N               ! Dimension of parameter space
+        REAL*8, DIMENSION(N,N) :: D2FMAP ! Second derivatives
+        REAL*8, DIMENSION(N) :: DFMAP        ! First derivatives
+        REAL*8, DIMENSION(NPLA) :: MDYN         ! Dynamical masses 
+        REAL*8, DIMENSION(NPLA) :: PER2         ! Periods^2
+        REAL*8, DIMENSION(N) :: P            ! Parameters
+        REAL*8, DIMENSION(N) :: DLMUF        ! dln(mass)/dpars
+        REAL*8, DIMENSION(N,N) :: D2LMUF  ! d2ln(mass)/dpars^2
+        REAL*8 ::       FMAP,           ! Merit function
+     &                  MSTAR,          ! Stellar mass
+     &                  QQ,PP,          ! tan(i/2)*[cos(O),sin(O)]
+     &                  FM,DFM,D2FM,    ! Mass function & derivatives
+     &                  MUF,LMUF,       ! Mass prior & lna
+     &                  T2,T,           ! tan(i/2)
+     &                  SI,CI,          ! sin(i),cos(i)
+     &                  FF1,FF2,        ! Auxiliary (second der.)
+     &                  A,PER,NN,       ! Semi-major axis, Period, mean-motion
+     &                  LNA,LNP,        ! ln(semi-major axis)
+     &                  P6,P7,          ! cos(lambda),sin(lambda)/P
+     &                  CO,SO           ! cos,sin (Omega-omega)
+
+        INTEGER*4 ::    I,J,K,KM,IM          
+c
+        IF (MULTIPLA) MSTAR = EXP(P(N))
+
+        DO I = 1,NPLA
+          IM = NEL*(I-1)
+          LNA = P(IM+1)
+          P6 = P(IM+6)
+          P7 = P(IM+7)
+          PER2(I) = 1.d0/(P6*P6+P7*P7)
+          A = EXP(LNA)
+          NN = DPI/SQRT(PER2(I))
+          MDYN(I) = NN*NN*(A**3)           
+        END DO
+
+c...  Taking into account priors on masses in FMAP (-2*ln(prior(m)))    
+        DLMUF = 0.d0
+        D2LMUF = 0.d0
+        DO J = 0,NPRIOR            
+           MUF = SUM(MPRIOR(J)%BCOF(1:NPLA)*MDYN(1:NPLA))
+           IF (MULTIPLA) MUF = MUF+MPRIOR(J)%BCOF(0)*MSTAR
+           CALL FMAP_PRIOR(J,MUF,FM,DFM,D2FM)
+           IF (MULTIPLA) THEN
+              FF1 = MPRIOR(J)%BCOF(0)*MSTAR/MUF
+              DLMUF(N) =  FF1
+              D2LMUF(N,N) = FF1*(1.d0-FF1)
+           END IF
+           DO I = 1,NPLA
+              IM = NEL*(I-1)
+              FF1 = MPRIOR(J)%BCOF(I)*MDYN(I)/MUF
+              DLMUF(IM+1) = 3.d0*FF1
+              DLMUF(IM+6) = 2.d0*FF1*PER2(I)*P(IM+6)
+              DLMUF(IM+7) = 2.d0*FF1*PER2(I)*P(IM+7)
+              FF2 = FF1*(1.d0-FF1)
+              D2LMUF(IM+1,IM+1) = 9.d0*FF2
+              D2LMUF(IM+1,IM+6) = 6.d0*FF2*PER2(I)*P(IM+6)
+              D2LMUF(IM+1,IM+7) = 6.d0*FF2*PER2(I)*P(IM+7)
+              D2LMUF(IM+6,IM+6) = 2.d0*FF1*PER2(I)*
+     &             (1.d0-2.d0*FF1*PER2(I)*P(IM+6)**2)
+              D2LMUF(IM+7,IM+7) = 2.d0*FF1*PER2(I)*
+     &             (1.d0-2.d0*FF1*PER2(I)*P(IM+7)**2)              
+              D2LMUF(IM+6,IM+7) = -4.d0*FF1*FF1*PER2(I)*PER2(I)*
+     &             P(IM+6)*P(IM+7)
+              D2LMUF(IM+7,IM+6) = D2LMUF(IM+6,IM+7)
+              D2LMUF(IM+6,IM+1) = D2LMUF(IM+1,IM+6)
+              D2LMUF(IM+7,IM+1) = D2LMUF(IM+1,IM+7)
+              DO K = 1,NPLA
+                 IF (K.NE.I) THEN
+                    FF2 = FF1*MPRIOR(J)%BCOF(K)*MDYN(K)/MUF
+                    KM = NEL*(K-1)
+                    D2LMUF(IM+1,KM+1) = -9.d0*FF2
+                    D2LMUF(IM+1,KM+6) = -6.d0*PER2(K)*P(KM+6)
+                    D2LMUF(IM+1,KM+7) = -6.d0*PER2(K)*P(KM+7)
+                    D2LMUF(IM+6,KM+1) = -6.d0*FF2*PER2(I)*P(IM+6)
+                    D2LMUF(IM+7,KM+1) = -6.d0*FF2*PER2(I)*P(IM+7)
+                    D2LMUF(IM+6,KM+6) = -4.d0*FF2*PER2(I)*PER2(K)*
+     &                                              P(IM+6)*P(KM+6)
+                    D2LMUF(IM+7,KM+7) = -4.d0*FF2*PER2(I)*PER2(K)*
+     &                                              P(IM+7)*P(KM+7)
+                    D2LMUF(IM+6,KM+7) = -4.d0*FF2*PER2(I)*PER2(K)*
+     &                                              P(IM+6)*P(KM+7)
+                    D2LMUF(IM+7,KM+6) = -4.d0*FF2*PER2(I)*PER2(K)*
+     &                                              P(IM+7)*P(KM+6)
+                 END IF
+              END DO
+              IF (MULTIPLA) THEN
+                 FF2 = FF1*MPRIOR(J)%BCOF(0)*MSTAR/MUF
+                 D2LMUF(IM+1,N) = -3.d0*FF2
+                 D2LMUF(IM+6,N) = -2.d0*FF2*PER2(I)*P(IM+6)
+                 D2LMUF(IM+7,N) = -2.d0*FF2*PER2(I)*P(IM+7)
+                 D2LMUF(N,IM+1) = -3.d0*FF2
+                 D2LMUF(N,IM+6) = -2.d0*FF2*PER2(I)*P(IM+6)
+                 D2LMUF(N,IM+7) = -2.d0*FF2*PER2(I)*P(IM+7)
+              END IF
+           END DO
+           FMAP = FMAP+FM
+           DFMAP = DFMAP+DFM*DLMUF
+           DO I = 1,N
+              D2FMAP(:,I) = D2FMAP(:,I)+DFM*D2LMUF(:,I)
+     &                                 +D2FM*DLMUF(I)*DLMUF(:)
+           END DO
+        END DO
+        
+        DO I = 1,NPLA
+          IM = NEL*(I-1)
+          LNA = P(IM+1)
+          P6 = P(IM+6)
+          P7 = P(IM+7)
+          LNP = 0.5d0*LOG(PER2(I))
+          A = EXP(LNA)
+          NN = DPI/SQRT(PER2(I))
+          QQ = P(IM+4)
+          PP = P(IM+5)
+          T2 = QQ*QQ+PP*PP    
+          T = SQRT(T2)        ! Tan(i/2)
+          CI = (1.d0-T2)/(1.d0+T2)  ! cos(i)
+          SI = 2.d0*T/(1.d0+T2)      ! sin(i)           
+          CO = QQ/T
+          SO = PP/T
+
+c...  Taking into account Period and semi-major axis in FMAP
+c...  prior(P) = 1/P (logarithmic prior) => -2*ln(prior(P))=+2*ln(P)          
+c...  Idem for semi-major axis
+          FMAP = FMAP+2.d0*(LNP+LNA)
+          DFMAP(IM+1) = 2.d0
+          DFMAP(IM+6) = DFMAP(IM+6)-2.d0*P6*PER2(I)
+          DFMAP(IM+7) = DFMAP(IM+7)-2.d0*P7*PER2(I)
+          D2FMAP(IM+6,IM+6) = D2FMAP(IM+6,IM+6)
+     &                    +2.d0*(P6*P6-P7*P7)*PER2(I)*PER2(I)
+          D2FMAP(IM+7,IM+7) = D2FMAP(IM+6,IM+6)
+     &                    +2.d0*(-P6*P6+P7*P7)*PER2(I)*PER2(I)          
+          D2FMAP(IM+6,IM+7) = D2FMAP(IM+6,IM+7)
+     &                    +4.d0*P6*P7*PER2(I)*PER2(I)
+          D2FMAP(IM+7,IM+6) = D2FMAP(IM+7,IM+6)
+     &                    +4.d0*P6*P7*PER2(I)*PER2(I)
+c...  Taking into account inc prior in FMAP (-2*ln(prior(i))=-2*ln(sin(i)))
+c...        and related derivatives
+          FMAP = FMAP-2.d0*LOG(SI)
+          DFMAP(IM+4) = DFMAP(IM+4)-2.d0*CO*CI/T
+          DFMAP(IM+5) = DFMAP(IM+5)-2.d0*SO*CI/T
+          FF1 = CI/T2
+          FF2 = 2.d0*CI*CI/T2-4.d0/(T2*(1.d0+T2)*(1.d0+T2))
+          D2FMAP(IM+4,IM+4) = -2.d0*(FF2*CO*CO+FF1)
+          D2FMAP(IM+4,IM+5) = -2.d0*FF2*CO*SO
+          D2FMAP(IM+5,IM+4) = -2.d0*FF2*CO*SO
+          D2FMAP(IM+5,IM+5) = -2.d0*(FF2*SO*SO+FF1)
+        END DO
+        END
+      
        
 C
 C -----------------------------------------------------------------------------
