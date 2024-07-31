@@ -254,8 +254,8 @@ class TabPriorSet(GeneralTab):
         self.ContainerJitter.setLayout(self.LayoutJitter)
         self.LayoutV2.addWidget(self.ContainerJitter, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.RefPhase = SpinBox('Time reference', 'Reference of the time to count the orbit phase [MJD]', 0, 0, None, 1)
-        self.LayoutV2.addWidget(self.RefPhase, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.RefTime = SpinBox('Time reference', 'Reference of the time to count the orbit phase [MJD]', 0, 0, None, 1)
+        self.LayoutV2.addWidget(self.RefTime, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.LayoutV2.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.LayoutH.addLayout(self.LayoutV2)

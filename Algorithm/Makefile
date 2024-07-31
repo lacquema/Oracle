@@ -22,7 +22,7 @@ ifeq ($(PARALLEL),YES)
 FFLAGS += -fopenmp
 LDFLAGS += -fopenmp
 endif
-FC = gfortran-mp-13
+FC = gfortran
 
 %.o : %.f
 	$(FC) -c $(FFLAGS) $< -o $@

@@ -1,4 +1,4 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /var/guix/profiles/per-user/lacquema/Oracle/bin/python3
 import sys
 import os
 import shutil
@@ -136,10 +136,13 @@ class WindowSetNewSimu(QMainWindow):
             file.write('\n')
             if self.Tab4.CheckLM.isChecked() and self.Tab4.CheckMCMC.isChecked(): # Choice
                 file.write('2')
+                file.write(' ! New simulation LM and MCMC')
             elif not self.Tab4.CheckLM.isChecked() and self.Tab4.CheckMCMC.isChecked():
                 file.write('3')
+                file.write(' ! New simulation LM only')
             elif self.Tab4.CheckLM.isChecked() and not self.Tab4.CheckMCMC.isChecked():
                 file.write('4')
+                file.write(' ! New simulation MCMC only')
             file.write('\n')
             if self.Tab2.RelAstro.CheckData.isChecked(): file.write('1 ') # Data
             else: file.write('0 ')
@@ -149,13 +152,17 @@ class WindowSetNewSimu(QMainWindow):
             else: file.write('0 ')
             if self.Tab2.AbsAstro.CheckData.isChecked(): file.write('1')
             else: file.write('0')
+            file.write(' ! Type of data')
             file.write('\n')
             file.write(str(self.Tab3.NbOrbitsValue)) # Number of orbits
+            file.write(' ! Number of orbits')
             file.write('\n')
             if self.Tab2.AbsAstro.CheckData.isChecked() or self.Tab2.RelAstro.CheckData.isChecked() or self.Tab2.AbsRV.CheckData.isChecked() or self.Tab2.RelRV.CheckData.isChecked(): 
                 file.write(self.Tab2.DataFileName.EditParam.text())
+                file.write(' ! Data file')
                 file.write('\n')
             file.write('1d-'+str(self.Tab1.Precision.SpinParam.value())) # Precision of simulation
+            file.write(' ! Precision')
             file.write('\n')
             if self.Tab2.RelAstro.CheckData.isChecked(): # Format of data
                 file.write(str(self.Tab2.RelAstro.FormatData.currentIndex()))
@@ -169,32 +176,44 @@ class WindowSetNewSimu(QMainWindow):
             if self.Tab2.AbsAstro.CheckData.isChecked(): 
                 file.write(str(self.Tab2.AbsAstro.FormatData.currentIndex()))
                 file.write('\n')
-            if self.Tab3.CheckJitter.isChecked(): file.write('1')
-            else: file.write('0')
+            if self.Tab3.CheckJitter.isChecked(): 
+                file.write('1')
+                file.write(' ! Jitter')
+            else: 
+                file.write('0')
+                file.write(' ! No Jitter')
             file.write('\n')
             file.write(self.Tab3.SystDist.SpinParam.text()+' '+self.Tab3.SystDistUnit.ComboParam.currentText())
+            file.write(' ! Distance')
             file.write('\n')
-            file.write(self.Tab3.TablePriors.item(0,0).text()+' mj')
+            file.write(str(float(self.Tab3.TablePriors.item(0,0).text())*0.000954588))
+            file.write(' ! First guess of center mass (ms)')
             file.write('\n')
             file.write(self.Tab1.OutFileName.EditParam.text())
+            file.write(' ! Result file')
             file.write('\n')
             file.write(self.Tab1.DumpFileName.EditParam.text())
+            file.write(' ! Dump file')
             file.write('\n')
             file.write(self.Tab1.DumpFreq.SpinParam.text())
+            file.write(' ! Dump frequency')
             file.write('\n')
             c=0 # Number of mass prior
             for i in range(len(self.Tab3.ListPriorMass)):
                 DistribIndex = self.Tab3.ListPriorMass[i].Layout.itemAt(3*self.Tab3.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
                 if DistribIndex != 0: c+=1
             file.write(str(c))
+            file.write(' ! Number of masses prior')
             file.write('\n')
             for i in range(len(self.Tab3.ListPriorMass)):
                 DistribIndex = self.Tab3.ListPriorMass[i].Layout.itemAt(3*self.Tab3.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
                 if DistribIndex != 0:
                     for j in range(self.Tab3.NbBodies.SpinParam.value()):
                         file.write(self.Tab3.ListPriorMass[i].Layout.itemAt(3*j+1).widget().SpinParam.text()+' ')
+                    file.write(' ! Coefficients')
                     file.write('\n')
                     file.write(str(DistribIndex))
+                    file.write(' ! Distribution (1:Normal, 2:Log, 3:Uniform, 4:Fixed)')
                     file.write('\n')
                     if DistribIndex == 1 or DistribIndex == 2:
                         file.write(self.Tab3.ListPriorMass[i].Mean.SpinParam.text())
@@ -210,21 +229,30 @@ class WindowSetNewSimu(QMainWindow):
                         file.write(self.Tab3.ListPriorMass[i].Value.SpinParam.text())
                         file.write(' ')
                     file.write(self.Tab3.ListPriorMass[i].PriorUnit.ComboParam.currentText())
+                    file.write(' ! Distribution parameters')
                     file.write('\n')
+            file.write(self.Tab3.RefTime.SpinParam.text())
+            file.write(' ! Reference of time')
+            file.write('\n')
             if self.Tab3.CheckJitter.isChecked(): 
                 file.write(self.Tab3.Jitter.SpinParam.text()+' '+self.Tab3.V0.SpinParam.text())
+                file.write(' ! Initial VO and Jitter')
                 file.write('\n')
             for i in range(1, self.Tab3.NbBodies.SpinParam.value()):
                 for j in range(len(self.Tab3.LabelParams)):
                     file.write(self.Tab3.TablePriors.item(i, j).text())
                     if j == 0: file.write(' mj')
                     file.write(' ')
+                file.write(' ! First guess of orbit parameters (m[mj] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')
                 file.write('\n')
             file.write(self.Tab3.PMin.SpinParam.text()+' '+self.Tab3.PMax.SpinParam.text())
+            file.write(' ! Range of permited period')
             file.write('\n')
             file.write(self.Tab3.aMin.SpinParam.text()+' '+self.Tab3.aMax.SpinParam.text())
+            file.write(' ! Range of permited half major axis')
             file.write('\n')
             file.write(self.Tab3.eMin.SpinParam.text()+' '+self.Tab3.eMax.SpinParam.text())
+            file.write(' ! Range of permited eccentricity')
             file.write('\n')
             file.write('exit')
             file.write('\n')
