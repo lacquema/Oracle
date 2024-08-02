@@ -19,7 +19,7 @@ class WindowMenuClass(QMainWindow):
         self.DirPath = os.path.dirname(__file__)
 
         # Window settings
-        self.setWindowTitle("Oracle 1.0")
+        self.setWindowTitle("Oracle Launcher")
         self.setFixedSize(850, 450)
 
         # Background image

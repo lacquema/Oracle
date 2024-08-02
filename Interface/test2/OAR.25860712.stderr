@@ -1,0 +1,12 @@
+At line 324 of file mcmc/io.f (unit = 5, file = 'stdin')
+Fortran runtime error: Bad integer for item 1 in list input
+
+Error termination. Backtrace:
+#0  0x7ff61cd24682 in ???
+#1  0x7ff61cd25149 in ???
+#2  0x7ff61cf42338 in ???
+#3  0x7ff61cf45019 in ???
+#4  0x7ff61cf45c49 in ???
+#5  0x420cc4 in init_simu_
+#6  0x40408f in MAIN__
+#7  0x40236c in main
