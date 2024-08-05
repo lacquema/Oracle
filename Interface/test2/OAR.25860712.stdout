@@ -1,6 +1,0 @@
- Choice :
-   1 = Continuation of an interruped computation
-   2 = New MCMC with starting least squares
-   3 = New MCMC without starting least squares
-   4 = Least square only with no MCMC
-   5 = Generate simulated data
