@@ -101,7 +101,7 @@ class WindowSetNewSimu(QMainWindow):
                         print('Check your inputs.')
                     else:
                         print(f'{self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/ directory was created.')
-                        result = subprocess.run(f'cd {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}', shell=True, text=True)
+                        subprocess.run(f'cd {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}', shell=True, text=True)
                         shutil.copy(self.Tab2.PathData.EditPath.text(), self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab2.DataFileName.EditParam.text())                    
                         print('Data file was copied.')
                         self.DoInputShell()

@@ -106,10 +106,14 @@ class WindowSetContSimu(QMainWindow):
         print('--------------------------')
         if len(self.SimuPath.EditPath.text())==0:
             print('Simulation path not given.')
-            print('Check your inputs.')
+        if len(self.InputFileName.EditParam.text())==0:
+            print('Continuation file not given.')
+        if not os.path.exists(self.SimuPath.EditPath.text()+self.DumpFileName.EditParam.text()):
+            print('Dump file not found.')
         else:
             self.DoInputContShell()
             print('Input continuation shell file was created.')
+            subprocess.run(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
             if self.CheckOrder.CheckParam.isChecked():
                 result = subprocess.run(self.StartOrder.EditParam.text(), shell=True, capture_output=True, text=True)
                 error = result.stderr
@@ -121,14 +125,16 @@ class WindowSetContSimu(QMainWindow):
 
 
     def DoInputContShell(self):
-        with open(self.SimuPath.EditPath.text()+"InputCont.sh", "w") as file:
+        with open(self.SimuPath.EditPath.text()+"inputCont.sh", "w") as file:
             file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n./astrom_mcmcop <<!') # Header
             file.write('\n')
             file.write('1') # continuation
+            file.write(' # Simulation continuation')
             file.write('\n')
             file.write(self.DumpFileName.EditParam.text())
             file.write('\n')
             file.write(self.DumpFreq.SpinParam.text())
+            file.write(' # Dump frequency')
             file.write('\n')
             file.write('exit')
             file.write('\n')
