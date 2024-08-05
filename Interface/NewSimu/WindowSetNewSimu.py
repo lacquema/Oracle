@@ -162,12 +162,13 @@ class WindowSetNewSimu(QMainWindow):
             else: file.write(' 0')
             file.write(' ! Format data (1:DDMMYYYY/2:JD 1:(DEC,RA)/2:(SEP,PA) CorrCoeff?')
             file.write('\n')
-            if self.Tab3.CheckJitter.isChecked(): 
-                file.write('1')
-            else: 
-                file.write('0')
-            file.write(' ! Jitter?')
-            file.write('\n')
+            if self.Tab2.RelRV.CheckParam.isChecked() or self.Tab2.AbsRV.CheckParam.isChecked():
+                if self.Tab3.CheckJitter.isChecked(): 
+                    file.write('1')
+                else: 
+                    file.write('0')
+                file.write(' ! Jitter?')
+                file.write('\n')
             file.write(self.Tab3.SystDist.SpinParam.text()+' '+self.Tab3.SystDistUnit.ComboParam.currentText())
             file.write(' ! Distance')
             file.write('\n')
