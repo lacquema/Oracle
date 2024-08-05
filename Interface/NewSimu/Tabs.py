@@ -207,8 +207,7 @@ class TabPriorSet(GeneralTab):
         # self.FirstGuessCenterMassUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
         # self.FirstGuessCenterMass.Layout.addWidget(self.FirstGuessCenterMassUnit)
 
-        self.LayoutV1.addWidget(QProgressBar())
-        self.LayoutV1.addWidget(QLabel('Range of parameters :'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.LayoutV1.addWidget(Delimiter(Title='Range of parameters :'))
 
         self.PMin = DoubleSpinBox('Period', 'Mimimum of orbits period [day]', 30, 0, None, 1, 2)
         self.LayoutV1.addWidget(self.PMin)
