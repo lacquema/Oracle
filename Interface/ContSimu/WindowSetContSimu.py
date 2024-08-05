@@ -103,6 +103,7 @@ class WindowSetContSimu(QMainWindow):
         self.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla {self.SimuPath.EditPath.text()+self.InputFileName.EditParam.text()}')
 
     def ContinueSimulation(self):
+        print('--------------------------')
         if len(self.SimuPath.EditPath.text())==0:
             print('Simulation path not given.')
             print('Check your inputs.')

@@ -1,10 +1,12 @@
+#! /var/guix/profiles/per-user/lacquema/Oracle/bin/python3
+
 ### --- Packages --- ###
 
 # Transverse packages
 import sys
 
 # PyQt packages
-from PyQt6.QtWidgets import QPushButton, QDateEdit, QCheckBox, QWidget, QHBoxLayout, QLabel, QLineEdit, QComboBox, QSpinBox, QApplication, QDoubleSpinBox, QFileDialog
+from PyQt6.QtWidgets import QVBoxLayout, QProgressBar, QPushButton, QDateEdit, QCheckBox, QWidget, QHBoxLayout, QLabel, QLineEdit, QComboBox, QSpinBox, QApplication, QDoubleSpinBox, QFileDialog
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
 from PyQt6.QtCore import Qt
 
@@ -208,6 +210,33 @@ class PathBrowser(GeneralParam):
         self.File = QFileDialog.getOpenFileName(self)[0]
         if len(self.File) !=0:
             self.EditPath.setText(self.File)
+
+
+class Delimiter(QWidget):
+    def __init__(self, Height=None, Width=None, Title=None):
+        super().__init__()
+
+        # Layout
+        self.Layout = QVBoxLayout()
+
+        # Delimiter
+        self.Delim = QProgressBar()
+        self.Layout.addWidget(self.Delim, alignment=Qt.AlignmentFlag.AlignBaseline)
+
+        if Height!=None: self.Delim.setFixedHeight(Height)
+        else: self.Delim.setFixedHeight(3)
+
+        if Width!=None: self.Delim.setFixedWidth(Width)
+
+        # Title
+        if Title!=None: 
+            self.Title = QLabel(Title)
+            self.Layout.addWidget(self.Title, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.Layout.setSpacing(5)
+
+        self.setLayout(self.Layout)
+
 
 
 

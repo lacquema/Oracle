@@ -132,10 +132,9 @@ class TabDataSet(GeneralTab):
         self.LayoutAstroH.addWidget(self.FormatAstro)
 
         self.WidgetAstroH.setLayout(self.LayoutAstroH)
-        self.Layout.addWidget(self.WidgetAstroH)
+        self.Layout.addWidget(self.WidgetAstroH, alignment=Qt.AlignmentFlag.AlignBaseline)
 
-        self.Layout.addWidget(QProgressBar())
-        self.Layout.addWidget(QLabel('Radial velocity data :'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.Layout.addWidget(Delimiter(Title='Radial velocity data :'))
 
         self.RelRV = CheckBox('Relative RV', 'If you want use relative radial velocity data')
         self.Layout.addWidget(self.RelRV)
@@ -145,7 +144,7 @@ class TabDataSet(GeneralTab):
         self.Layout.addWidget(self.AbsRV)
         # self.AbsRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
 
-        self.Layout.addWidget(QProgressBar())
+        self.Layout.addWidget(Delimiter())
 
         self.FormatDate = ComboBox('Dates format', 'Format of dates', ['Day Month Year', 'MJD'])
         self.Layout.addWidget(self.FormatDate)
