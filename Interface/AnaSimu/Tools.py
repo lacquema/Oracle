@@ -835,7 +835,7 @@ class Corner(GeneralToolClass):
 
         for i in range(len(self.OrbitParams[0])):
             CheckParamWidget = CheckBox(self.OrbitParams[0][i], self.OrbitParams[1][i])
-            CheckParamWidget.CheckParam.setChecked(True)
+            CheckParamWidget.CheckParam.setChecked(False)
             self.WidgetOrbitParams.append(CheckParamWidget)
             self.CheckLayout.addWidget(CheckParamWidget)
 
@@ -882,9 +882,10 @@ class Corner(GeneralToolClass):
 
 
         # Plot with current parameters
-        CornerFig = corner.corner(np.array(Data).T, labels=DataLabels, fig=self.WindowPlot.Canvas.fig, bins=self.NbBins)
-
-
+        try:
+            CornerFig = corner.corner(np.array(Data).T, labels=DataLabels, fig=self.WindowPlot.Canvas.fig, bins=self.NbBins)
+        except:
+            print('There is a problem with the corner plot: make sure that the orbit parameters selected are variable in this adjustment.')
         
         # Plot features
         

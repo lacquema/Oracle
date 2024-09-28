@@ -1,4 +1,4 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 import sys
 import os
 
@@ -62,9 +62,7 @@ class MainClass():
         self.WinMenu.show()
 
     def ReOpenWinLoad(self):
-        if self.WinSetAnaSimu.isVisible(): self.WinSetNewSimu.close()
-        if self.WinSetNewSimu.isVisible(): self.WinSetAnaSimu.close()
-        if self.WinSetContSimu.isVisible(): self.WinSetContSimu.close()
+        app.closeAllWindows()
         self.WinMenu.show()
 
 

@@ -1,4 +1,4 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 
 ### --- Packages --- ###
 
@@ -65,7 +65,7 @@ class WindowMainClass(QMainWindow):
         SelectOrbitsEllipses = SelectOrbits.SelectEllipses
 
         # Separation
-        Layout.addWidget(QProgressBar())
+        Layout.addWidget(Delimiter())
 
         # Space view
         SpaceViewWidget = SpaceView(InputData, SelectOrbitsEllipses, BestOrbitsEllipses)
@@ -109,8 +109,10 @@ class WindowMainClass(QMainWindow):
 
     # Close programme when the main window are closed
     def closeEvent(self, e):
-        self.SignalCloseWindowMain.emit()
-        self.close()
+        try:
+            app.closeAllWindows()
+        except:
+            self.SignalCloseWindowMain.emit()
 
 
 
@@ -120,8 +122,8 @@ if __name__=="__main__":
 
     n = '1'
     SystName = 'BetaPic'
-    PathInputData = '/Users/lacquema/Documents/Oracledata/'+SystName+f'/simu_bpic_b_'+n+'/bpicb_hci.txt'
-    PathOutputData = '/Users/lacquema/Documents/Oracledata/'+SystName+f'/simu_bpic_b_'+n+'/solbpicb.dat'
+    PathInputData = '/Users/lacquema/Documents/Research/Simulations/Oracle/'+SystName+f'/simu_bpic_b_'+n+'/data.txt'
+    PathOutputData = '/Users/lacquema/Documents/Research/Simulations/Oracle/'+SystName+f'/simu_bpic_b_'+n+'/adjustment.dat'
     SystDist = 19.4   
 
     # LoadWin = LoadWindowClass() # Loading window showing
