@@ -40,6 +40,8 @@ class WindowSetNewSimu(QMainWindow):
         self.Container.addTab(self.Tab1, 'Simulation settings')
         self.Tab1.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
         self.Tab1.SimuName.EditParam.textChanged.connect(self.ChangeStartOrder)
+        self.Tab1.CheckLM.stateChanged.connect(self.StartBtnAvailableOrNot)
+        self.Tab1.CheckMCMC.stateChanged.connect(self.StartBtnAvailableOrNot)
 
         # Tab 2
         self.Tab2 = TabDataSet()
@@ -57,6 +59,7 @@ class WindowSetNewSimu(QMainWindow):
         self.Tab4.BtnStart.clicked.connect(self.StartSimulation)
         self.Container.addTab(self.Tab4, 'Starting')
         self.Tab4.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+        self.Tab4.NbCores.SpinParam.valueChanged.connect(self.ChangeStartOrder)
 
         # Container
         self.setCentralWidget(self.Container)
@@ -71,13 +74,21 @@ class WindowSetNewSimu(QMainWindow):
             self.Tab3.CheckJitter.setEnabled(False)
             self.Tab3.CheckJitter.setChecked(False)
 
+    def StartBtnAvailableOrNot(self):
+        if self.Tab1.CheckLM.isChecked() or self.Tab1.CheckMCMC.isChecked():
+            self.Tab4.BtnStart.setEnabled(True)
+        else:
+            self.Tab4.BtnStart.setEnabled(False)
+
+    
+
 
     # Emition of the CloseEvent signal when the parameter window is closed
     def closeEvent(self, e):
         self.SignalCloseWindowSetNewSimu.emit() 
 
     def ChangeStartOrder(self):
-        self.Tab4.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.Tab4.NbHours.SpinParam.value()} --project dynapla {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/{self.Tab1.InputFileName.EditParam.text()}')
+        self.Tab4.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.Tab4.NbCores.SpinParam.value()},walltime={self.Tab4.NbHours.SpinParam.value()} --project dynapla {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/{self.Tab1.InputFileName.EditParam.text()}')
     
     def StartSimulation(self):
         print('--------------------------')
@@ -114,9 +125,9 @@ class WindowSetNewSimu(QMainWindow):
                             error = result.stderr
                             if type(error)!= type(None):
                                 print(result.stderr)
-                                print('Simulation not launched but you can still launch yourself the input shell file created in the desired directory.\n')
+                                print('Simulation not launched but you can still launch yourself the start shell file created in the desired directory.\n')
                         else:
-                            print('All you have to do is launch the input shell file created in the desired directory.')
+                            print('All you have to do is launch the start shell file created in the desired directory.')
 
                     
     

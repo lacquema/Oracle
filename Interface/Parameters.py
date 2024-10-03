@@ -141,6 +141,7 @@ class SpinBox(GeneralParam):
         self.SpinParam = QSpinBox()
         if ParamStatus != None: self.SpinParam.setStatusTip(ParamStatus)
         if ParamMin!=None: self.SpinParam.setMinimum(ParamMin)
+        else: self.SpinParam.setMinimum(-2147483647)
         if ParamMax!=None: self.SpinParam.setMaximum(ParamMax)
         else: self.SpinParam.setMaximum(2147483647)
         if ParamDefault != None: self.SpinParam.setValue(ParamDefault)
@@ -157,6 +158,7 @@ class DoubleSpinBox(GeneralParam):
         self.SpinParam = QDoubleSpinBox()
         if ParamStatus != None: self.SpinParam.setStatusTip(ParamStatus)
         if ParamMin!=None: self.SpinParam.setMinimum(ParamMin)
+        else: self.SpinParam.setMinimum(-2147483647)
         if ParamMax!=None: self.SpinParam.setMaximum(ParamMax)
         else: self.SpinParam.setMaximum(2147483647)
         if ParamDefault != None: self.SpinParam.setValue(ParamDefault)
@@ -167,7 +169,7 @@ class DoubleSpinBox(GeneralParam):
 
 # Gerenal CheckBox
 class CheckBox(GeneralParam):
-    def __init__(self, ParamName, ParamStatus):
+    def __init__(self, ParamName, ParamStatus=None):
         super().__init__(None)
         self.CheckParam = QCheckBox(ParamName)
         if ParamStatus != None: self.CheckParam.setStatusTip(ParamStatus)
@@ -231,6 +233,7 @@ class Delimiter(QWidget):
         # Title
         if Title!=None: 
             self.Title = QLabel(Title)
+            self.Title.setStyleSheet('QLabel{font: bold italic}')
             self.Layout.addWidget(self.Title, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.Layout.setSpacing(5)

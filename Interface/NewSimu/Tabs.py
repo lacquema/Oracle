@@ -31,7 +31,7 @@ class GeneralTab(QWidget):
 
         # Reset button
         self.BtnReset = QPushButton('Reset')
-        self.BtnReset.setStatusTip('Reset all tab settings')
+        self.BtnReset.setStatusTip('Reset tab settings')
         self.Layout.addWidget(self.BtnReset)
         self.BtnReset.clicked.connect(self.ResetParams)
         
@@ -83,14 +83,29 @@ class TabSimuSet(GeneralTab):
         self.SimuName = LineEdit('Directory', 'Name you want to give to the adjustment directory', '')
         self.SimuPath.Layout.addWidget(self.SimuName)
 
-        self.InputFileName = LineEdit('Start file', 'Name you want to give to the adjustment start shell file with extension', 'input.sh')
+        self.Layout.addWidget(Delimiter(Title='Inputs:'))
+
+        self.InputFileName = LineEdit('Start file', 'Name you want to give to the start shell file with extension', 'start.sh')
         self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.Layout.addWidget(Delimiter(Title='Adjustment:'))
+
+        self.WidgetH = QWidget()
+        self.LayoutH = QHBoxLayout()
+        self.CheckLM = QCheckBox('Levenberg-Marquardt')
+        self.CheckLM.setChecked(True)
+        self.LayoutH.addWidget(self.CheckLM, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.LayoutH.setSpacing(100)
+        self.CheckMCMC = QCheckBox('MCMC')
+        self.CheckMCMC.setChecked(True)
+        self.LayoutH.addWidget(self.CheckMCMC, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.WidgetH.setLayout(self.LayoutH)
+        self.Layout.addWidget(self.WidgetH, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file with extension', 'dump.dat')
         self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
-
         self.DumpFileName.Layout.addSpacing(100)
-        self.DumpFreq = SpinBox('Save frequency', 'Save frequency in dump file [yr]', 10000000, 0, 1000000000, 100000)
+        self.DumpFreq = SpinBox('Save frequency', 'Number of iterations between two saves to dump file', 10000000, 0, 1000000000, 100000)
         self.DumpFileName.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.OutFileName = LineEdit('Adjustment file', 'Name you want to give to the adjustment solution file with extension', 'adjustment.dat')
@@ -110,7 +125,7 @@ class TabDataSet(GeneralTab):
 
     def InitWidgets(self):
 
-        self.Layout.addWidget(QLabel('Astrometric data :'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.Layout.addWidget(Delimiter(Title='Astrometric data:', Width=0))
 
         self.WidgetAstroH = QWidget()
         self.LayoutAstroH = QHBoxLayout()
@@ -134,7 +149,7 @@ class TabDataSet(GeneralTab):
         self.WidgetAstroH.setLayout(self.LayoutAstroH)
         self.Layout.addWidget(self.WidgetAstroH, alignment=Qt.AlignmentFlag.AlignBaseline)
 
-        self.Layout.addWidget(Delimiter(Title='Radial velocity data :'))
+        self.Layout.addWidget(Delimiter(Title='Radial velocity data:'))
 
         self.RelRV = CheckBox('Relative RV', 'If you want use relative radial velocity data')
         self.Layout.addWidget(self.RelRV)
@@ -236,7 +251,7 @@ class TabPriorSet(GeneralTab):
 
         self.LayoutV2 = QVBoxLayout()
 
-        self.LayoutV2.addWidget(QLabel('Orbits parameters first guess :'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.LayoutV2.addWidget(Delimiter(Title = 'Orbits parameters first guess :', Width=0))
 
         self.TablePriors = QTableWidget()
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
@@ -389,27 +404,12 @@ class TabStartSet(GeneralTab):
 
 
     def InitWidgets(self):
-
-        self.WidgetH = QWidget()
-        self.LayoutH = QHBoxLayout()
-
-        self.CheckLM = QCheckBox('Levenberg-Marquardt')
-        self.CheckLM.setChecked(True)
-        self.LayoutH.addWidget(self.CheckLM, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.CheckLM.stateChanged.connect(self.StartBtnAvailableOrNot)
-
-        self.LayoutH.setSpacing(100)
-        self.CheckMCMC = QCheckBox('MCMC')
-        self.CheckMCMC.setChecked(True)
-        self.LayoutH.addWidget(self.CheckMCMC, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.CheckMCMC.stateChanged.connect(self.StartBtnAvailableOrNot)
-
-        self.WidgetH.setLayout(self.LayoutH)
-
-        self.Layout.addWidget(self.WidgetH, alignment=Qt.AlignmentFlag.AlignLeft)
         
         self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
         self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.NbCores = SpinBox('Number of cores', 'Number of cores', 8, 1, None, 1)
+        self.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.CheckOrder = CheckBox('Starting order :', 'If you just want to create the input file, but dont want to run the command in the terminal')
         self.Layout.addWidget(self.CheckOrder)
@@ -423,12 +423,6 @@ class TabStartSet(GeneralTab):
         self.BtnStart = QPushButton('Start the adjustment')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
 
-    
-    def StartBtnAvailableOrNot(self):
-        if self.CheckLM.isChecked() or self.CheckMCMC.isChecked():
-            self.BtnStart.setEnabled(True)
-        else:
-            self.BtnStart.setEnabled(False)
 
         
     
