@@ -74,7 +74,6 @@ class TabSimuSet(GeneralTab):
     def InitWidgets(self):
 
         
-
         self.SimuPath = PathBrowser('Path', 'Path where create the adjustment directory', 0)
         self.Layout.addWidget(self.SimuPath)
 
@@ -83,10 +82,10 @@ class TabSimuSet(GeneralTab):
         self.SimuName = LineEdit('Directory', 'Name you want to give to the adjustment directory', '')
         self.SimuPath.Layout.addWidget(self.SimuName)
 
-        self.Layout.addWidget(Delimiter(Title='Inputs:'))
+        # self.Layout.addWidget(Delimiter(Title='Inputs:'))
 
         self.InputFileName = LineEdit('Start file', 'Name you want to give to the start shell file with extension', 'start.sh')
-        self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.Layout.addWidget(Delimiter(Title='Adjustment:'))
 
@@ -102,13 +101,13 @@ class TabSimuSet(GeneralTab):
         self.WidgetH.setLayout(self.LayoutH)
         self.Layout.addWidget(self.WidgetH, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file with extension', 'dump.dat')
+        self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file', 'dump')
         self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
         self.DumpFileName.Layout.addSpacing(100)
         self.DumpFreq = SpinBox('Save frequency', 'Number of iterations between two saves to dump file', 10000000, 0, 1000000000, 100000)
         self.DumpFileName.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.OutFileName = LineEdit('Adjustment file', 'Name you want to give to the adjustment solution file with extension', 'adjustment.dat')
+        self.OutFileName = LineEdit('Adjustment file', 'Name you want to give to the adjustment solution file', 'adjustment')
         self.Layout.addWidget(self.OutFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.Precision = SpinBox('Precision order', 'Order of adjustment precision in powers of 10', 7, 0, 10, 1)
@@ -125,7 +124,22 @@ class TabDataSet(GeneralTab):
 
     def InitWidgets(self):
 
-        self.Layout.addWidget(Delimiter(Title='Astrometric data:', Width=0))
+        self.FormatDate = ComboBox('Dates format', 'Format of dates', ['Day Month Year', 'MJD'])
+        self.Layout.addWidget(self.FormatDate)
+
+        self.CheckCorrCoef = CheckBox('Correlation', 'If you wish to use a correlation coefficient between parameters of the same type.')
+        self.Layout.addWidget(self.CheckCorrCoef)
+
+        self.PathData = PathBrowser('Path to data file', 'Path to the existing data file', 1)
+        self.Layout.addWidget(self.PathData)
+        # self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+
+        self.DataFileName = LineEdit(' --> \t Data file', 'Name you want to give to the data file', 'data.txt')
+        self.PathData.Layout.addWidget(self.DataFileName)
+        # self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
+
+
+        self.Layout.addWidget(Delimiter(Title='Astrometric data:'))
 
         self.WidgetAstroH = QWidget()
         self.LayoutAstroH = QHBoxLayout()
@@ -158,22 +172,6 @@ class TabDataSet(GeneralTab):
         self.AbsRV = CheckBox('Absolute RV', 'If you want use absolute radial velocity data')
         self.Layout.addWidget(self.AbsRV)
         # self.AbsRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
-
-        self.Layout.addWidget(Delimiter())
-
-        self.FormatDate = ComboBox('Dates format', 'Format of dates', ['Day Month Year', 'MJD'])
-        self.Layout.addWidget(self.FormatDate)
-
-        self.CheckCorrCoef = CheckBox('Correlation', 'If you wish to use a correlation coefficient between parameters of the same type.')
-        self.Layout.addWidget(self.CheckCorrCoef)
-
-        self.PathData = PathBrowser('Path to data file', 'Path to the existing data file', 1)
-        self.Layout.addWidget(self.PathData)
-        # self.PathData.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
-
-        self.DataFileName = LineEdit(' --> \t Data file', 'Name you want to give to the data file', 'data.txt')
-        self.PathData.Layout.addWidget(self.DataFileName)
-        # self.DataFileName.setEnabled(self.AbsAstro.CheckData.isChecked() or self.RelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -256,7 +254,7 @@ class TabPriorSet(GeneralTab):
         self.TablePriors = QTableWidget()
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
         self.TablePriors.setRowCount(self.NbBodiesValue)
-        self.LabelParams = ['m (mj)', 'a (AU)', 'e', 'i (deg)', 'w (deg)', 'W (deg)', 'tp (MJD)']
+        self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
         self.TablePriors.setColumnCount(len(self.LabelParams))
         self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
         self.LayoutV2.addWidget(self.TablePriors, alignment=Qt.AlignmentFlag.AlignVCenter)
@@ -404,24 +402,36 @@ class TabStartSet(GeneralTab):
 
 
     def InitWidgets(self):
-        
-        self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
-        self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.NbCores = SpinBox('Number of cores', 'Number of cores', 8, 1, None, 1)
+        self.NbCores = SpinBox('Number of cores', 'Number of cores to be used', 48, 1, None, 1)
         self.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.CheckOrder = CheckBox('Starting order :', 'If you just want to create the input file, but dont want to run the command in the terminal')
-        self.Layout.addWidget(self.CheckOrder)
-        self.CheckOrder.CheckParam.stateChanged.connect(lambda: self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked()))
+        self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
+        self.Layout.addWidget(self.CheckParallel)
 
-        self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./input.sh'
-        self.StartOrder = LineEdit(None, 'Terminal order to start the adjustment', self.StartOrderValue)
-        self.CheckOrder.Layout.addWidget(self.StartOrder)
-        self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked())
+        self.BtnCreate = QPushButton('Create startup files')
+        self.Layout.addWidget(self.BtnCreate, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.BtnStart = QPushButton('Start the adjustment')
-        self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
+        self.CheckOrder = CheckBox('Starting order', 'If you just want to create the input file, but dont want to run the command in the terminal')
+        # self.Layout.addWidget(self.CheckOrder)
+        self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
+        
+        self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, None)
+        # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./go.sh'
+        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.StartOrderValue)
+        # self.Layout.addWidget(self.StartOrder)
+        
+        self.BtnStart = QPushButton('Start the simulation')
+        # self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
+
+        self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
+
+    def CheckStartOrderChange(self, state):
+        self.StartOrder.setEnabled(state)
+        self.BtnStart.setEnabled(state)
+        self.NbHours.setEnabled(state)
 
 
         

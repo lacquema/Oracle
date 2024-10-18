@@ -93,57 +93,52 @@ class WindowSetNewSimu(QMainWindow):
     def StartSimulation(self):
         print('--------------------------')
         if len(self.Tab1.SimuPath.EditPath.text())==0:
-            print('Simulation path not given.')
-            print('Check your inputs.')
+            print('Simulation path not given')
         else:
             if os.path.exists(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()):
-                print('This directory already exists.')
-                print('Check your inputs.')
+                print('This directory already exists')
             else: 
                 os.makedirs(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
                 if len(self.Tab2.PathData.EditPath.text())==0:
                     os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
-                    print('Data file not given.')
-                    print('Check your inputs.')
+                    print('Data file not given')
                 else:
                     if self.Tab2.FormatAstro.ComboParam.currentIndex() == 0:
                         os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
-                        print('Astrometric data format not given.')
-                        print('Check your inputs.')
+                        print('Astrometric data format not given')
                     else:
                         print(f'{self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/ directory was created.')
                         subprocess.run(f'cd {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}', shell=True, text=True)
                         shutil.copy(self.Tab2.PathData.EditPath.text(), self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab2.DataFileName.EditParam.text())                    
-                        print('Data file was copied.')
+                        print('Data file was copied')
                         self.DoInputShell()
-                        print('Input shell file was created.')
-                        if self.Tab4.CheckOrder.CheckParam.isChecked():
-                            command = 'cd '+self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+';chmod u+x '+self.Tab1.InputFileName.EditParam.text()+';'+self.Tab4.StartOrder.EditParam.text()
-                            print(command)
-                            result = subprocess.run(command, shell=True, text=True)
-                            print('Simulation launched')
-                            error = result.stderr
-                            if type(error)!= type(None):
-                                print(result.stderr)
-                                print('Simulation not launched but you can still launch yourself the start shell file created in the desired directory.\n')
-                        else:
-                            print('All you have to do is launch the start shell file created in the desired directory.')
+                        print('Go file was created')
+
+                        # if self.Tab4.CheckOrder.CheckParam.isChecked():
+                        #     command = 'cd '+self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+';chmod u+x '+self.Tab1.InputFileName.EditParam.text()+';'+self.Tab4.StartOrder.EditParam.text()
+                        #     print(command)
+                        #     result = subprocess.run(command, shell=True, text=True)
+                        #     print('Simulation launched')
+                        #     error = result.stderr
+                        #     if type(error)!= type(None):
+                        #         print(result.stderr)
+                        #         print('Simulation not launched but you can still launch yourself the start shell file created in the desired directory.\n')
+                        # else:
+                        #     print('All you have to do is launch the go file')
 
                     
-    
-
 
     def DoInputShell(self):
         with open(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab1.InputFileName.EditParam.text(), "w") as file:
             file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n'+self.DirPath+'/../../Algorithm/bin/astrom_mcmcop <<!') # Header
             file.write('\n')
-            if self.Tab4.CheckLM.isChecked() and self.Tab4.CheckMCMC.isChecked(): # Choice
+            if self.Tab1.CheckLM.isChecked() and self.Tab1.CheckMCMC.isChecked(): # Choice
                 file.write('2')
                 file.write(' # New simulation LM and MCMC')
-            elif not self.Tab4.CheckLM.isChecked() and self.Tab4.CheckMCMC.isChecked():
+            elif not self.Tab1.CheckLM.isChecked() and self.Tab1.CheckMCMC.isChecked():
                 file.write('3')
                 file.write(' # New simulation LM only')
-            elif self.Tab4.CheckLM.isChecked() and not self.Tab4.CheckMCMC.isChecked():
+            elif self.Tab1.CheckLM.isChecked() and not self.Tab1.CheckMCMC.isChecked():
                 file.write('4')
                 file.write(' # New simulation MCMC only')
             file.write('\n')
@@ -186,10 +181,10 @@ class WindowSetNewSimu(QMainWindow):
             file.write(str(float(self.Tab3.TablePriors.item(0,0).text())*0.000954588))
             file.write(' # First guess of center mass (ms)')
             file.write('\n')
-            file.write(self.Tab1.OutFileName.EditParam.text())
+            file.write(self.Tab1.OutFileName.EditParam.text()+'.dat')
             # file.write(' # Result file')
             file.write('\n')
-            file.write(self.Tab1.DumpFileName.EditParam.text())
+            file.write(self.Tab1.DumpFileName.EditParam.text()+'.dat')
             # file.write(' # Dump file')
             file.write('\n')
             file.write(self.Tab1.DumpFreq.SpinParam.text())
@@ -240,7 +235,7 @@ class WindowSetNewSimu(QMainWindow):
                     file.write(self.Tab3.TablePriors.item(i, j).text())
                     if j == 0: file.write(' mj')
                     file.write(' ')
-                file.write(' # First guess of orbit parameters (m[mj] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')
+                file.write(f' # First guess of orbit {i} parameters (m[mj] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                
                 file.write('\n')
             file.write(self.Tab3.PMin.SpinParam.text()+' '+self.Tab3.PMax.SpinParam.text())
             file.write(' # Range of permited period')
@@ -251,8 +246,8 @@ class WindowSetNewSimu(QMainWindow):
             file.write(self.Tab3.eMin.SpinParam.text()+' '+self.Tab3.eMax.SpinParam.text())
             file.write(' # Range of permited eccentricity')
             file.write('\n')
-            file.write('exit')
-            file.write('\n')
+            # file.write('exit')
+            # file.write('\n')
             file.write('!')
             
             

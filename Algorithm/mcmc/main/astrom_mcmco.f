@@ -3,7 +3,7 @@ c 10h30 v3/3
         
         PUBLIC
         
-        INCLUDE 'mcmc/commons.f'
+        INCLUDE '../sub/commons.f'
 
         END MODULE DATA
 

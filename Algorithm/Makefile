@@ -1,47 +1,57 @@
-#! /bin/sh
-#
-# Makefile to build simulations
-#
+#! /bin/bash
 
-SHELL = /bin/sh
-ARCH = $(shell uname)
-DEBUGGING=NO
-PARALLEL=NO
-DEBUG = -g
-FFLAGS = -O3
-LDFLAGS = -O3 
+# Makefile to build libraries and executables
 
+# Parameters
+F = gfortran
+PARALLEL = NO
+ADD_FLAGS =
+LIB_FLAGS = -O3 -c
+ALG_FLAGS = -O3
+DIR = .
 
-BIN_DIR = ./bin
+# Induced directories
+MCMC_DIR = $(DIR)/mcmc
+LIB_DIR = $(DIR)/lib
+BIN_DIR = $(DIR)/bin
+ALG_DIR = $(MCMC_DIR)/main
+SUB_DIR = $(MCMC_DIR)/sub
 
-ifeq ($(DEBUGGING),YES)
-FFLAGS += $(DEBUG)
-LDFLAGS = $(DEBUG)
-endif
-ifeq ($(PARALLEL),YES)
-FFLAGS += -fopenmp
-LDFLAGS += -fopenmp
-endif
-FC = gfortran
-
-%.o : %.f
-	$(FC) -c $(FFLAGS) $< -o $@
-
-% : %.o
-ifeq ($(PARALLEL),YES)
-	$(FC) $(LDFLAGS) -o $(BIN_DIR)/$(join $@,p) $?
+# Parallelization option 
+ifeq ($(PARALLEL),NO)
+LIB = $(LIB_DIR)/lib_mcmc.a
 else
-	$(FC) $(LDFLAGS) -o $(BIN_DIR)/$@ $?
+LIB_FLAGS += -fopenmp
+ALG_FLAGS += -fopenmp
+LIB = $(LIB_DIR)/lib_mcmc_par.a
 endif
-	rm $?
+
+# Utilities
+library:
+	$(F) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/utils.f 
+	$(F) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mcmc.f 
+	$(F) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mrqfit.f 
+	$(F) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/io.f 
+	ar -rv $(LIB) *.o
+	rm *.o
+
+# Algorithms
+astrom_mcmco:
+ifeq ($(PARALLEL),NO)
+	$(F) $(ALG_FLAGS) $(ADD_FLAGS) $(ALG_DIR)/$@.f $(LIB) -o $(BIN_DIR)/$@
+else
+	$(F) $(ALG_FLAGS) $(ADD_FLAGS) $(ALG_DIR)/$@.f $(LIB) -o $(BIN_DIR)/$@_par
+endif
+
+all: 
+	make library
+	make astrom_mcmco
 
 clean:
-	rm -f *.o *~ core
+	rm *.o
 
-# Simulation
-
-MCMC = mcmc/utils.o mcmc/mcmc.o mcmc/mrqfit.o mcmc/io.o
-astrom_mcmco: $(MCMC) astrom_mcmco.o
-
+cleanall: 
+	clean
+	rm *.a
 
 
