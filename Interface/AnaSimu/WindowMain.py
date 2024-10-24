@@ -10,7 +10,7 @@ from PyQt6.QtCore import pyqtSignal
 
 # My packages
 from Tools import *
-from TransferData import OutputDataClass, InputDataClass
+from TransferData import TransfertData, TransfertSimu
 # from WindowMenu import LoadWindowClass
 from BestOrbits import BestOrbitsClass
 from SelectOrbits import SelectOrbitsClass
@@ -23,7 +23,7 @@ class WindowMainClass(QMainWindow):
 
     SignalCloseWindowMain = pyqtSignal()
 
-    def __init__(self, SystName, PathInputData, PathOutputData, SystDist, NbSelectOrbits, NbPtsEllipse):
+    def __init__(self, SystName, PathData, PathSimu, SystDist, NbSelectOrbits, NbPtsEllipse):
         super().__init__()
 
         # Window settings
@@ -33,8 +33,8 @@ class WindowMainClass(QMainWindow):
         Layout = QVBoxLayout()
 
         # Data
-        InputData = InputDataClass(PathInputData).InputData
-        OutputParams = OutputDataClass(PathOutputData).OutputParams
+        InputData = TransfertData(PathData)[1]
+        OutputParams = TransfertSimu(PathSimu)
 
         # Chi2 reduction
         # NbParamsLib = 0

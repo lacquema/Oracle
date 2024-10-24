@@ -9,7 +9,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 
 # My packages
 from Parameters import *
-from UtilsNewSimu import DelAllWidgetsBtw
+from Utils import DelAllWidgetsBtw
 
 
 class PriorMassClass(QWidget):
@@ -56,25 +56,25 @@ class PriorMassClass(QWidget):
         self.DistribIndex = self.Distrib.ComboParam.currentIndex()
 
         if self.DistribIndex == 1 or self.DistribIndex == 2: # Normal or Log
-            self.Mean = DoubleSpinBox(None, 'Mean of the distribution', 0, 0, 2147483647, 0.01)
+            self.Mean = DoubleSpinBox(None, 'Mean of the distribution', None, 0, None, None, 2)
             self.Layout.addWidget(self.Mean, alignment=Qt.AlignmentFlag.AlignLeft)
 
             self.Layout.addWidget(QLabel('+/-'))
 
-            self.SD = DoubleSpinBox(None, 'Standart deviation of the distribution', 0, 0, 2147483647, 0.01)
+            self.SD = DoubleSpinBox(None, 'Standart deviation of the distribution', None, 0, None, None, 2)
             self.Layout.addWidget(self.SD)
 
         elif self.DistribIndex == 3: # Uniform
-            self.Min = SpinBox(None, 'Minimum of the distribution', 0, 0, 2147483647, 1)
+            self.Min = DoubleSpinBox(None, 'Minimum of the distribution', None, 0, None, None, 2)
             self.Layout.addWidget(self.Min)
 
             self.Layout.addWidget(QLabel('<->'))
 
-            self.Max = SpinBox(None, 'Maximum of the distribution', 0, 0, 2147483647, 1)
+            self.Max = DoubleSpinBox(None, 'Maximum of the distribution', None, 0, None, None, 2)
             self.Layout.addWidget(self.Max)
 
         elif self.DistribIndex == 4: # Fixed
-            self.Value = DoubleSpinBox(None, 'Value', 0, 0, 2147483647, 0.01)
+            self.Value = DoubleSpinBox(None, 'Value', None, 0, None, None, 2)
             self.Layout.addWidget(self.Value)
 
         if self.DistribIndex != 0: 

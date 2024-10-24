@@ -1,6 +1,7 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 import sys
 import os
+sys.path.append(os.path.dirname(__file__)+'/..')
 import shutil
 import subprocess
 
@@ -14,7 +15,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 # My packages
 from Parameters import *
-from UtilsContSimu import *
+from Utils import *
 
 
 ### --- Parameters Window Generating --- ###
@@ -26,9 +27,12 @@ class WindowSetContSimu(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Directory path
+        self.DirPath = os.path.dirname(__file__)
+
         # Window characteristics
-        self.setWindowTitle('Settings of the running ajustement')
-        self.setMinimumWidth(1000)
+        self.setWindowTitle('Parameters to continue the simulation')
+        self.setMinimumWidth(600)
 
         # Layout initialisation
         self.Layout = QVBoxLayout()
@@ -55,37 +59,50 @@ class WindowSetContSimu(QMainWindow):
 
     def InitWidgets(self):
         
-        self.SimuPath = PathBrowser('Directory path', 'Path to the directory of the adjustment to analyse', 0)
+        self.SimuPath = PathBrowser('Directory path', 'Path to the directory of the simulation to continue', 0)
         self.Layout.addWidget(self.SimuPath)
-        self.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
+        self.SimuPath.EditPath.textChanged.connect(self.FindSettings)
+        # self.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
 
-        self.InputFileName = LineEdit('Continuation file', 'Name you want to give to the input continuation shell file with extension', 'inputcont.sh')
-        self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.InputFileName.EditParam.textChanged.connect(self.ChangeStartOrder)
+        # self.InputFileName = LineEdit('Continuation file', 'Name you want to give to the input continuation shell file with extension', 'inputcont.sh')
+        # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.InputFileName.EditParam.textChanged.connect(self.ChangeStartOrder)
 
-        self.DumpFileName = LineEdit('Dump file', 'Name of dump file with extension', 'dump.dat')
-        self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.DumpFileName = LineEdit('Dump file', 'Name of dump file with extension', 'dump.dat')
+        # self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.DumpFileName.Layout.addSpacing(100)
+        self.Layout.addWidget(Delimiter(Title='Options:'))
+
+        # self.DumpFileName.Layout.addSpacing(100)
         self.DumpFreq = SpinBox('Save frequency', 'Save frequency in the dump file [yr]', 10000000, 0, 1000000000, 100000)
-        self.DumpFileName.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
-        self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+        # self.BtnAutoComp = QPushButton('Autocomplete by go file')
+        # self.Layout.addWidget(self.BtnAutoComp)
+        # self.BtnAutoComp.clicked.connect(self.DialBrowseInputFile)
 
-        self.CheckOrder = CheckBox('Starting order :', 'If you just want to create the input file, but dont want to run the command in the terminal')
-        self.Layout.addWidget(self.CheckOrder)
-        self.CheckOrder.CheckParam.stateChanged.connect(lambda: self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked()))
+        self.NbCores = SpinBox('Number of cores', 'Number of cores to be used', 8, 1, None, 1)
+        self.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./inputcont.sh'
-        self.StartOrder = LineEdit(None, 'Terminal order to continue the adjustment', self.StartOrderValue)
-        self.CheckOrder.Layout.addWidget(self.StartOrder)
-        self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked())
+        self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
+        self.Layout.addWidget(self.CheckParallel)
 
-        self.BtnStart = QPushButton('Continue the ajustement')
-        self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
-        self.BtnStart.clicked.connect(self.ContinueSimulation)
+        # self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
+        # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+
+        # self.CheckOrder = CheckBox('Starting order :', 'If you just want to create the input file, but dont want to run the command in the terminal')
+        # self.Layout.addWidget(self.CheckOrder)
+        # self.CheckOrder.CheckParam.stateChanged.connect(lambda: self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked()))
+
+        # self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./inputcont.sh'
+        # self.StartOrder = LineEdit(None, 'Terminal order to continue the adjustment', self.StartOrderValue)
+        # self.CheckOrder.Layout.addWidget(self.StartOrder)
+        # self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked())
+
+        self.BtnCont = QPushButton('Continue')
+        self.Layout.addWidget(self.BtnCont, alignment=Qt.AlignmentFlag.AlignRight)
+        self.BtnCont.clicked.connect(self.ContinueSimu)
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
     
@@ -99,52 +116,68 @@ class WindowSetContSimu(QMainWindow):
     def closeEvent(self, e):
         self.SignalCloseWindowSetContSimu.emit() 
 
-    def ChangeStartOrder(self):
-        self.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla {self.SimuPath.EditPath.text()+self.InputFileName.EditParam.text()}')
+    # def ChangeStartOrder(self):
+    #     self.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla {self.SimuPath.EditPath.text()+self.InputFileName.EditParam.text()}')
 
-    def ContinueSimulation(self):
-        print('--------------------------')
+    def FindSettings(self):
+        try:  
+            with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
+                self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
+                GoFileLines = file.readlines()
+                self.AlgoFileName = GoFileLines[3].split()[0].split('/')[-1][:-4]
+                self.SimuFileName = GoFileLines[12][:-1]+'.dat'
+                self.DumpFileName = GoFileLines[13][:-1]
+                print(f'Do you want continue {self.SimuName} simulation from {self.DumpFileName} dump file ?')
+        except:
+            print('Simulation not found')
+
+    def ContinueSimu(self):
+        self.ContFilePath = self.SimuPath.EditPath.text()+'cont_mcmco.sh'
         if len(self.SimuPath.EditPath.text())==0:
-            print('Simulation path not given.')
-        if len(self.InputFileName.EditParam.text())==0:
-            print('Continuation file not given.')
-        if not os.path.exists(self.SimuPath.EditPath.text()+self.DumpFileName.EditParam.text()):
-            print('Dump file not found.')
+            print('Simulation path not given')
         else:
-            self.DoInputContShell()
-            print('Input continuation shell file was created.')
-            subprocess.run(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
-            if self.CheckOrder.CheckParam.isChecked():
-                result = subprocess.run(self.StartOrder.EditParam.text(), shell=True, capture_output=True, text=True)
-                error = result.stderr
-                if len(error)!=0:
-                    print(result.stderr)
-                    print('Simulation not launched but you can still launch yourself the input continuation shell file.')
-            else:
-                print('All you have to do is launch the input continuation shell file.')
+            # if os.path.exists(self.ContFilePath):
+            #     print('Continuation file already exists')
+            # else:
+                self.DoContFile()
+                print('Continuation file was created')
+                print('Just run it')
+
+            # if self.CheckOrder.CheckParam.isChecked():
+            #     result = subprocess.run(self.StartOrder.EditParam.text(), shell=True, capture_output=True, text=True)
+            #     error = result.stderr
+            #     if len(error)!=0:
+            #         print(result.stderr)
+            #         print('Simulation not launched but you can still launch yourself the input continuation shell file.')
+            # else:
+            #     print('All you have to do is launch the input continuation shell file.')
 
 
-    def DoInputContShell(self):
-        with open(self.SimuPath.EditPath.text()+"inputCont.sh", "w") as file:
-            file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n./astrom_mcmcop <<!') # Header
+
+    def DoContFile(self):
+        if self.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
+
+        self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
+
+        with open(self.ContFilePath, "w") as file:
+            file.write('#! /bin/bash') # Header
+            file.write('\n')
+            file.write('export OMP_NUM_THREADS='+str(self.NbCores.SpinParam.value()))
+            file.write('\n')
+            file.write('export STACKSIZE=1000000')  
+            file.write('\n')
+            file.write(self.EnvPath+'/Algorithm/bin/'+self.AlgoFileName+' <<!')
             file.write('\n')
             file.write('1') # continuation
             file.write(' # Simulation continuation')
             file.write('\n')
-            file.write(self.DumpFileName.EditParam.text())
+            file.write(self.DumpFileName)
             file.write('\n')
             file.write(self.DumpFreq.SpinParam.text())
             file.write(' # Dump frequency')
             file.write('\n')
-            file.write('exit')
-            file.write('\n')
             file.write('!')
 
-
-
-
-
-        
 
 
 # Check

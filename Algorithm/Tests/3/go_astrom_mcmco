@@ -1,0 +1,3 @@
+#! /bin/bash
+export OMP_NUM_THREADS=8
+export STACKSIZE=1000000

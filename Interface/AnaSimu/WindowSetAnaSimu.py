@@ -1,6 +1,7 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 import sys
 import os
+sys.path.append(os.path.dirname(__file__)+'/..')
 
 ### --- Packages --- ###
 
@@ -13,7 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 # My packages
 # from NewSimu.TabsParamNew import *
 from Parameters import *
-from UtilsAnaSimu import DelAllWidgetsBtw
+from Utils import DelAllWidgetsBtw
 from WindowMain import WindowMainClass
 # from WindowMenu import LoadWindowClass
 
@@ -59,84 +60,80 @@ class WindowSetAnaSimu(QMainWindow):
         
         self.SimuPath = PathBrowser('Directory path', 'Path to the adjustment to analyse', 0)
         self.Layout.addWidget(self.SimuPath)
-        # self.SimuPath.EditPath.textChanged.connect(self.FindInputFiles)
+        self.SimuPath.EditPath.textChanged.connect(self.FindSettings)
 
-        self.SimuFileName = LineEdit('Adjustment file', 'Name of the adjustment solution file with extension', 'adjustment.dat')
-        self.Layout.addWidget(self.SimuFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.InputFileName = LineEdit('Input file', 'Name of the input simulation file with extension', 'start.sh')
+        # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.DataFileName = LineEdit('Data file', 'Name of data file with extension', 'data.txt')
-        self.Layout.addWidget(self.DataFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.SimuFileName = LineEdit('Simulation file', 'Name of the simulation file to analyse with extension', '')
+        # self.Layout.addWidget(self.SimuFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.SystDistValue = 0
-        self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 0.01)
-        self.Layout.addWidget(self.SystDist, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.DataFileName = LineEdit('Data file', 'Name of data file with extension', '')
+        # self.Layout.addWidget(self.DataFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
-        self.SystDist.Layout.addWidget(self.SystDistUnit, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.SystDistValue = 0
+        # self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 0.01)
+        # self.Layout.addWidget(self.SystDist, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.NbSelectOrbits = SpinBox('Selected orbits number', 'Number of ramdom selected orbits for this analysis', 10000, 1, None, 1)
+        # self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
+        # self.SystDist.Layout.addWidget(self.SystDistUnit, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # self.BtnAutoComp = QPushButton('Autocomplete by go file')
+        # self.Layout.addWidget(self.BtnAutoComp)
+        # self.BtnAutoComp.clicked.connect(self.DialBrowseInputFile)
+
+        self.Layout.addWidget(Delimiter(Title='Options:'))
+
+        self.NbSelectOrbits = SpinBox('Number of orbits', 'Number of ramdom selected orbits to analyse', 10000, 1, None, 1)
         self.Layout.addWidget(self.NbSelectOrbits, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.NbPtsEllipse = SpinBox('Points by ellipse', 'Number of points by computed ellipse', 500, 1, None, 1)
         self.Layout.addWidget(self.NbPtsEllipse, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.BtnStart = QPushButton('Analyse the adjustment')
+        self.BtnStart = QPushButton('Analyse')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
         self.BtnStart.clicked.connect(self.AnalyseSimu)
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-    
+
+
+    def FindSettings(self):
+        try:  
+            with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
+                self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
+                GoFileLines = file.readlines()
+                self.DataFileName = GoFileLines[7][:-1]
+                self.SimuFileName = GoFileLines[12][:-1]+'.dat'
+                self.SystDist = float(GoFileLines[10].split(' ')[0])
+                self.SystDistUnit = GoFileLines[10].split(' ')[1]
+                print(f'Do you want analyse {self.SimuName} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
+        except:
+            print('Simulation not found')
+        
     # Reset all widgets of the parameters window
     def ResetParams(self):
         DelAllWidgetsBtw(self.Layout, 1, self.Layout.count())
         self.InitWidgets()
 
+
     def AnalyseSimu(self):
         if len(self.SimuPath.EditPath.text()) == 0:
-            print('Adjustement directory path not given.')
-            print('Check your inputs.')
+            print('Simulation directory path not given')
         else:
-            if self.SystDist.SpinParam.value() == 0:
-                print('System distance is zero.')
-                print('Check your inputs.')
-            else:
-                self.OpenWinMain()
+            self.OpenWinMain()
+
 
     def OpenWinMain(self):
-        if self.SystDistUnit.ComboParam.currentText() == 'pc':
-            self.SystDistValue = self.SystDist.SpinParam.value()
-        elif self.SystDistUnit.ComboParam.currentText() == 'mas':
-            self.SystDistValue = 1000/self.SystDist.SpinParam.value()
-        try:
-            self.WinMain = WindowMainClass(self.SimuPath.EditPath.text()[:-1].split('/')[-1], self.SimuPath.EditPath.text()+self.DataFileName.EditParam.text(), self.SimuPath.EditPath.text()+self.SimuFileName.EditParam.text(), self.SystDistValue, self.NbSelectOrbits.SpinParam.value(), self.NbPtsEllipse.SpinParam.value())
-            self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
-            self.WinMain.show()
-            self.close()
-        except:
-            print('Adjustment not found: check the directory path and the name of input files.')
+        if self.SystDistUnit == 'pc':
+            self.SystDistValue = self.SystDist
+        elif self.SystDistUnit == 'mas':
+            self.SystDistValue = 1000/self.SystDist
+    
+        self.WinMain = WindowMainClass(self.SimuPath.EditPath.text().split('/')[-2], self.SimuPath.EditPath.text()+self.DataFileName, self.SimuPath.EditPath.text()+self.SimuFileName, self.SystDistValue, self.NbSelectOrbits.SpinParam.value(), self.NbPtsEllipse.SpinParam.value())
+        self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
+        self.WinMain.show()
+        self.close()
 
-    # def FindInputFiles(self):
-    #     Files = os.listdir(self.SimuPath.EditPath.text()[:-1])
-    #     self.SimuName.EditParam.setText(self.SimuPath.EditPath.text()[:-1].split('/')[-1])
-    #     txtFiles = []
-    #     datFiles = []
-    #     for x in Files:
-    #         if x[-4:] == '.txt':
-    #             txtFiles.append(x)
-    #         if x[-4:] == '.dat':
-    #             datFiles.append(x)
-    #     if 'logfile.dat' in datFiles: datFiles.remove('logfile.dat')
-    #     if len(txtFiles) == 1:
-    #         self.DataFileName.EditParam.setText(txtFiles[0])
-    #     else:
-    #         self.DataFileName.EditParam.setText('')
-    #         print('Data file not found')
-    #     if len(datFiles) == 1:
-    #         self.SimuFileName.EditParam.setText(datFiles[0])
-    #     else:
-    #         self.SimuFileName.EditParam.setText('')
-    #         print('Simulation file not found')
-        
 
     # Emition of the CloseEvent signal when the parameter window is closed
     def closeEvent(self, e):
@@ -146,12 +143,6 @@ class WindowSetAnaSimu(QMainWindow):
         except:
             self.SignalCloseWindowSetAnaSimu.emit() 
         
-
-
-
-
-        
-
 
 # Check
 if __name__=="__main__":

@@ -2,7 +2,7 @@
 ### --- Packages --- ###
 from PyQt6.QtWidgets import QWidget
 import numpy as np
-import UtilsAnaSimu as ut
+import Utils as ut
 import random as rd
 
 

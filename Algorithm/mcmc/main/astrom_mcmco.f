@@ -16,14 +16,16 @@ c-------------------------------------------------------------------------
         IMPLICIT NONE
 
         INTEGER*4        I,DKAL,mm,yy,
-     &                   NMOD              ! Nombre de modeles
+     &       METHOD / 1 / ,     ! Identification of the code 
+     &       NMOD               ! Nombre de modeles
         REAL*8, DIMENSION(:), ALLOCATABLE :: P ! Parameters
         REAL*8, DIMENSION(:,:), ALLOCATABLE :: COV ! Covariance matrix
-	REAL*8 ::        CHI2,FMAP,        ! CHI2
-     &                   UP,               ! 1/period
-     &                   COMPUTE_MAP,      ! Function to compute MAP
-     &                   SI2,              ! sin(i/2)
-     &                   CL,SL            ! Lambda = Omega+omega+v,
+	REAL*8 ::
+     &       CHI2,FMAP,         ! CHI2
+     &       UP,                ! 1/period
+     &       COMPUTE_MAP,       ! Function to compute MAP
+     &       SI2,               ! sin(i/2)
+     &       CL,SL              ! Lambda = Omega+omega+v,
 
         CHARACTER*80 ::  LIG
         CHARACTER*80, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
@@ -43,7 +45,7 @@ c                                                #3 = data
         ALLOCATE(COV(NPAR,NPAR))  
        
         CALL INIT_DATA(NPAR,P,COV,FILES,NEW)
-
+        
         IF (NEW) THEN           
            COV = 0.d0
            IF ((CNEW.EQ.2).OR.(CNEW.EQ.4)) THEN
@@ -91,7 +93,7 @@ c                                     Par 4 = sin(i/2)*cos(phi)*(1-e^2)^(1/4)
 c                                     Par 5 = sin(i/2)*sin(phi)*(1-e^2)^(1/4)
               END IF
               CALL TP_TO_LAMBDA(STAR%T0,PLA(I)%TP,DPI*UP,PLA(I)%EXC,
-     &                PLA(I)%EXQ,PLA(I)%CW,PLA(I)%SW,CL,SL)              
+     &              PLA(I)%EXQ,PLA(I)%CW,PLA(I)%SW,CL,SL)              
               PSTART(DKAL+6) = UP*CL    ! Par 6 = cos(lambda)/P
               PSTART(DKAL+7) = UP*SL    ! Par 7 = sin(lambda)/P
               PSTART(DKAL+1) = LOG(PLA(I)%A)   ! Par 1 = ln(a)
@@ -125,7 +127,7 @@ c...  Store CHi2 and MAP in additional variables
              CALL WRITE_DISTRIB_DOUBLING(NMOD,FILES(1))
           END IF          
         ELSE
-          CALL DISPLAY_SOLUTION()
+          CALL DISPLAY_SOLUTION(METHOD)
         END IF
        
         CALL UTIL_EXIT()

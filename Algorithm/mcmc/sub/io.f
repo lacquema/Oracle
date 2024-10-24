@@ -19,10 +19,10 @@ c        FORMAT(f6.1,a2,(f))
         WRITE(SD,'(a)')
      & 'Enter initial orbital guess for each planet under the form'
         WRITE(SD,'(a)')' mass unit: ms ou mj (solar or jupiter mass)'
-        WRITE(SD,'(a)')' m unit a e i Omega omega tp, where'
+        WRITE(SD,'(a)')' m unit a/q e i Omega omega tp, where'
         WRITE(SD,'(a)')'   m = Mass'
         WRITE(SD,'(a)')'   unit = ms ou mj (Solar or Jupiter mass)'
-        WRITE(SD,'(a)')'   a = Semi major axis (au)'
+        WRITE(SD,'(a)')'   a/q = Semi major axis / Periastron (au)'
         WRITE(SD,'(a)')'   e = Eccentricity'
         WRITE(SD,'(a)')'   i = Inclination (deg)'
         WRITE(SD,'(a)')
@@ -39,9 +39,10 @@ c        FORMAT(f6.1,a2,(f))
            IF (UNIT.EQ.'MJ') PLA(I)%MU = PLA(I)%MU*MJUP
            SIGMA = SIGMA+PLA(I)%MU
            PLA(I)%MDYN = SIGMA
+           PLA(I)%Q = PLA(I)%A
            NN = SQRT(SIGMA/PLA(I)%A**3)
            PLA(I)%PER = DPI/NN
-           PLA(I)%EXQ = SQRT(1.d0-PLA(I)%EXC**2)
+           IF (PLA(I)%EXC.LT.1.d0) PLA(I)%EXQ = SQRT(1.d0-PLA(I)%EXC**2)
            PLA(I)%TI = TAN(0.5d0*PLA(I)%INC/DR)
            PLA(I)%W = PLA(I)%OM+PLA(I)%O
            PLA(I)%PHI = PLA(I)%OM-PLA(I)%O
@@ -167,7 +168,6 @@ c                                                #3 = data
         WRITE(SD0,*)'  5 = Generate simulated data'
         READ(5,*)CNEW
         NEW = (CNEW.GT.1)
-
         DATATYP = 0
         FILES = ' '
 
@@ -386,86 +386,6 @@ c...  Priors #0..NPLA tell that individual masses must be positive
 
         END 
         
-C
-C -----------------------------------------------------------------------------
-C     Routine to enter initial data
-C -----------------------------------------------------------------------------
-C
-
-        SUBROUTINE INIT_DATA(N,P,COV,FILES,NEW)
-
-        USE DATA
-
-        IMPLICIT NONE
-
-        INTEGER*4 :: N,I,DKAL
-        REAL*8, DIMENSION(N) :: P ! Initial Parameters
-        REAL*8, DIMENSION(N,N) :: COV ! Initial covariances
-        REAL*8 :: LAMBDA,CL,SL    ! Mean longitude at T0
-        LOGICAL ::      OK,NEW
-        CHARACTER*(*), DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
-c                                                #3 = data
-
-        STAR%T0 = 0.d0
-        STAR%SIGJV = 0.d0
-        CALL READ_DATAFILE(FILES(3))
-        NFREE = 2*SUM(PLA%NDATAS)+STAR%NDATVR
-     &          +SUM(PLA%NDATVR)+2*STAR%NDATAS-NPAR  ! # of degrees od freedom
-
-        IF (NEW) THEN
-           WRITE(SD,*)'Give reference time for data (JD) : '
-           READ(5,*)STAR%T0
-           IF (ISDATA(2)) THEN
-c...  Initialize offset velocity & jitter
-              WRITE(SD,*)
-     &              'Give initial offset velocity and jitter in km/s '
-              READ(5,*)STAR%V0,STAR%SIGJV
-              STAR%SIGJV = STAR%SIGJV*MPS
-              STAR%V0 = STAR%V0*MPS
-           END IF             
-        END IF
-
-c...  Enter orbits and configure parameters for Levenberg-Marquardt        
-        IF (NEW) THEN
-           CALL ENTER_ORBITS(NPLA)
-           DO I = 1,NPLA
-              DKAL = NEL*(I-1)
-              P(DKAL+1) = LOG(PLA(I)%A) 
-              P(DKAL+2) = PLA(I)%EXC*PLA(I)%CW/PLA(I)%EXQ
-              P(DKAL+3) = PLA(I)%EXC*PLA(I)%SW/PLA(I)%EXQ              
-              P(DKAL+4) = PLA(I)%TI*PLA(I)%CP
-              P(DKAL+5) = PLA(I)%TI*PLA(I)%SP
-              IF (RADVEL) THEN
-                 P(DKAL+4) = PLA(I)%TI*PLA(I)%CO
-                 P(DKAL+5) = PLA(I)%TI*PLA(I)%SO
-              END IF
-              LAMBDA = DPI/PLA(I)%PER*(STAR%T0-PLA(I)%TP)+PLA(I)%W/DR
-              CL = COS(LAMBDA)
-              SL = SIN(LAMBDA)
-              P(DKAL+6) = CL/PLA(I)%PER
-              P(DKAL+7) = SL/PLA(I)%PER
-           END DO  
-           IF (MULTIPLA) P(NPAR) = LOG(STAR%MASS)
-           IF (ISDATA(2)) P(NPAR-1) = STAR%V0
-           IF (ISDATA(2).AND.(JITNUM.EQ.1)) THEN
-              P(NPAR-1) = LOG(STAR%MASS)
-c...                     NPAR-1 because no Jitter at first round             
-              P(NPAR-2) = STAR%V0
-           END IF
-           WRITE(SD,*)'Range of periods : (days)'
-           READ(5,*)VPRIOR(1)%BOUND(1:2)
-           WRITE(SD,*)'Range of semi-major axes : (days)'
-           READ(5,*)VPRIOR(2)%BOUND(1:2)
-           WRITE(SD,*)'Range of eccentricities : '
-           READ(5,*)VPRIOR(3)%BOUND(1:2)   
-           VPRIOR(1:NLIM)%MEAN = 0.d0
-           VPRIOR(1:NLIM)%SDEV = 0.d0
-           VPRIOR(1:2)%TYP = 0
-           VPRIOR(3)%TYP = 3
-        END IF
-
-        END
-                 
 C
 C -----------------------------------------------------------------------------
 C     Routine to enter initial data
@@ -931,21 +851,27 @@ C    Displays a solution on screen
 C-----------------------------------------------------------------------------
 C
 
-        SUBROUTINE DISPLAY_SOLUTION()
+        SUBROUTINE DISPLAY_SOLUTION(METHOD)
 
         USE DATA
         
         IMPLICIT NONE
 
-        INTEGER*4 :: I          ! Planet index
-
+        INTEGER*4 :: I,          ! Planet index
+     &               METHOD      ! Elliptic (1) or universal (2)
+        
  1      FORMAT(a25,' = ',f15.6,'   +/- ',f12.6,(a))
 
         DO I = 1,NPLA
            WRITE(SD,*)'-------------------'
            WRITE(SD,*)'Planet #',I, ' :'
-           WRITE(SD,1)'Semi major axis ',PLA(I)%A,ABS(PLA(I)%DA),' AU'
-           WRITE(SD,1)'Period ',PLA(I)%PER,ABS(PLA(I)%DPER),' days'
+           SELECT CASE (METHOD)
+           CASE(1)              ! Elliptic variables
+             WRITE(SD,1)'Semi major axis ',PLA(I)%A,ABS(PLA(I)%DA),' AU'
+             WRITE(SD,1)'Period ',PLA(I)%PER,ABS(PLA(I)%DPER),' days'
+           CASE(2)
+             WRITE(SD,1)'Periastron ',PLA(I)%Q,ABS(PLA(I)%DQ),' AU'
+           END SELECT
            WRITE(SD,1)'Eccentricity ',PLA(I)%EXC,ABS(PLA(I)%DEXC)
            IF (RADVEL) THEN
               WRITE(SD,1)'Argument of periastron (omega) ',

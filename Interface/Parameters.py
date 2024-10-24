@@ -1,14 +1,15 @@
-#! /var/guix/profiles/per-user/lacquema/Oracle/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 
 ### --- Packages --- ###
 
 # Transverse packages
 import sys
+from Utils import *
 
 # PyQt packages
 from PyQt6.QtWidgets import QVBoxLayout, QProgressBar, QPushButton, QDateEdit, QCheckBox, QWidget, QHBoxLayout, QLabel, QLineEdit, QComboBox, QSpinBox, QApplication, QDoubleSpinBox, QFileDialog
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QDate, QDateTime
 
 
 ### --- Parameters Generating --- ###
@@ -176,14 +177,6 @@ class CheckBox(GeneralParam):
         self.Layout.addWidget(self.CheckParam)
 
 
-# Gerenal DateEdit
-class DateEdit(GeneralParam):
-    def __init__(self, ParamName, ParamStatus):
-        super().__init__(ParamName)
-        self.EditParam = QDateEdit(calendarPopup=True)
-        if ParamStatus != None: self.EditParam.setStatusTip(ParamStatus)
-        self.Layout.addWidget(self.EditParam)
-
 
 class PathBrowser(GeneralParam):
     def __init__(self, ParamName, ParamStatus, TargetType):
@@ -241,7 +234,48 @@ class Delimiter(QWidget):
         self.setLayout(self.Layout)
 
 
+# Gerenal DateEdit
+class DateEdit(GeneralParam):
+    def __init__(self, ParamName, ParamStatus):
+        super().__init__(ParamName)
+        self.EditParam = QDateEdit(calendarPopup=True)
+        if ParamStatus != None: self.EditParam.setStatusTip(ParamStatus)
+        self.Layout.addWidget(self.EditParam)
+        
 
+class DateAndMJDEdit(GeneralParam):
+    def __init__(self, ParamName, ParamStatus):
+        super().__init__(ParamName)
+
+        # Current date
+        self.CurDate = QDateTime.currentDateTime().date().getDate()
+        self.CurMJD = DatetoMJD(*self.CurDate)
+
+        # Date on calendar
+        self.DateWidget = DateEdit(None, ParamStatus)
+        self.DateWidget.EditParam.setDate(QDate(*self.CurDate))
+        self.Layout.addWidget(self.DateWidget)
+
+        # Date on MJD
+        self.MJDWidget = SpinBox(None, 'Date in MJD', self.CurMJD, 0, None)
+        self.DateWidget.Layout.addWidget(self.MJDWidget)
+
+        # Connections
+        self.DateWidget.EditParam.dateChanged.connect(self.DateChanged)
+        self.MJDWidget.SpinParam.textChanged.connect(self.MJDChanged)
+
+        self.setLayout(self.Layout)
+    
+    def DateChanged(self):
+        Date = self.DateWidget.EditParam.date().getDate() # YY MM JJ
+        MJD = DatetoMJD(*Date)
+        self.MJDWidget.SpinParam.setValue(MJD)
+
+    def MJDChanged(self):
+        MJD = self.MJDWidget.SpinParam.value()
+        Date = MJDtoDate(MJD)
+        self.DateWidget.EditParam.setDate(QDate(*Date))
+    
 
 
 
@@ -250,6 +284,6 @@ class Delimiter(QWidget):
 if __name__=="__main__":
     ParamName, ParamStatus, ParamDefault = 'Xmin (AU)','Minimum abscissa','-100'
     app = QApplication(sys.argv) # Application creation
-    ParamWidget = LineEdit(ParamName, ParamStatus, ParamDefault)
+    ParamWidget = DateAndMJDEdit('Date', 'Date of wanted observation')
     ParamWidget.show()
     app.exec() # Application execution

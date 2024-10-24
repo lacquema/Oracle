@@ -68,9 +68,10 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
      &                      TVR,V,SIGV,SIGV2,SIGVM2 ! Pl. RV data
           REAL*8 ::  MU,DMU,        ! mass = m_i
      &               MDYN,DMDYN,    ! Dynamical mass = sum(m_j,j=0..i)
-     &               A,DA,            ! Semi-major axis                    
-     &               PER,DPER,  ! Period
-     &               EXC,EXQ,DEXC, ! Eccentricity
+     &               A,DA,          ! Semi-major axis                    
+     &               Q,DQ,          ! Periastron
+     &               PER,DPER,      ! Period
+     &               EXC,EXQ,DEXC,  ! Eccentricity
      &               INC,DINC,TI,   ! Inclination & tan(i/2)
      &               O,DOO,CO,SO,   ! Long. of ascending node
      &               OM,DOM,COM,SOM,! Arg. of periastron

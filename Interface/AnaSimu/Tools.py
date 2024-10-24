@@ -12,10 +12,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # PyQt packages
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QDateEdit
 from PyQt6.QtCore import QDateTime, QDate
-from TimeConvertor import date_to_jd, jd_to_mjd, mjd_to_jd, jd_to_date
+from Utils import date_to_jd, jd_to_mjd, mjd_to_jd, jd_to_date
 
 # My packages
-from TransferData import OutputDataClass, InputDataClass
 from WindowParam import WindowParamClass
 from WindowPlot import WindowPlotClass
 from Parameters import *
@@ -63,7 +62,7 @@ class GeneralToolClass(QWidget):
         self.WindowPlot.SignalCloseWindowPlot.connect(lambda: self.BtnPlot.setEnabled(True)) # reception of the closeEvent of the plot window and set enabled the associed button
 
         # Initialisation of Data
-        if InputData != None: self.NbInputData, self.I, self.MJD, self.JJ, self.MM, self.YY, self.Dec, self.Ra, self.DDec, self.DRa, self.Corr, self.Source = InputData
+        if InputData != None: self.NbInputData_RA, self.I_RA, self.MJD_RA, self.JJ_RA, self.MM_RA, self.YY_RA, self.Ra, self.Dec, self.DRa,  self.DDec, self.Sep, self.Pa, self.DSep, self.DPa, self.Corr_RA, self.Source_RA = InputData
         
         if OutputParams != None: self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.Mdyn, self.Chi2, self.map = OutputParams
        
@@ -108,23 +107,23 @@ class GeneralToolClass(QWidget):
     # Giver of label
     def LabelOf(self, var=str):
         if var == 'P':
-            return 'Period (yr)'
+            return 'Period [yr]'
         elif var == 'a':
-            return 'Semi-major axis (AU)'
+            return 'Semi-major axis [AU]'
         elif var == 'e':
             return 'Eccentricity'
         elif var == 'i':
-            return 'Inclinaison (deg)'
+            return 'Inclinaison [°]'
         elif var == 'w':
-            return 'Argument of periastron (deg)'
+            return 'Argument of periastron [°]'
         elif var == 'W':
-            return 'Longitude of ascending node (deg)'
+            return 'Longitude of ascending node [°]'
         elif var == 'tp':
-            return 'Periastron time passage (MJD)'
+            return 'Periastron time passage [MJD]'
         elif var == 'm':
-            return 'Body mass (Mjup)'
+            return 'Body mass [Mjup]'
         elif var == 'Mdyn':
-            return 'Dynamical mass (Mjup)'
+            return 'Dynamical mass [Mjup]'
         elif var == 'Chi2':
             return 'Chi square'
         else:
@@ -219,8 +218,8 @@ class SpaceView(GeneralToolClass):
                 self.Subplot2D.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='') # Observed data
 
             # Plot features
-            self.Subplot2D.set_xlabel('dRa (mas)')
-            self.Subplot2D.set_ylabel('dDec (mas)')
+            self.Subplot2D.set_xlabel('dRa [mas]')
+            self.Subplot2D.set_ylabel('dDec [mas]')
             self.Subplot2D.invert_xaxis()
 
 
@@ -245,8 +244,8 @@ class SpaceView(GeneralToolClass):
                         self.Subplot2D.plot(self.SelectX[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
             # Plot features
-            self.Subplot2D.set_xlabel('dRa (mas)')
-            self.Subplot2D.set_ylabel('depth (mas)')
+            self.Subplot2D.set_xlabel('dRa [mas]')
+            self.Subplot2D.set_ylabel('depth [mas]')
             self.Subplot2D.invert_xaxis()
         
 
@@ -271,9 +270,9 @@ class SpaceView(GeneralToolClass):
                         self.Subplot3D.plot(self.SelectX[self.nBody][n], self.SelectY[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
             # Plot features
-            self.Subplot3D.set_xlabel('dRa (mas)')
-            self.Subplot3D.set_ylabel('dDec (mas)')
-            self.Subplot3D.set_zlabel('Depth (mas)')
+            self.Subplot3D.set_xlabel('dRa [mas]')
+            self.Subplot3D.set_ylabel('dDec [mas]')
+            self.Subplot3D.set_zlabel('Depth [mas]')
             self.Subplot3D.invert_xaxis()
 
 
@@ -360,21 +359,21 @@ class TempoView(GeneralToolClass):
         self.Subplot1.plot(Bestt3P, BestYplotOutput3P, linestyle='-', linewidth=0.5, color='r')
 
         # Input data
-        for k in range(self.NbInputData):
-            if self.I[k] == self.nBody+1:
-                self.Subplot1.errorbar(self.MJD[k], YplotInput[k], YplotInputErr[k], linestyle='', color='b')
-                indext = np.argmin(np.abs(Bestt3P-self.MJD[k])) # index of time of output data closer than time of input data
+        for k in range(self.NbInputData_RA):
+            if self.I_RA[k] == self.nBody+1:
+                self.Subplot1.errorbar(self.MJD_RA[k], YplotInput[k], YplotInputErr[k], linestyle='', color='b')
+                indext = np.argmin(np.abs(Bestt3P-self.MJD_RA[k])) # index of time of output data closer than time of input data
                 Res = BestYplotOutput3P[indext] - YplotInput[k] # Residu
                 self.Subplot2.errorbar(Bestt3P[indext], Res, YplotInputErr[k], color='b')
 
         self.Subplot2.hlines(0, np.min(Bestt3P), np.max(Bestt3P), color='red', linewidth = 0.5)
 
         # Plot features
-        self.Subplot1.set_ylabel(self.Coordinate+' (mas)')
-        self.Subplot2.set_ylabel(self.Coordinate+' - Bestfit (mas)')
-        self.Subplot2.set_xlabel('Time (MJD)')
-        L = np.max(self.MJD)-np.min(self.MJD)
-        self.Subplot1.set_xlim(np.min(self.MJD)-0.1*L, np.max(self.MJD)+0.1*L)
+        self.Subplot1.set_ylabel(self.Coordinate+' [mas]')
+        self.Subplot2.set_ylabel(self.Coordinate+' - Bestfit [mas]')
+        self.Subplot2.set_xlabel('Time [MJD]')
+        L = np.max(self.MJD_RA)-np.min(self.MJD_RA)
+        self.Subplot1.set_xlim(np.min(self.MJD_RA)-0.1*L, np.max(self.MJD_RA)+0.1*L)
         self.Subplot2.set_xlim(self.Subplot1.get_xlim())
         # self.Subplot1.set_xticklabels([])
         self.Subplot1.grid()
@@ -692,17 +691,9 @@ class PosAtDate(GeneralToolClass):
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
-        # Date on calendar
-        self.DateCalWidget = DateEdit('Date', 'Date of wanted observation')
-        self.DateCalWidget.EditParam.setDateTime(QDateTime.currentDateTime())
-        self.Date = self.DateCalWidget.EditParam.date().toJulianDay()-2400001
-        self.WindowParam.Layout.addWidget(self.DateCalWidget)
-        self.DateCalWidget.EditParam.dateChanged.connect(self.DateCalChanged)
-
-        # Date on MJD
-        self.DateMJDWidget = SpinBox(None, 'Date of wanted observation in MJD', ParamMin=0, ParamMax=1000000, ParamDefault=self.Date)
-        self.DateCalWidget.Layout.addWidget(self.DateMJDWidget)
-        self.DateMJDWidget.SpinParam.textChanged.connect(self.DateMJDChanged)
+        # Date of wanted observation
+        self.DateWidget = DateAndMJDEdit('Date', 'Date of wanted observation')
+        self.WindowParam.Layout.addWidget(self.DateWidget)
 
         # Histogram binning
         self.NbBins = 100
@@ -717,21 +708,11 @@ class PosAtDate(GeneralToolClass):
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
         self.WindowParam.Layout.addWidget(self.CheckObs)
 
-    def DateCalChanged(self):
-        self.Date = self.DateCalWidget.EditParam.date().toJulianDay()-2400001
-        self.DateMJDWidget.SpinParam.setValue(self.Date)
-
-    def DateMJDChanged(self):
-        self.Date = self.DateMJDWidget.SpinParam.value()
-        YY, MM, JJ = jd_to_date(self.Date+2400001-0.5)
-        JJ = int(JJ)
-        self.DateCalWidget.EditParam.setDate(QDate(YY, MM, JJ))
-
     # Parameters update
     def UpdateParams(self):
         self.nBody = int(self.nBodyWidget.ComboParam.currentText())-1
         self.NbBins = self.NbBinsWidget.SpinParam.value()
-        self.Date = self.DateMJDWidget.SpinParam.value()
+        self.Date = self.DateWidget.MJDWidget.SpinParam.value()
         
     # Plot
     def Plot(self):
@@ -795,8 +776,8 @@ class PosAtDate(GeneralToolClass):
             self.Subplot.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='') # Observed data
 
         # Plot features
-        self.Subplot.set_xlabel('dRa (mas)')
-        self.Subplot.set_ylabel('dDec (mas)')
+        self.Subplot.set_xlabel('dRa [mas]')
+        self.Subplot.set_ylabel('dDec [mas]')
         self.Subplot.invert_xaxis()
 
         

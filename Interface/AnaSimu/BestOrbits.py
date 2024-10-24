@@ -1,7 +1,7 @@
 ### --- Packages --- ###
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem
 import numpy as np
-import UtilsAnaSimu as ut
+import Utils as ut
 
 
 class BestOrbitsClass(QWidget):

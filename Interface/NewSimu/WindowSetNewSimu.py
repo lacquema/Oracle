@@ -1,9 +1,9 @@
 #! /Users/lacquema/Oracle.env/bin/python3
 import sys
 import os
+sys.path.append(os.path.dirname(__file__)+'/..')
 import shutil
 import subprocess
-sys.path.append(os.path.dirname(__file__))
 
 
 ### --- Packages --- ###
@@ -36,30 +36,25 @@ class WindowSetNewSimu(QMainWindow):
         self.Container = QTabWidget()
 
         # Tab 1
-        self.Tab1 = TabSimuSet()
-        self.Container.addTab(self.Tab1, 'Simulation settings')
-        self.Tab1.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
-        self.Tab1.SimuName.EditParam.textChanged.connect(self.ChangeStartOrder)
-        self.Tab1.CheckLM.stateChanged.connect(self.StartBtnAvailableOrNot)
-        self.Tab1.CheckMCMC.stateChanged.connect(self.StartBtnAvailableOrNot)
+        self.TabSimuSet = TabSimuSet()
+        self.Container.addTab(self.TabSimuSet, 'Simulation settings')
+        self.InitInterTabConnect('TabSimuSet')
 
         # Tab 2
-        self.Tab2 = TabDataSet()
-        self.Container.addTab(self.Tab2, 'Data settings')
-        self.Tab2.RelRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
-        self.Tab2.AbsRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
+        self.TabDataSet = TabDataSet()
+        self.Container.addTab(self.TabDataSet, 'Data settings')
+        self.InitInterTabConnect('TabDataSet')
 
         # Tab 3
-        self.Tab3 = TabPriorSet()
-        self.Container.addTab(self.Tab3, 'Priors')
-        self.Tab3.BtnReset.clicked.connect(self.EnableOrNotPriorJitter)
+        self.TabPriorSet = TabPriorSet()
+        self.Container.addTab(self.TabPriorSet, 'Priors')
+        self.InitInterTabConnect('TabPriorSet')
 
         # Tab 4
-        self.Tab4 = TabStartSet()
-        self.Tab4.BtnStart.clicked.connect(self.StartSimulation)
-        self.Container.addTab(self.Tab4, 'Starting')
-        self.Tab4.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
-        self.Tab4.NbCores.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+        self.TabStartSet = TabStartSet()
+        # self.TabStartSet.BtnStart.clicked.connect(self.StartSimulation)
+        self.Container.addTab(self.TabStartSet, 'Starting')
+        self.InitInterTabConnect('TabStartSet')
 
         # Container
         self.setCentralWidget(self.Container)
@@ -67,18 +62,41 @@ class WindowSetNewSimu(QMainWindow):
         # Status bar
         self.setStatusBar(QStatusBar(self))
 
+    def InitInterTabConnect(self, IdTab):
+        if IdTab=='TabSimuSet':
+            self.TabSimuSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabSimuSet'))
+            # self.TabSimuSet.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
+            # self.TabSimuSet.SimuName.EditParam.textChanged.connect(self.ChangeStartOrder)
+            self.TabSimuSet.CheckLM.stateChanged.connect(self.StartBtnAvailableOrNot)
+            self.TabSimuSet.CheckMCMC.stateChanged.connect(self.StartBtnAvailableOrNot)
+        elif IdTab=='TabSimuSets':
+            self.TabDataSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabDataSet'))
+            self.TabDataSet.RelRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
+            self.TabDataSet.AbsRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
+        elif IdTab=='TabPriorSet':
+            self.TabPriorSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabPriorSet'))
+            self.TabPriorSet.BtnReset.clicked.connect(self.EnableOrNotPriorJitter)
+        elif IdTab=='TabStartSet':
+            self.TabStartSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabStartSet'))
+            # self.TabStartSet.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+            # self.TabStartSet.NbCores.SpinParam.valueChanged.connect(self.ChangeStartOrder)
+            self.TabStartSet.BtnCreate.clicked.connect(self.CreateInputFiles)
+            
+
     def EnableOrNotPriorJitter(self):
-        if self.Tab2.RelRV.CheckParam.isChecked() or self.Tab2.AbsRV.CheckParam.isChecked():
-            self.Tab3.CheckJitter.setEnabled(True)
+        if self.TabDataSet.RelRV.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked():
+            self.TabPriorSet.CheckJitter.setEnabled(True)
         else:
-            self.Tab3.CheckJitter.setEnabled(False)
-            self.Tab3.CheckJitter.setChecked(False)
+            self.TabPriorSet.CheckJitter.setEnabled(False)
+            self.TabPriorSet.CheckJitter.CheckParam.setChecked(False)
 
     def StartBtnAvailableOrNot(self):
-        if self.Tab1.CheckLM.isChecked() or self.Tab1.CheckMCMC.isChecked():
-            self.Tab4.BtnStart.setEnabled(True)
+        if self.TabSimuSet.CheckLM.isChecked() or self.TabSimuSet.CheckMCMC.isChecked():
+            self.TabStartSet.BtnStart.setEnabled(True)
+            self.TabStartSet.BtnCreate.setEnabled(True)
         else:
-            self.Tab4.BtnStart.setEnabled(False)
+            self.TabStartSet.BtnStart.setEnabled(False)
+            self.TabStartSet.BtnCreate.setEnabled(False)
 
     
 
@@ -87,35 +105,35 @@ class WindowSetNewSimu(QMainWindow):
     def closeEvent(self, e):
         self.SignalCloseWindowSetNewSimu.emit() 
 
-    def ChangeStartOrder(self):
-        self.Tab4.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.Tab4.NbCores.SpinParam.value()},walltime={self.Tab4.NbHours.SpinParam.value()} --project dynapla {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/{self.Tab1.InputFileName.EditParam.text()}')
+    # def ChangeStartOrder(self):
+    #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
     
-    def StartSimulation(self):
-        print('--------------------------')
-        if len(self.Tab1.SimuPath.EditPath.text())==0:
+    def CreateInputFiles(self):
+        if len(self.TabSimuSet.SimuPath.EditPath.text())==0:
             print('Simulation path not given')
         else:
-            if os.path.exists(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()):
+            if os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()):
                 print('This directory already exists')
             else: 
-                os.makedirs(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
-                if len(self.Tab2.PathData.EditPath.text())==0:
-                    os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
+                os.makedirs(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
+                if len(self.TabDataSet.PathData.EditPath.text())==0:
+                    os.rmdir(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
                     print('Data file not given')
                 else:
-                    if self.Tab2.FormatAstro.ComboParam.currentIndex() == 0:
-                        os.rmdir(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text())
+                    if self.TabDataSet.FormatRelAstro.ComboParam.currentIndex() == 0:
+                        os.rmdir(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
                         print('Astrometric data format not given')
                     else:
-                        print(f'{self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}/ directory was created.')
-                        subprocess.run(f'cd {self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()}', shell=True, text=True)
-                        shutil.copy(self.Tab2.PathData.EditPath.text(), self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab2.DataFileName.EditParam.text())                    
+                        print(f'{self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/ directory was created.')
+                        # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+                        shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/data.dat')                    
                         print('Data file was copied')
-                        self.DoInputShell()
+                        self.DoGoFile()
                         print('Go file was created')
+                        print('Just run it')
 
-                        # if self.Tab4.CheckOrder.CheckParam.isChecked():
-                        #     command = 'cd '+self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+';chmod u+x '+self.Tab1.InputFileName.EditParam.text()+';'+self.Tab4.StartOrder.EditParam.text()
+                        # if self.TabStartSet.CheckOrder.CheckParam.isChecked():
+                        #     command = 'cd '+self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+';chmod u+x '+self.TabSimuSet.InputFileName.EditParam.text()+';'+self.TabStartSet.StartOrder.EditParam.text()
                         #     print(command)
                         #     result = subprocess.run(command, shell=True, text=True)
                         #     print('Simulation launched')
@@ -125,131 +143,148 @@ class WindowSetNewSimu(QMainWindow):
                         #         print('Simulation not launched but you can still launch yourself the start shell file created in the desired directory.\n')
                         # else:
                         #     print('All you have to do is launch the go file')
+                
 
-                    
+    def DoGoFile(self):
+        self.AlgoFileName = 'astrom'
+        if self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): self.AlgoFileName += '_univ'
+        self.AlgoFileName += '_mcmco'
+        if self.TabStartSet.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
 
-    def DoInputShell(self):
-        with open(self.Tab1.SimuPath.EditPath.text()+self.Tab1.SimuName.EditParam.text()+'/'+self.Tab1.InputFileName.EditParam.text(), "w") as file:
-            file.write('#! /bin/bash\nexport OMP_NUM_THREADS=8\nexport STACKSIZE=1000000\n'+self.DirPath+'/../../Algorithm/bin/astrom_mcmcop <<!') # Header
+        self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
+        
+        with open(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh', 'w') as file:
+            file.write('#! /bin/bash')
             file.write('\n')
-            if self.Tab1.CheckLM.isChecked() and self.Tab1.CheckMCMC.isChecked(): # Choice
+            file.write('export OMP_NUM_THREADS='+self.TabStartSet.NbCores.SpinParam.text()) # Header
+            file.write('\n')
+            file.write('export STACKSIZE=1000000')
+            file.write('\n')
+            file.write(self.EnvPath+'/Algorithm/bin/'+self.AlgoFileName+' <<!')
+            file.write('\n')
+            if self.TabSimuSet.CheckLM.isChecked() and self.TabSimuSet.CheckMCMC.isChecked(): # Choice
                 file.write('2')
                 file.write(' # New simulation LM and MCMC')
-            elif not self.Tab1.CheckLM.isChecked() and self.Tab1.CheckMCMC.isChecked():
+            elif not self.TabSimuSet.CheckLM.isChecked() and self.TabSimuSet.CheckMCMC.isChecked():
                 file.write('3')
                 file.write(' # New simulation LM only')
-            elif self.Tab1.CheckLM.isChecked() and not self.Tab1.CheckMCMC.isChecked():
+            elif self.TabSimuSet.CheckLM.isChecked() and not self.TabSimuSet.CheckMCMC.isChecked():
                 file.write('4')
                 file.write(' # New simulation MCMC only')
             file.write('\n')
-            if self.Tab2.RelAstro.CheckParam.isChecked(): file.write('1 ') # Data
+            if self.TabDataSet.CheckRelAstro.CheckParam.isChecked(): file.write('1 ') # Data
             else: file.write('0 ')
-            if self.Tab2.AbsRV.CheckParam.isChecked(): file.write('1 ')
+            if self.TabDataSet.AbsRV.CheckParam.isChecked(): file.write('1 ')
             else: file.write('0 ')
-            if self.Tab2.RelRV.CheckParam.isChecked(): file.write('1 ')
+            if self.TabDataSet.RelRV.CheckParam.isChecked(): file.write('1 ')
             else: file.write('0 ')
-            if self.Tab2.AbsAstro.CheckParam.isChecked(): file.write('1')
+            if self.TabDataSet.CheckAbsAstro.CheckParam.isChecked(): file.write('1')
             else: file.write('0')
             file.write(' # Type of data (RelAstro? AbsRV? RelRV? AbsAstro?)')
             file.write('\n')
-            file.write(str(self.Tab3.NbOrbitsValue)) # Number of orbits
+            file.write(str(self.TabPriorSet.NbOrbitsValue)) # Number of orbits
             file.write(' # Number of orbits')
             file.write('\n')
-            if self.Tab2.AbsAstro.CheckParam.isChecked() or self.Tab2.RelAstro.CheckParam.isChecked() or self.Tab2.AbsRV.CheckParam.isChecked() or self.Tab2.RelRV.CheckParam.isChecked(): 
-                file.write(self.Tab2.DataFileName.EditParam.text())
+            if self.TabDataSet.CheckAbsAstro.CheckParam.isChecked() or self.TabDataSet.CheckRelAstro.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked() or self.TabDataSet.RelRV.CheckParam.isChecked(): 
+                file.write(self.TabDataSet.PathData.EditPath.text().split('/')[-1])
                 # file.write(' # Data file')
                 file.write('\n')
-            file.write('1d-'+str(self.Tab1.Precision.SpinParam.value())) # Precision of simulation
+            file.write('1d-'+str(self.TabSimuSet.Precision.SpinParam.value())) # Precision of simulation
             file.write(' # Precision')
             file.write('\n')
-            file.write(str(self.Tab2.FormatDate.ComboParam.currentIndex()+1))
-            file.write(' '+str(self.Tab2.FormatAstro.ComboParam.currentIndex()))
-            if self.Tab2.CheckCorrCoef.CheckParam.isChecked(): file.write(' 1')
+            file.write(str(self.TabDataSet.FormatDate.ComboParam.currentIndex()+1))
+            file.write(' '+str(self.TabDataSet.FormatRelAstro.ComboParam.currentIndex()))
+            if self.TabDataSet.CheckCorrCoef.CheckParam.isChecked(): file.write(' 1')
             else: file.write(' 0')
-            file.write(' # Format data (1:DDMMYYYY/2:JD 1:(DEC,RA)/2:(SEP,PA) CorrCoeff?')
+            file.write(' # Format data (1=DDMMYYYY/2=JD 1=(DEC,RA)/2=(SEP,PA) CorrCoeff?')
             file.write('\n')
-            if self.Tab2.RelRV.CheckParam.isChecked() or self.Tab2.AbsRV.CheckParam.isChecked():
-                if self.Tab3.CheckJitter.isChecked(): 
+            if self.TabDataSet.RelRV.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked():
+                if self.TabPriorSet.CheckJitter.CheckParam.isChecked(): 
                     file.write('1')
                 else: 
                     file.write('0')
                 file.write(' # Jitter?')
                 file.write('\n')
-            file.write(self.Tab3.SystDist.SpinParam.text()+' '+self.Tab3.SystDistUnit.ComboParam.currentText())
+            file.write(self.TabPriorSet.SystDist.SpinParam.text()+' '+self.TabPriorSet.SystDistUnit.ComboParam.currentText())
             file.write(' # Distance')
             file.write('\n')
-            file.write(str(float(self.Tab3.TablePriors.item(0,0).text())*0.000954588))
-            file.write(' # First guess of center mass (ms)')
+            file.write(str(float(self.TabPriorSet.TablePriors.item(0,0).text())*0.000954588))
+            file.write(' # First guess of center mass [ms]')
             file.write('\n')
-            file.write(self.Tab1.OutFileName.EditParam.text()+'.dat')
+            file.write(self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
             # file.write(' # Result file')
             file.write('\n')
-            file.write(self.Tab1.DumpFileName.EditParam.text()+'.dat')
+            file.write(self.TabSimuSet.DumpFileName.EditParam.text()+'.dat')
             # file.write(' # Dump file')
             file.write('\n')
-            file.write(self.Tab1.DumpFreq.SpinParam.text())
+            file.write(self.TabSimuSet.DumpFreq.SpinParam.text())
             file.write(' # Dump frequency')
             file.write('\n')
             c=0 # Number of mass prior
-            for i in range(len(self.Tab3.ListPriorMass)):
-                DistribIndex = self.Tab3.ListPriorMass[i].Layout.itemAt(3*self.Tab3.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
+            for i in range(len(self.TabPriorSet.ListPriorMass)):
+                DistribIndex = self.TabPriorSet.ListPriorMass[i].Layout.itemAt(3*self.TabPriorSet.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
                 if DistribIndex != 0: c+=1
             file.write(str(c))
             file.write(' # Number of masses prior')
             file.write('\n')
-            for i in range(len(self.Tab3.ListPriorMass)):
-                DistribIndex = self.Tab3.ListPriorMass[i].Layout.itemAt(3*self.Tab3.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
+            for i in range(len(self.TabPriorSet.ListPriorMass)):
+                DistribIndex = self.TabPriorSet.ListPriorMass[i].Layout.itemAt(3*self.TabPriorSet.NbBodies.SpinParam.value()+1).widget().ComboParam.currentIndex()
                 if DistribIndex != 0:
-                    for j in range(self.Tab3.NbBodies.SpinParam.value()):
-                        file.write(self.Tab3.ListPriorMass[i].Layout.itemAt(3*j+1).widget().SpinParam.text()+' ')
+                    for j in range(self.TabPriorSet.NbBodies.SpinParam.value()):
+                        file.write(self.TabPriorSet.ListPriorMass[i].Layout.itemAt(3*j+1).widget().SpinParam.text()+' ')
                     file.write(' # Coefficients')
                     file.write('\n')
                     file.write(str(DistribIndex))
-                    file.write(' # Distribution (1:Normal, 2:Log, 3:Uniform, 4:Fixed)')
+                    file.write(' # Distribution (1=Normal, 2=Log, 3=Uniform, 4=Fixed)')
                     file.write('\n')
                     if DistribIndex == 1 or DistribIndex == 2:
-                        file.write(self.Tab3.ListPriorMass[i].Mean.SpinParam.text())
+                        file.write(self.TabPriorSet.ListPriorMass[i].Mean.SpinParam.text())
                         file.write(' ')
-                        file.write(self.Tab3.ListPriorMass[i].SD.SpinParam.text())
+                        file.write(self.TabPriorSet.ListPriorMass[i].SD.SpinParam.text())
                         file.write(' ')
                     if DistribIndex == 3:
-                        file.write(self.Tab3.ListPriorMass[i].Min.SpinParam.text())
+                        file.write(self.TabPriorSet.ListPriorMass[i].Min.SpinParam.text())
                         file.write(' ')
-                        file.write(self.Tab3.ListPriorMass[i].Max.SpinParam.text())
+                        file.write(self.TabPriorSet.ListPriorMass[i].Max.SpinParam.text())
                         file.write(' ')
                     if DistribIndex == 4:
-                        file.write(self.Tab3.ListPriorMass[i].Value.SpinParam.text())
+                        file.write(self.TabPriorSet.ListPriorMass[i].Value.SpinParam.text())
                         file.write(' ')
-                    file.write(self.Tab3.ListPriorMass[i].PriorUnit.ComboParam.currentText())
+                    file.write(self.TabPriorSet.ListPriorMass[i].PriorUnit.ComboParam.currentText())
                     file.write(' # Distribution parameters')
                     file.write('\n')
-            file.write(self.Tab3.RefTime.SpinParam.text())
+            file.write(self.TabPriorSet.RefTime.MJDWidget.SpinParam.text())
             file.write(' # Reference of time')
             file.write('\n')
-            if self.Tab3.CheckJitter.isChecked(): 
-                file.write(self.Tab3.Jitter.SpinParam.text()+' '+self.Tab3.V0.SpinParam.text())
-                file.write(' # Initial VO and Jitter')
+            if self.TabPriorSet.CheckJitter.CheckParam.isChecked(): 
+                file.write(self.TabPriorSet.Jitter.SpinParam.text()+' '+self.TabPriorSet.V0.SpinParam.text())
+                file.write(' # Initial VO and Jitter [m/s]')
                 file.write('\n')
-            for i in range(1, self.Tab3.NbBodies.SpinParam.value()):
-                for j in range(len(self.Tab3.LabelParams)):
-                    file.write(self.Tab3.TablePriors.item(i, j).text())
+            for i in range(1, self.TabPriorSet.NbBodies.SpinParam.value()):
+                for j in range(len(self.TabPriorSet.LabelParams)):
+                    file.write(self.TabPriorSet.TablePriors.item(i, j).text())
                     if j == 0: file.write(' mj')
                     file.write(' ')
-                file.write(f' # First guess of orbit {i} parameters (m[mj] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                
+                if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): 
+                    file.write(f' # First guess of orbit {i} parameters (m[mj] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                
+                else: 
+                    file.write(f' # First guess of orbit {i} parameters (m[mj] q[AU] e i[deg] Om[deg] om[deg] tp[MJD])')
                 file.write('\n')
-            file.write(self.Tab3.PMin.SpinParam.text()+' '+self.Tab3.PMax.SpinParam.text())
-            file.write(' # Range of permited period')
-            file.write('\n')
-            file.write(self.Tab3.aMin.SpinParam.text()+' '+self.Tab3.aMax.SpinParam.text())
-            file.write(' # Range of permited half major axis')
-            file.write('\n')
-            file.write(self.Tab3.eMin.SpinParam.text()+' '+self.Tab3.eMax.SpinParam.text())
+            if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked():
+                file.write(self.TabPriorSet.PMin.SpinParam.text()+' '+self.TabPriorSet.PMax.SpinParam.text())
+                file.write(' # Range of permited period')
+                file.write('\n')
+                file.write(self.TabPriorSet.aMin.SpinParam.text()+' '+self.TabPriorSet.aMax.SpinParam.text())
+                file.write(' # Range of permited semi-major axis')
+                file.write('\n')
+            else:
+                file.write(self.TabPriorSet.PeriMin.SpinParam.text()+' '+self.TabPriorSet.PeriMax.SpinParam.text())
+                file.write(' # Range of permited periastron')
+                file.write('\n')
+            file.write(self.TabPriorSet.eMin.SpinParam.text()+' '+self.TabPriorSet.eMax.SpinParam.text())
             file.write(' # Range of permited eccentricity')
             file.write('\n')
-            # file.write('exit')
-            # file.write('\n')
             file.write('!')
-            
             
 
 
