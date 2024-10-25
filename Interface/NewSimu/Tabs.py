@@ -321,7 +321,7 @@ class TabPriorSet(GeneralTab):
         # self.ContainerJitter.setLayout(self.LayoutJitter)
         # self.LayoutV2.addWidget(self.ContainerJitter, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.RefTime = DateAndMJDEdit('Time reference', 'Reference of the time to count the orbit phase [MJD], preferably in the middle of data times')
+        self.RefTime = DateAndMJDEdit('Time reference', 'Reference of the time to count the orbit phase, preferably in the middle of data times')
         self.LayoutV2.addWidget(self.RefTime, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.LayoutV2.setAlignment(Qt.AlignmentFlag.AlignTop)

@@ -81,7 +81,7 @@ class WindowSetNewSimu(QMainWindow):
             # self.TabStartSet.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
             # self.TabStartSet.NbCores.SpinParam.valueChanged.connect(self.ChangeStartOrder)
             self.TabStartSet.BtnCreate.clicked.connect(self.CreateInputFiles)
-            
+
 
     def EnableOrNotPriorJitter(self):
         if self.TabDataSet.RelRV.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked():
@@ -89,6 +89,7 @@ class WindowSetNewSimu(QMainWindow):
         else:
             self.TabPriorSet.CheckJitter.setEnabled(False)
             self.TabPriorSet.CheckJitter.CheckParam.setChecked(False)
+
 
     def StartBtnAvailableOrNot(self):
         if self.TabSimuSet.CheckLM.isChecked() or self.TabSimuSet.CheckMCMC.isChecked():
@@ -126,7 +127,7 @@ class WindowSetNewSimu(QMainWindow):
                     else:
                         print(f'{self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/ directory was created.')
                         # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
-                        shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/data.dat')                    
+                        shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'+self.TabDataSet.PathData.EditPath.text().split('/')[-1])                    
                         print('Data file was copied')
                         self.DoGoFile()
                         print('Go file was created')
@@ -160,7 +161,7 @@ class WindowSetNewSimu(QMainWindow):
             file.write('\n')
             file.write('export STACKSIZE=1000000')
             file.write('\n')
-            file.write(self.EnvPath+'/Algorithm/bin/'+self.AlgoFileName+' <<!')
+            file.write(self.EnvPath+'/code/bin/'+self.AlgoFileName+' <<!')
             file.write('\n')
             if self.TabSimuSet.CheckLM.isChecked() and self.TabSimuSet.CheckMCMC.isChecked(): # Choice
                 file.write('2')
@@ -262,7 +263,10 @@ class WindowSetNewSimu(QMainWindow):
                 file.write('\n')
             for i in range(1, self.TabPriorSet.NbBodies.SpinParam.value()):
                 for j in range(len(self.TabPriorSet.LabelParams)):
-                    file.write(self.TabPriorSet.TablePriors.item(i, j).text())
+                    if float(self.TabPriorSet.TablePriors.item(i, j).text()) == 0:
+                        file.write('0.0001')
+                    else:
+                        file.write(self.TabPriorSet.TablePriors.item(i, j).text())
                     if j == 0: file.write(' mj')
                     file.write(' ')
                 if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): 

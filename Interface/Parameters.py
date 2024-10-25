@@ -257,7 +257,7 @@ class DateAndMJDEdit(GeneralParam):
         self.Layout.addWidget(self.DateWidget)
 
         # Date on MJD
-        self.MJDWidget = SpinBox(None, 'Date in MJD', self.CurMJD, 0, None)
+        self.MJDWidget = SpinBox(None, 'Date [MJD]', self.CurMJD, 0, None)
         self.DateWidget.Layout.addWidget(self.MJDWidget)
 
         # Connections
