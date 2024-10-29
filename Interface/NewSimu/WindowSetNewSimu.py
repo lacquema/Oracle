@@ -161,7 +161,7 @@ class WindowSetNewSimu(QMainWindow):
             file.write('\n')
             file.write('export STACKSIZE=1000000')
             file.write('\n')
-            file.write(self.EnvPath+'/code/bin/'+self.AlgoFileName+' <<!')
+            file.write(self.EnvPath+'/Code/bin/'+self.AlgoFileName+' <<!')
             file.write('\n')
             if self.TabSimuSet.CheckLM.isChecked() and self.TabSimuSet.CheckMCMC.isChecked(): # Choice
                 file.write('2')

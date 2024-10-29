@@ -166,7 +166,7 @@ class WindowSetContSimu(QMainWindow):
             file.write('\n')
             file.write('export STACKSIZE=1000000')  
             file.write('\n')
-            file.write(self.EnvPath+'/code/bin/'+self.AlgoFileName+' <<!')
+            file.write(self.EnvPath+'/Code/bin/'+self.AlgoFileName+' <<!')
             file.write('\n')
             file.write('1') # continuation
             file.write(' # Simulation continuation')

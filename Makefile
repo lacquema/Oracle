@@ -2,9 +2,11 @@
 
 # Makefile to build libraries and executables
 
-# Parameters
+# Parameters to input
 COMPILF = /opt/homebrew/bin/gfortran
 PYTHON3 = /Users/lacquema/Oracle.env/bin/python3
+
+# Others parameters
 PARALLEL = NO
 ADD_FLAGS =
 LIB_FLAGS = -O3 -c
@@ -12,7 +14,7 @@ ALG_FLAGS = -O3
 DIR = .
 
 # Induced directories
-CODE_DIR = $(DIR)/code
+CODE_DIR = $(DIR)/Code
 
 LIB_DIR = $(CODE_DIR)/lib
 BIN_DIR = $(CODE_DIR)/bin
