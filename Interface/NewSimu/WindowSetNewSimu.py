@@ -209,8 +209,8 @@ class WindowSetNewSimu(QMainWindow):
             file.write(self.TabPriorSet.SystDist.SpinParam.text()+' '+self.TabPriorSet.SystDistUnit.ComboParam.currentText())
             file.write(' # Distance')
             file.write('\n')
-            file.write(str(float(self.TabPriorSet.TablePriors.item(0,0).text())*0.000954588))
-            file.write(' # First guess of center mass [ms]')
+            file.write(self.TabPriorSet.FirstGuessCenterMass.SpinParam.text())
+            file.write(' # First guess of center mass [Msun]')
             file.write('\n')
             file.write(self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
             # file.write(' # Result file')
@@ -259,9 +259,9 @@ class WindowSetNewSimu(QMainWindow):
             file.write('\n')
             if self.TabPriorSet.CheckJitter.CheckParam.isChecked(): 
                 file.write(self.TabPriorSet.Jitter.SpinParam.text()+' '+self.TabPriorSet.V0.SpinParam.text())
-                file.write(' # Initial VO and Jitter [m/s]')
+                file.write(' # Jitter and V0 [km/s]')
                 file.write('\n')
-            for i in range(1, self.TabPriorSet.NbBodies.SpinParam.value()):
+            for i in range(0, self.TabPriorSet.NbOrbitsValue):
                 for j in range(len(self.TabPriorSet.LabelParams)):
                     if float(self.TabPriorSet.TablePriors.item(i, j).text()) == 0:
                         file.write('0.0001')

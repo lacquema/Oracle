@@ -224,7 +224,7 @@ class TabPriorSet(GeneralTab):
         self.NbBodies.SpinParam.valueChanged.connect(self.ChangeNbBodies)
 
         self.NbOrbitsValue = self.NbBodiesValue-1
-        self.NbOrbits = QLabel(f'=> {self.NbOrbitsValue} Orbit')
+        self.NbOrbits = QLabel(f'=>    {self.NbOrbitsValue} Orbit')
         self.NbBodies.Layout.addWidget(self.NbOrbits)
 
         self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 1, 2)
@@ -233,11 +233,20 @@ class TabPriorSet(GeneralTab):
         self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
         self.SystDist.Layout.addWidget(self.SystDistUnit, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.FirstGuessCenterMass = DoubleSpinBox('Center mass first guess', 'First guess of center mass', 0, 0, None, 1, 2)
-        # self.LayoutV1.addWidget(self.FirstGuessCenterMass)
+        self.CheckJitter = CheckBox('Jitter :')
+        self.CheckJitter.setEnabled(False)
+        self.CheckJitter.CheckParam.stateChanged.connect(self.EnablePriorJitterOrNot)
+        self.LayoutV1.addWidget(self.CheckJitter, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.FirstGuessCenterMassUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
-        # self.FirstGuessCenterMass.Layout.addWidget(self.FirstGuessCenterMassUnit)
+        self.Jitter = DoubleSpinBox(None, 'Jitter [m/s]', 0, 0, 2147483647, None, 2)
+        self.Jitter.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.Jitter, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.LblPlusV0 = QLabel('+')
+        self.LblPlusV0.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.LblPlusV0)
+        self.V0 = DoubleSpinBox(None, 'Systematic error V0 [m/s]', 0, 0, 2147483647, None, 2)
+        self.V0.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.V0, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.CheckUnivVar = CheckBox('Universal variables', 'If the eccentricity of an orbit is very large or if it is poorly constrained')
         self.LayoutV1.addWidget(self.CheckUnivVar)
@@ -280,17 +289,24 @@ class TabPriorSet(GeneralTab):
 
         self.LayoutV2.addWidget(Delimiter(Title = 'Orbits parameters first guess :', Width=0))
 
+        self.FirstGuessCenterMass = DoubleSpinBox('Center mass', 'First guess of center mass [Msun]', 0, 0, None, 1, 2)
+        self.LayoutV2.addWidget(self.FirstGuessCenterMass)
+
+        # self.FirstGuessCenterMassUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
+        # self.FirstGuessCenterMass.Layout.addWidget(self.FirstGuessCenterMassUnit)
+
         self.TablePriors = QTableWidget()
 
         self.EnableUnivVarOrNot(self.CheckUnivVar.CheckParam.isChecked())
 
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
-        self.TablePriors.setRowCount(self.NbBodiesValue)
+        self.TablePriors.setRowCount(self.NbOrbitsValue)
         self.LayoutV2.addWidget(self.TablePriors, alignment=Qt.AlignmentFlag.AlignVCenter)
-        for i in range(self.NbBodiesValue):
+        for i in range(self.NbOrbitsValue):
             for j in range(len(self.LabelParams)):
-                if i==0 and j!=0: self.TablePriors.setItem(i, j, QTableWidgetItem('X'))
-                else: self.TablePriors.setItem(i, j, QTableWidgetItem('0.'))
+                # if i==0 and j!=0: self.TablePriors.setItem(i, j, QTableWidgetItem('X'))
+                # else: 
+                self.TablePriors.setItem(i, j, QTableWidgetItem('0.'))
                 self.TablePriors.item(i, j).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # self.ContainerTest = QWidget()
@@ -299,27 +315,6 @@ class TabPriorSet(GeneralTab):
         # self.TablePriors.setCellWidget(0, 0, self.FirstGuessCenterMassUnit)
         self.TablePriors.itemChanged.connect(self.ValidationItemTbl)
         self.TablePriors.cellClicked.connect(self.SaveOldTextTbl)
-
-        # self.ContainerJitter = QWidget()
-        # self.LayoutJitter = QHBoxLayout()
-
-        self.CheckJitter = CheckBox('Jitter :')
-        self.CheckJitter.setEnabled(False)
-        self.CheckJitter.CheckParam.stateChanged.connect(self.EnablePriorJitterOrNot)
-        self.LayoutV2.addWidget(self.CheckJitter, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.Jitter = DoubleSpinBox(None, 'Jitter [m/s]', 0, 0, 2147483647, None, 2)
-        self.Jitter.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.Jitter, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.LblPlusV0 = QLabel('+')
-        self.LblPlusV0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.LblPlusV0)
-        self.V0 = DoubleSpinBox(None, 'Systematic error V0 [m/s]', 0, 0, 2147483647, None, 2)
-        self.V0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.V0, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        # self.ContainerJitter.setLayout(self.LayoutJitter)
-        # self.LayoutV2.addWidget(self.ContainerJitter, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.RefTime = DateAndMJDEdit('Time reference', 'Reference of the time to count the orbit phase, preferably in the middle of data times')
         self.LayoutV2.addWidget(self.RefTime, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -370,16 +365,16 @@ class TabPriorSet(GeneralTab):
         OldValue = self.NbBodiesValue
         self.NbBodiesValue = self.NbBodies.SpinParam.value()
         self.NbOrbitsValue = self.NbBodiesValue-1
-        if  self.NbOrbitsValue==1: self.NbOrbits.setText(f'=> {self.NbOrbitsValue} Orbit')
-        else: self.NbOrbits.setText(f'=> {self.NbOrbitsValue} Orbits')
+        if  self.NbOrbitsValue==1: self.NbOrbits.setText(f'=>    {self.NbOrbitsValue} Orbit')
+        else: self.NbOrbits.setText(f'=>    {self.NbOrbitsValue} Orbits')
 
         # Change the number of row in the priors table
-        self.TablePriors.setRowCount(self.NbBodiesValue)
+        self.TablePriors.setRowCount(self.NbOrbitsValue)
 
         if self.NbBodiesValue > OldValue:
             for n in range(len(self.LabelParams)):
-                self.TablePriors.setItem(self.NbBodiesValue-1, n, QTableWidgetItem('0.'))
-                self.TablePriors.item(self.NbBodiesValue-1, n).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.TablePriors.setItem(self.NbOrbitsValue-1, n, QTableWidgetItem('0.'))
+                self.TablePriors.item(self.NbOrbitsValue-1, n).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             
             for x in self.ListPriorMass:
                 x.Layout.insertWidget(x.Layout.indexOf(x.Distrib)-1, QLabel('+'), alignment=Qt.AlignmentFlag.AlignLeft)
@@ -406,8 +401,8 @@ class TabPriorSet(GeneralTab):
                     if TextNew[i]=='.' and PointSuppr==False: 
                             ListValidCharacters='1234567890'
                             PointSuppr = True 
-                if self.TablePriors.currentRow() == 0 and self.TablePriors.currentColumn() != 0:
-                    self.TablePriors.currentItem().setText(self.TextOld)
+                # if self.TablePriors.currentRow() == 0 and self.TablePriors.currentColumn() != 0:
+                #     self.TablePriors.currentItem().setText(self.TextOld)
 
     def SaveOldTextTbl(self):
         self.TextOld = self.TablePriors.currentItem().text()
