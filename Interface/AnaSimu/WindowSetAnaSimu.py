@@ -87,8 +87,8 @@ class WindowSetAnaSimu(QMainWindow):
         self.NbSelectOrbits = SpinBox('Number of orbits', 'Number of ramdom selected orbits to analyse', 10000, 1, None, 1)
         self.Layout.addWidget(self.NbSelectOrbits, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.NbPtsEllipse = SpinBox('Points by ellipse', 'Number of points by computed ellipse', 500, 1, None, 1)
-        self.Layout.addWidget(self.NbPtsEllipse, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.NbPtsEllipse = SpinBox('Points by ellipse', 'Number of points by computed ellipse', 500, 1, None, 1)
+        # self.Layout.addWidget(self.NbPtsEllipse, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.BtnStart = QPushButton('Analyse')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
@@ -129,7 +129,7 @@ class WindowSetAnaSimu(QMainWindow):
         elif self.SystDistUnit == 'mas':
             self.SystDistValue = 1000/self.SystDist
     
-        self.WinMain = WindowMainClass(self.SimuPath.EditPath.text().split('/')[-2], self.SimuPath.EditPath.text()+self.DataFileName, self.SimuPath.EditPath.text()+self.SimuFileName, self.SystDistValue, self.NbSelectOrbits.SpinParam.value(), self.NbPtsEllipse.SpinParam.value())
+        self.WinMain = WindowMainClass(self.SimuPath.EditPath.text().split('/')[-2], self.SimuPath.EditPath.text()+self.DataFileName, self.SimuPath.EditPath.text()+self.SimuFileName, self.SystDistValue, self.NbSelectOrbits.SpinParam.value(), 1000)
         self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
         self.WinMain.show()
         self.close()
