@@ -4,9 +4,9 @@
 
 # Parameters to input
 COMPILF = /opt/homebrew/bin/gfortran
-PYTHON3 = /Users/lacquema/Oracle.env/bin/python3
 
 # Others parameters
+PYTHON3 = /Users/lacquema/Oracle.env/bin/python3
 PARALLEL = NO
 ADD_FLAGS =
 LIB_FLAGS = -O3 -c
@@ -33,7 +33,7 @@ LIB = $(LIB_DIR)/lib_mcmc_par.a
 endif
 
 # Utilities
-library:
+library_for:
 	test ! -f $(LIB) || rm $(LIB)
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/utils.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mcmc.f 
@@ -44,7 +44,7 @@ library:
 	ar -rv $(LIB) *.o
 	rm *.o
 
-packages:
+library_py:
 	$(PYTHON3) -m pip install -r $(DIR)/requirements.txt
 
 
@@ -58,11 +58,16 @@ else
 	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(ALG_DIR)/$@.f $(LIB) -o $(BIN_DIR)/$@_par
 endif
 
-all: 
-	make packages
-	make library
+compile:
+	make library_for
 	make astrom_mcmco
 	make astrom_univ_mcmco
+	make astrom_mcmco PARALLEL=YES
+	make astrom_univ_mcmco PARALLEL=YES
+
+all: 
+	make compile
+	make library_py
 
 clean:
 	rm *.o
