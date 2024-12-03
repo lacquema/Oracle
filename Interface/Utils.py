@@ -126,6 +126,21 @@ def RotMatrix(AngleRot, Axis='x'or'y'or'z'):
 
 
 def RADECtoSEPPA(Ra, Dec, DRa, DDec, Corr): # Ra [mas] and Dec [mas]
+
+    if type(Ra)=='int' or 'float':
+        NbData = 1
+        Ra = [Ra]
+        Dec = [Dec]
+        DRa = [DRa]
+        DDec = [DDec]
+    else:
+        NbData = np.shape(Ra)[0]
+
+    if Corr==None:
+        Corr = 0
+
+    # Initialisation outputs
+    Sep, Pa, DSep, DPa = [np.zeros(NbData) for i in range(4)]
     
     # Conversions inputs
     Ra = np.array(Ra)
@@ -133,18 +148,18 @@ def RADECtoSEPPA(Ra, Dec, DRa, DDec, Corr): # Ra [mas] and Dec [mas]
     DRa = np.array(DRa)
     DDec = np.array(DDec)
 
-    V = np.array([[DDec**2, DDec*DRa*Corr],
-                  [DDec*DRa*Corr, DRa**2]])
+    for i in range(NbData):
 
-    Sep = np.sqrt(Dec**2 + Ra**2)
-    gSep = np.array([Dec/np.sqrt(Dec**2 + Ra**2),
-                     Ra/np.sqrt(Dec**2 + Ra**2)])
-    DSep = np.sqrt(np.matmul(np.transpose(gSep), np.matmul(V, gSep)))
-    
-    Pa = np.arctan(Ra/Dec)
-    gPa = np.array([1/(Dec+Ra**2/Dec),
-                    -1/(Ra+Dec**2/Ra)])
-    DPa = np.sqrt(np.matmul(np.transpose(gPa), np.matmul(V, gPa)))
+        V = np.array([[DDec[i]**2, DDec[i]*DRa[i]*Corr],
+                    [DDec[i]*DRa[i]*Corr, DRa[i]**2]])
+
+        Sep[i] = np.sqrt(Dec[i]**2 + Ra[i]**2)
+        gSep = np.array([Dec[i]/np.sqrt(Dec[i]**2 + Ra[i]**2), Ra[i]/np.sqrt(Dec[i]**2 + Ra[i]**2)])
+        DSep[i] = np.sqrt(np.matmul(np.transpose(gSep), np.matmul(V, np.transpose(gSep))))
+        
+        Pa[i] = np.arctan(Ra[i]/Dec[i])
+        gPa = np.array([1/(Dec[i]+Ra[i]**2/Dec[i]), -1/(Ra[i]+Dec[i]**2/Ra[i])])
+        DPa[i] = np.sqrt(np.matmul(np.transpose(gPa), np.matmul(V, np.transpose(gPa))))
 
     # Conversions outputs
     Pa = np.rad2deg(Pa)
@@ -155,7 +170,22 @@ def RADECtoSEPPA(Ra, Dec, DRa, DDec, Corr): # Ra [mas] and Dec [mas]
 
 
 
-def SEPPAtoRADEC(Sep, Pa, DSep, DPa, Corr): # Sep [mas] and Pa [deg]
+def SEPPAtoRADEC(Sep, Pa, DSep, DPa, Corr=None): # Sep [mas] and Pa [deg]
+
+    if type(Sep)=='int' or 'float':
+        NbData = 1
+        Sep = [Sep]
+        Pa = [Pa]
+        DSep = [DSep]
+        DPa = [DPa]
+    else:
+        NbData = np.shape(Sep)[0]
+
+    if Corr==None:
+        Corr = 0
+
+    # Initialisation outputs
+    Ra, Dec, DRa, DDec = [np.zeros(NbData) for i in range(4)]
     
     # Conversions inputs
     Sep = np.array(Sep)
@@ -163,29 +193,35 @@ def SEPPAtoRADEC(Sep, Pa, DSep, DPa, Corr): # Sep [mas] and Pa [deg]
     DSep = np.array(DSep)
     DPa = np.deg2rad(np.array(DPa))
 
-    V = np.array([[DSep**2, DSep*DPa*Corr],
-                  [DSep*DPa*Corr, DPa**2]])
-    
-    Ra = Sep*np.sin(Pa)
-    gRa = np.array([np.sin(Pa),
-                    Sep*np.cos(Pa)])
-    DRa = np.sqrt(np.matmul(np.transpose(gRa), np.matmul(V, gRa)))
+    for i in range(NbData):
 
-    Dec = Sep*np.cos(Pa)
-    gDec = np.array([np.cos(Pa),
-                     -Sep*np.sin(Pa)])
-    DDec = np.sqrt(np.matmul(np.transpose(gDec), np.matmul(V, gDec)))
+        V = np.array([[DSep[i]**2, DSep[i]*DPa[i]*Corr],
+                      [DSep[i]*DPa[i]*Corr, DPa[i]**2]])
+        
+        Ra[i] = Sep[i]*np.sin(Pa[i])
+        gRa = np.array([np.sin(Pa[i]), Sep[i]*np.cos(Pa[i])])
+        DRa[i] = np.sqrt(np.matmul(np.transpose(gRa), np.matmul(V, np.transpose(gRa))))
+
+        Dec[i] = Sep[i]*np.cos(Pa[i])
+        gDec = np.array([np.cos(Pa[i]), -Sep[i]*np.sin(Pa[i])])
+        DDec[i] = np.sqrt(np.matmul(np.transpose(gDec), np.matmul(V, np.transpose(gDec))))
     
     return Ra, Dec, DRa, DDec # Dep [mas] and Ra [mas]
 
 
     
 
-
-
 # Convert all date to jd
 def AllDate2jd(YY, MM, JJ):
-    NbDate = np.shape(YY)[0]
+
+    if type(YY)=='int' or 'float':
+        NbDate = 1
+        YY = [YY]
+        MM = [MM]
+        JJ = [JJ]
+    else:
+        NbDate = np.shape(YY)[0]
+
     MJD = np.zeros(NbDate)
     for k in range(NbDate):
         MJD[k] = jd_to_mjd(date_to_jd(YY[k], MM[k], JJ[k]))

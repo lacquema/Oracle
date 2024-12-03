@@ -215,11 +215,11 @@ class SpaceView(GeneralToolClass):
                         self.Subplot2D.plot(self.SelectX[self.nBody][n], self.SelectY[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
             if self.CheckObs.CheckParam.isChecked():
-                self.Subplot2D.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='') # Observed data
+                self.Subplot2D.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='', color='b') # Observed data
 
             # Plot features
-            self.Subplot2D.set_xlabel('dRa [mas]')
-            self.Subplot2D.set_ylabel('dDec [mas]')
+            self.Subplot2D.set_xlabel(r'$\delta Ra$ [mas]')
+            self.Subplot2D.set_ylabel(r'$\delta Dec$ [mas]')
             self.Subplot2D.invert_xaxis()
 
 
@@ -244,8 +244,8 @@ class SpaceView(GeneralToolClass):
                         self.Subplot2D.plot(self.SelectX[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
             # Plot features
-            self.Subplot2D.set_xlabel('dRa [mas]')
-            self.Subplot2D.set_ylabel('depth [mas]')
+            self.Subplot2D.set_xlabel(r'$\delta Ra$ [mas]')
+            self.Subplot2D.set_ylabel('Depth [mas]')
             self.Subplot2D.invert_xaxis()
         
 
@@ -270,8 +270,8 @@ class SpaceView(GeneralToolClass):
                         self.Subplot3D.plot(self.SelectX[self.nBody][n], self.SelectY[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
             # Plot features
-            self.Subplot3D.set_xlabel('dRa [mas]')
-            self.Subplot3D.set_ylabel('dDec [mas]')
+            self.Subplot3D.set_xlabel(r'$\delta Ra$ [mas]')
+            self.Subplot3D.set_ylabel(r'$\delta Dec$ [mas]')
             self.Subplot3D.set_zlabel('Depth [mas]')
             self.Subplot3D.invert_xaxis()
 
@@ -315,7 +315,11 @@ class TempoView(GeneralToolClass):
 
     # Parameters update
     def UpdateParams(self):
-        self.Coordinate = self.CoordinateWidget.ComboParam.currentText()
+        self.CoordinateIndex = self.CoordinateWidget.ComboParam.currentIndex()
+        if self.CoordinateIndex == 0:
+            self.Coordinate = r'$\delta Ra$'
+        elif self.CoordinateIndex == 1:
+            self.Coordinate = r'$\delta Dec$'
         self.nBody = int(self.nBodyWidget.ComboParam.currentText())-1
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
 
@@ -336,13 +340,13 @@ class TempoView(GeneralToolClass):
             return
 
         # Plots with current paramaters
-        if self.Coordinate == 'dRa':
+        if self.CoordinateIndex == 0:
             YplotOutput = self.SelectX
             BestYplotOutput = self.BestX
             YplotInput = self.Ra
             YplotInputErr = self.DRa
 
-        elif self.Coordinate == 'dDec':
+        elif self.CoordinateIndex == 1:
             YplotOutput = self.SelectY
             BestYplotOutput = self.BestY
             YplotInput = self.Dec
@@ -776,8 +780,8 @@ class PosAtDate(GeneralToolClass):
             self.Subplot.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='') # Observed data
 
         # Plot features
-        self.Subplot.set_xlabel('dRa [mas]')
-        self.Subplot.set_ylabel('dDec [mas]')
+        self.Subplot.set_xlabel(r'$\delta$ Ra')
+        self.Subplot.set_ylabel(r'$\delta$ Dec')
         self.Subplot.invert_xaxis()
 
         
