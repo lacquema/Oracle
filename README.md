@@ -1,6 +1,21 @@
-# Installing on your computer
+*******
+Table of contents:
 
-## 0) Create a container
+- [Installing](#install)
+
+- [Launch the main code](#launch)
+
+*******
+
+<div id='install'/>  
+
+# Installing
+
+## 0) Prerequisites
+
+You need python3 and a fortran compiler, as gfortran. 
+
+## 1) Create a container
 
 It is recommended that you create a virtual environment. It is an isolated execution environment. It allows the packages used for a project to be isolated, so that there are different versions for each project.
 
@@ -8,61 +23,60 @@ To do this, use the following command:
 
 `python3 -m venv <environment_path>`
 
-Note that the path to the python3 executable is in this environment: `<environment_path>/bin/python3`, and that the libraries are installed in the `<environment_path>/lib/` directory.
+You can now activate the environment: 
 
-If you do not choose this option, simply create a directory:
+`source <environment_path>/bin/activate`
+
+The `python3` command will now refer to the python3 installed in your environment `<environment_path>/bin/python3` and not the one on the system. And the libraries are now installed in the `<environment_path>/lib/` directory.
+
+
+If you do not choose this option, simply create an usual directory:
 
 `mkdir <environment_path>`
 
 
-## 1) Download the github directory
+## 2) Download the github directory  
 
 Now that the container is ready, you can download the gihub directory inside:
+
+`cd <environment_path>`
 
 `git clone https://github.com/lacquema/Oracle`
 
 
-## 2) Compile and install packages
+## 3) Install python packages
 
-First, you need to open the newly installed github directory in your new environment:
+All the necessary python packages are listed in the `<environment_path>/Oracle/requirements.txt` file. You can install them all:
 
-`cd <environment_path>/Oracle/`
+`python3 -m pip install -r <environment_path>/Oracle/requirements.txt`
 
-Now, you need to open the `<environment_path>/Oracle/Makefile` file and update the following parameters: COMPILF and PYTHON3. They correspond respectively to the paths to the executables of the fortran compiler installed on your computer and of python3 in your environment.
+**On computing servers**, the use of modern package managers such as Guix is highly recommended and often mandatory. These tools enable isolated and reproducible management of software dependencies, thus avoiding unintentional changes to the server environment. In addition, Guix avoids unnecessary duplication of packages by storing shared dependencies only once in the server's `/gnu/store`. This considerably reduces the use of storage space. Instead of installing packages directly, you configure them to reference the Guix-managed library. All required Python packages are also explicitly listed in the `<environment_path>/Oracle/manifest.scm` file. You can reference them all:
 
-And finally:
+`guix package -m <environment_path>/Oracle/manifest.scm`
 
-`make all`
+Ensure to consult the Guix documentation provided by your server administrators, as specific configurations or permissions might apply.
 
-This command compiles all the code and installs all the necessary packages.
-
-
+Note that software dependencies may includes the python packages we need, as well as python3 itself and the fortran compiler `gfortran-toolchain`.
 
 
-# Installing on a computing server
+## 4) Compile fortran code
 
-## 0) Create a container
+Open the `<environment_path>/Oracle/Makefile` file and update the following parameters: COMPILF. This corresponds to the paths or simply the command for the executables of the fortran compiler installed on your computer. 
 
-Simply create a directory:
+**On compute servers**, you can set it as `gfortran-toolchain`. 
 
-`mkdir <environment_path>`
+You can now compile all the fortran files:
 
-## 1) Download the github directory
-
-Now that the container is ready, you can download the gihub directory inside:
-
-`git clone https://github.com/lacquema/Oracle`
-
-## 2) Compile and install packages
-
-The use of modern package managers such as Nix or Guix is recommended. These tools enable dependencies to be managed in an isolated and reproducible way, without polluting the overall system environment.
+`make compile`
 
 
 
 
-
+<div id='launch'/>  
 
 # Launch the main code
+
+
 
 `python3 <environment_path>/Oracle/Interface/Main.py`
 
