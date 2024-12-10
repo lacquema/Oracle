@@ -2,11 +2,11 @@
 
 # Makefile to build libraries and executables
 
-# Parameters to input
-COMPILF = /opt/homebrew/bin/gfortran
+# Depedencies
+COMPILF = gfortran
+PYTHON3 = python3
 
 # Others parameters
-PYTHON3 = /Users/lacquema/Oracle.env/bin/python3
 PARALLEL = NO
 ADD_FLAGS =
 LIB_FLAGS = -O3 -c

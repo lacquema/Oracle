@@ -267,7 +267,11 @@ class WindowSetNewSimu(QMainWindow):
                         file.write('0.0001')
                     else:
                         file.write(self.TabPriorSet.TablePriors.item(i, j).text())
-                    if j == 0: file.write(' mj')
+                    if j == 0: 
+                        if self.TabPriorSet.FirstGuessOtherMassUnit.ComboParam.currentIndex() == 0:
+                            file.write(' mj')
+                        else:
+                            file.write(' ms')
                     file.write(' ')
                 if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): 
                     file.write(f' # First guess of orbit {i} parameters (m[Mjup] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                

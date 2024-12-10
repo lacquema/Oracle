@@ -295,8 +295,13 @@ class TabPriorSet(GeneralTab):
         # self.FirstGuessCenterMassUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
         # self.FirstGuessCenterMass.Layout.addWidget(self.FirstGuessCenterMassUnit)
 
+        self.FirstGuessOtherMassUnit = ComboBox('Other bodies mass unit', 'Unit of mass of the other bodies', ['Mjup', 'Msun'])
+        self.FirstGuessOtherMassUnit.ComboParam.currentIndexChanged.connect(self.OtherMassUnitChange)
+        self.LayoutV2.addWidget(self.FirstGuessOtherMassUnit)
+
         self.TablePriors = QTableWidget()
 
+        self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
         self.EnableUnivVarOrNot(self.CheckUnivVar.CheckParam.isChecked())
 
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
@@ -419,19 +424,26 @@ class TabPriorSet(GeneralTab):
         if not state:
             self.eMin.SpinParam.setMaximum(1)
             self.eMax.SpinParam.setMaximum(1)
-            self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
-            self.TablePriors.setColumnCount(len(self.LabelParams))
-            self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
+            self.LabelParams[1] = 'a [AU]'
         else:
             self.eMin.SpinParam.setMaximum(10)
             self.eMax.SpinParam.setMaximum(10)
-            self.LabelParams = ['m [Mjup]', 'q [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
-            self.TablePriors.setColumnCount(len(self.LabelParams))
-            self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
+            self.LabelParams[1] = 'q [AU]'
+
+        self.TablePriors.setColumnCount(len(self.LabelParams))
+        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
 
     def InputBetaPicValues(self):
         return
 
+    def OtherMassUnitChange(self, index):
+        if index==0:
+            self.LabelParams[0] = 'm [Mjup]'
+        elif index==1: 
+            self.LabelParams[0] = 'm [Msun]'
+
+        self.TablePriors.setColumnCount(len(self.LabelParams))
+        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
 
 
 class TabStartSet(GeneralTab):
