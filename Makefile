@@ -62,6 +62,7 @@ compile:
 	make library_for
 	make astrom_mcmco
 	make astrom_univ_mcmco
+	make library_for PARALLEL=YES
 	make astrom_mcmco PARALLEL=YES
 	make astrom_univ_mcmco PARALLEL=YES
 

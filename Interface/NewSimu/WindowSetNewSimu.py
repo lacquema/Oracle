@@ -153,8 +153,10 @@ class WindowSetNewSimu(QMainWindow):
         if self.TabStartSet.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
 
         self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
+
+        self.SimuDir = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'
         
-        with open(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh', 'w') as file:
+        with open(self.SimuDir+'go_mcmco.sh', 'w') as file:
             file.write('#! /bin/bash')
             file.write('\n')
             file.write('export OMP_NUM_THREADS='+self.TabStartSet.NbCores.SpinParam.text()) # Header
@@ -187,7 +189,7 @@ class WindowSetNewSimu(QMainWindow):
             file.write(' # Number of orbits')
             file.write('\n')
             if self.TabDataSet.CheckAbsAstro.CheckParam.isChecked() or self.TabDataSet.CheckRelAstro.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked() or self.TabDataSet.RelRV.CheckParam.isChecked(): 
-                file.write(self.TabDataSet.PathData.EditPath.text().split('/')[-1])
+                file.write(self.SimuDir+self.TabDataSet.PathData.EditPath.text().split('/')[-1])
                 # file.write(' # Data file')
                 file.write('\n')
             file.write('1d-'+str(self.TabSimuSet.Precision.SpinParam.value())) # Precision of simulation
@@ -212,10 +214,10 @@ class WindowSetNewSimu(QMainWindow):
             file.write(self.TabPriorSet.FirstGuessCenterMass.SpinParam.text())
             file.write(' # First guess of center mass [Msun]')
             file.write('\n')
-            file.write(self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
+            file.write(self.SimuDir+self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
             # file.write(' # Result file')
             file.write('\n')
-            file.write(self.TabSimuSet.DumpFileName.EditParam.text()+'.dat')
+            file.write(self.SimuDir+self.TabSimuSet.DumpFileName.EditParam.text()+'.dat')
             # file.write(' # Dump file')
             file.write('\n')
             file.write(self.TabSimuSet.DumpFreq.SpinParam.text())

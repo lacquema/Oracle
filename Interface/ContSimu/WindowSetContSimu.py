@@ -171,7 +171,7 @@ class WindowSetContSimu(QMainWindow):
             file.write('1') # continuation
             file.write(' # Simulation continuation')
             file.write('\n')
-            file.write(self.DumpFileName)
+            file.write(self.SimuPath.EditPath.text()+self.DumpFileName)
             file.write('\n')
             file.write(self.DumpFreq.SpinParam.text())
             file.write(' # Dump frequency')
