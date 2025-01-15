@@ -1,0 +1,2 @@
+source
+oarsub -l nodes=1/core=8,walltime=48 --project dynapla

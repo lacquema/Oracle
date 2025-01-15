@@ -81,6 +81,7 @@ class WindowSetNewSimu(QMainWindow):
             # self.TabStartSet.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
             # self.TabStartSet.NbCores.SpinParam.valueChanged.connect(self.ChangeStartOrder)
             self.TabStartSet.BtnCreate.clicked.connect(self.CreateInputFiles)
+            self.TabStartSet.BtnStart.clicked.connect(self.Start)
 
 
     def EnableOrNotPriorJitter(self):
@@ -99,12 +100,20 @@ class WindowSetNewSimu(QMainWindow):
             self.TabStartSet.BtnStart.setEnabled(False)
             self.TabStartSet.BtnCreate.setEnabled(False)
 
-    
-
-
     # Emition of the CloseEvent signal when the parameter window is closed
     def closeEvent(self, e):
         self.SignalCloseWindowSetNewSimu.emit() 
+
+
+    def Start(self):
+        if not os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'):
+            self.CreateInputFiles()
+            if os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'):
+                print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh')
+                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh', shell=True, text=True)
+        else:
+            print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh')
+            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh', shell=True, text=True)
 
     # def ChangeStartOrder(self):
     #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
@@ -114,7 +123,7 @@ class WindowSetNewSimu(QMainWindow):
             print('Simulation path not given')
         else:
             if os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()):
-                print('This directory already exists')
+                print('This simulation already exists')
             else: 
                 os.makedirs(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
                 if len(self.TabDataSet.PathData.EditPath.text())==0:
@@ -132,18 +141,6 @@ class WindowSetNewSimu(QMainWindow):
                         self.DoGoFile()
                         print('Go file was created')
                         print('Just run it')
-
-                        # if self.TabStartSet.CheckOrder.CheckParam.isChecked():
-                        #     command = 'cd '+self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+';chmod u+x '+self.TabSimuSet.InputFileName.EditParam.text()+';'+self.TabStartSet.StartOrder.EditParam.text()
-                        #     print(command)
-                        #     result = subprocess.run(command, shell=True, text=True)
-                        #     print('Simulation launched')
-                        #     error = result.stderr
-                        #     if type(error)!= type(None):
-                        #         print(result.stderr)
-                        #         print('Simulation not launched but you can still launch yourself the start shell file created in the desired directory.\n')
-                        # else:
-                        #     print('All you have to do is launch the go file')
                 
 
     def DoGoFile(self):
@@ -295,6 +292,7 @@ class WindowSetNewSimu(QMainWindow):
             file.write(' # Range of permited eccentricity')
             file.write('\n')
             file.write('!')
+
             
 
 

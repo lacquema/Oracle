@@ -25,6 +25,10 @@ class GeneralTab(QWidget):
     def __init__(self):
         super().__init__()
 
+        # Directory path
+        self.DirPath = os.path.dirname(__file__)
+
+
         # Layout initialisation
         self.Layout = QVBoxLayout()
 
@@ -463,27 +467,84 @@ class TabStartSet(GeneralTab):
         self.BtnCreate = QPushButton('Create startup files')
         self.Layout.addWidget(self.BtnCreate, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.CheckOrder = CheckBox('Starting order', 'If you just want to create the input file, but dont want to run the command in the terminal')
-        # self.Layout.addWidget(self.CheckOrder)
+        self.Layout.addWidget(Delimiter())
+
+        self.CheckOrder = CheckBox('Starting order', 'If you want to start with bash order')
+        self.Layout.addWidget(self.CheckOrder)
         self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
         
-        self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, None)
+        # self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, None)
         # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./go.sh'
-        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.StartOrderValue)
-        # self.Layout.addWidget(self.StartOrder)
-        
+        self.NbOrdersValue = 0
+        self.OrdersValue = []
+        with open(self.DirPath+'/Orders.txt', 'r') as file:
+            for x in file:
+                self.NbOrdersValue += 1
+                self.OrdersValue.append(x.replace('\n',''))
+
+        self.ComboOrder = ComboBox('Saved orders', 'All orders saved', self.OrdersValue)
+        self.Layout.addWidget(self.ComboOrder)
+
+        self.BtnDelOrder = QPushButton('del')
+        self.ComboOrder.Layout.addWidget(self.BtnDelOrder)
+        self.BtnDelOrder.clicked.connect(self.DelOrder)
+
+        self.BtnChangeOrder = QPushButton()
+        self.BtnChangeOrder.setIcon(QIcon(f'{self.DirPath}/Items/arrowDown.png'))
+        self.BtnChangeOrder.clicked.connect(self.ChangeOrder)
+        self.ComboOrder.Layout.addWidget(self.BtnChangeOrder)
+
+        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.ComboOrder.ComboParam.currentText())
+        self.Layout.addWidget(self.StartOrder)
+
+        self.BtnSaveOrder = QPushButton('save')
+        self.StartOrder.Layout.addWidget(self.BtnSaveOrder)
+        self.BtnSaveOrder.clicked.connect(self.SaveOrder)
+
+        self.LblGo = QLabel('./go_mcmco.sh')
+        self.StartOrder.Layout.addWidget(self.LblGo)
+
         self.BtnStart = QPushButton('Start the simulation')
-        # self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
+        self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
 
     def CheckStartOrderChange(self, state):
+        # self.NbHours.setEnabled(state)
+        self.ComboOrder.setEnabled(state)
         self.StartOrder.setEnabled(state)
         self.BtnStart.setEnabled(state)
-        self.NbHours.setEnabled(state)
 
+    def ChangeOrder(self):
+        self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())
+
+    def SaveOrder(self):
+        with open(self.DirPath+'/Orders.txt', 'a') as file:
+            file.write('\n')
+            file.write(self.StartOrder.EditParam.text())
+            self.ComboOrder.ComboParam.addItem(self.StartOrder.EditParam.text())
+            self.NbOrdersValue += 1
+            self.ComboOrder.ComboParam.setCurrentIndex(self.NbOrdersValue-1)
+
+    def DelOrder(self):
+        index = self.ComboOrder.ComboParam.currentIndex()
+        print(index)
+        if index>1:
+            lines = []
+            c = 0 
+            with open(self.DirPath+'/Orders.txt', 'r') as file :
+                for x in file:
+                    if c != index:
+                        lines.append(x.replace('\n',''))
+                    c += 1
+            with open(self.DirPath+'/Orders.txt', 'w') as file :
+                file.write('\n'.join(lines))
+            self.ComboOrder.ComboParam.removeItem(index)
+            self.NbOrdersValue -= 1
+            self.ComboOrder.ComboParam.setCurrentIndex(-1)
+        else:
+            print('Impossible to remove this order')
 
         
     
