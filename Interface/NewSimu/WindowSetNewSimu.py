@@ -106,14 +106,19 @@ class WindowSetNewSimu(QMainWindow):
 
 
     def Start(self):
-        if not os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'):
+        self.GoPath = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'
+        if not os.path.exists(self.GoPath):
             self.CreateInputFiles()
-            if os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'):
-                print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh')
-                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh', shell=True, text=True)
+            if os.path.exists(self.GoPath):
+                print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
+                subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+                subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
+                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True)
         else:
-            print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh')
-            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/go_mcmco.sh', shell=True, text=True)
+            print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
+            subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+            subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
+            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True)
 
     # def ChangeStartOrder(self):
     #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
@@ -155,6 +160,8 @@ class WindowSetNewSimu(QMainWindow):
         
         with open(self.SimuDir+'go_mcmco.sh', 'w') as file:
             file.write('#! /bin/bash')
+            file.write('\n')
+            file.write(f'cd {self.SimuDir}')
             file.write('\n')
             file.write('export OMP_NUM_THREADS='+self.TabStartSet.NbCores.SpinParam.text()) # Header
             file.write('\n')
