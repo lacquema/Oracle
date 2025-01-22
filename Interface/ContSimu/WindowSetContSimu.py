@@ -162,7 +162,7 @@ class WindowSetContSimu(QMainWindow):
         with open(self.ContFilePath, "w") as file:
             file.write('#! /bin/bash') # Header
             file.write('\n')
-            file.write('export OMP_NUM_THREADS='+str(self.NbCores.SpinParam.value()))
+            file.write('export OMP_NUM_THREADS='+self.NbCores.SpinParam.text())
             file.write('\n')
             file.write('export STACKSIZE=1000000')  
             file.write('\n')
