@@ -81,11 +81,14 @@ class WindowSetContSimu(QMainWindow):
         # self.Layout.addWidget(self.BtnAutoComp)
         # self.BtnAutoComp.clicked.connect(self.DialBrowseInputFile)
 
-        self.NbCores = SpinBox('Number of cores', 'Number of cores to be used', 8, 1, None, 1)
-        self.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
-
         self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
         self.Layout.addWidget(self.CheckParallel)
+        self.CheckParallel.CheckParam.setChecked(True)
+
+        self.CheckParallel.Layout.setSpacing(60)
+        self.NbCores = SpinBox('Number of cores', 'Number of cores use for parallelization', 8, 1, None, 1)
+        self.CheckParallel.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.CheckParallel.CheckParam.stateChanged.connect(self.NbCores.setEnabled)
 
         # self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
         # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)

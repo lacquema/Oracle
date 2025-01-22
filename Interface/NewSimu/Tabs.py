@@ -396,23 +396,14 @@ class TabPriorSet(GeneralTab):
                     x.Layout.removeWidget(x.Layout.itemAt(x.Layout.indexOf(x.Distrib)-2).widget())
 
     def ValidationItemTbl(self):
-        if self.TablePriors.currentRow() != -1 and self.TablePriors.currentColumn() != -1: # corresponding of initial state (-1,-1) of the table where item is None
-            TextNew = self.TablePriors.currentItem().text()
-            ListValidCharacters = '1234567890.'
-            PointSuppr = False
-            if len(TextNew)==0:
+        # if self.TablePriors.currentRow() != -1 and self.TablePriors.currentColumn() != -1: # corresponding of initial state (-1,-1) of the table where item is None
+        TextNew = self.TablePriors.currentItem().text()
+        try:
+            if self.TablePriors.currentColumn() not in [3,4,5] and float(TextNew)<0:
                 self.TablePriors.currentItem().setText(self.TextOld)
-            else:
-                for i in range(len(TextNew)):
-                    if TextNew[i] not in  ListValidCharacters:
-                        self.TablePriors.currentItem().setText(self.TextOld)
-                        break
-                    if TextNew[i]=='.' and PointSuppr==False: 
-                            ListValidCharacters='1234567890'
-                            PointSuppr = True 
-                # if self.TablePriors.currentRow() == 0 and self.TablePriors.currentColumn() != 0:
-                #     self.TablePriors.currentItem().setText(self.TextOld)
-
+        except:
+            self.TablePriors.currentItem().setText(self.TextOld)
+                
     def SaveOldTextTbl(self):
         self.TextOld = self.TablePriors.currentItem().text()
 
@@ -458,11 +449,14 @@ class TabStartSet(GeneralTab):
 
     def InitWidgets(self):
 
-        self.NbCores = SpinBox('Number of cores', 'Number of cores to be used', 8, 1, None, 1)
-        self.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
-
         self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
         self.Layout.addWidget(self.CheckParallel)
+        self.CheckParallel.CheckParam.setChecked(True)
+
+        self.CheckParallel.Layout.setSpacing(60)
+        self.NbCores = SpinBox('Number of cores', 'Number of cores use for parallelization', 8, 1, None, 1)
+        self.CheckParallel.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.CheckParallel.CheckParam.stateChanged.connect(self.NbCores.setEnabled)
 
         self.BtnCreate = QPushButton('Create startup files')
         self.Layout.addWidget(self.BtnCreate, alignment=Qt.AlignmentFlag.AlignRight)
@@ -529,8 +523,7 @@ class TabStartSet(GeneralTab):
 
     def DelOrder(self):
         index = self.ComboOrder.ComboParam.currentIndex()
-        print(index)
-        if index>1:
+        if index>2:
             lines = []
             c = 0 
             with open(self.DirPath+'/Orders.txt', 'r') as file :
