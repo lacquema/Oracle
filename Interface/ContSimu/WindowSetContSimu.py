@@ -12,6 +12,7 @@ import subprocess
 # PyQt packages
 from PyQt6.QtWidgets import QTabWidget, QMainWindow, QStatusBar, QApplication, QVBoxLayout, QPushButton, QFileDialog
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 
 # My packages
 from Parameters import *
@@ -81,34 +82,97 @@ class WindowSetContSimu(QMainWindow):
         # self.Layout.addWidget(self.BtnAutoComp)
         # self.BtnAutoComp.clicked.connect(self.DialBrowseInputFile)
 
-        self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
-        self.Layout.addWidget(self.CheckParallel)
-        self.CheckParallel.CheckParam.setChecked(True)
+        # self.CheckParallel = CheckBox('Parallelization :', 'Parallelization of the simulation algorithm')
+        # self.Layout.addWidget(self.CheckParallel)
+        # self.CheckParallel.CheckParam.setChecked(True)
 
-        self.CheckParallel.Layout.setSpacing(60)
-        self.NbCores = SpinBox('Number of cores', 'Number of cores use for parallelization', 8, 1, None, 1)
-        self.CheckParallel.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.CheckParallel.CheckParam.stateChanged.connect(self.NbCores.setEnabled)
+        # self.CheckParallel.Layout.setSpacing(60)
+        # self.NbCores = SpinBox('Number of cores', 'Number of cores use for parallelization', 8, 1, None, 1)
+        # self.CheckParallel.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.CheckParallel.CheckParam.stateChanged.connect(self.NbCores.setEnabled)
 
-        # self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, 48, 1)
-        # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
-        # self.NbHours.SpinParam.valueChanged.connect(self.ChangeStartOrder)
-
-        # self.CheckOrder = CheckBox('Starting order :', 'If you just want to create the input file, but dont want to run the command in the terminal')
-        # self.Layout.addWidget(self.CheckOrder)
-        # self.CheckOrder.CheckParam.stateChanged.connect(lambda: self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked()))
-
-        # self.StartOrderValue = f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla ./inputcont.sh'
-        # self.StartOrder = LineEdit(None, 'Terminal order to continue the adjustment', self.StartOrderValue)
-        # self.CheckOrder.Layout.addWidget(self.StartOrder)
-        # self.StartOrder.setEnabled(self.CheckOrder.CheckParam.isChecked())
-
-        self.BtnCont = QPushButton('Continue')
+        self.BtnCont = QPushButton('Create continuation file')
         self.Layout.addWidget(self.BtnCont, alignment=Qt.AlignmentFlag.AlignRight)
-        self.BtnCont.clicked.connect(self.ContinueSimu)
+        self.BtnCont.clicked.connect(self.CreateContFile)
+
+        self.Layout.addWidget(Delimiter())
+
+        self.CheckOrder = CheckBox('Starting order :', 'If you want to start with bash order')
+        self.Layout.addWidget(self.CheckOrder)
+        self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
+
+        self.NbOrdersValue = 0
+        self.OrdersValue = []
+        with open(self.DirPath+'/../Orders.txt', 'r') as file:
+            for x in file:
+                self.NbOrdersValue += 1
+                self.OrdersValue.append(x.replace('\n',''))
+
+        self.ComboOrder = ComboBox('Saved orders', 'All orders saved', self.OrdersValue)
+        self.Layout.addWidget(self.ComboOrder)
+
+        self.BtnDelOrder = QPushButton('del')
+        self.ComboOrder.Layout.addWidget(self.BtnDelOrder)
+        self.BtnDelOrder.clicked.connect(self.DelOrder)
+
+        self.BtnChangeOrder = QPushButton()
+        self.BtnChangeOrder.setIcon(QIcon(f'{self.DirPath}/Items/arrowDown.png'))
+        self.BtnChangeOrder.clicked.connect(self.ChangeOrder)
+        self.ComboOrder.Layout.addWidget(self.BtnChangeOrder)
+
+        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.ComboOrder.ComboParam.currentText())
+        self.Layout.addWidget(self.StartOrder)
+
+        self.BtnSaveOrder = QPushButton('save')
+        self.StartOrder.Layout.addWidget(self.BtnSaveOrder)
+        self.BtnSaveOrder.clicked.connect(self.SaveOrder)
+
+        self.LblGo = QLabel('./cont_mcmco.sh')
+        self.StartOrder.Layout.addWidget(self.LblGo)
+
+        self.BtnStart = QPushButton('Continue the simulation')
+        self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
+        self.BtnStart.clicked.connect(self.Start)
+
+        self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-    
+
+    def CheckStartOrderChange(self, state):
+        # self.NbHours.setEnabled(state)
+        self.ComboOrder.setEnabled(state)
+        self.StartOrder.setEnabled(state)
+        self.BtnStart.setEnabled(state)
+
+    def ChangeOrder(self):
+        self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())
+
+    def SaveOrder(self):
+        with open(self.DirPath+'/../Orders.txt', 'a') as file:
+            file.write('\n')
+            file.write(self.StartOrder.EditParam.text())
+            self.ComboOrder.ComboParam.addItem(self.StartOrder.EditParam.text())
+            self.NbOrdersValue += 1
+            self.ComboOrder.ComboParam.setCurrentIndex(self.NbOrdersValue-1)
+
+    def DelOrder(self):
+        index = self.ComboOrder.ComboParam.currentIndex()
+        if index>2:
+            lines = []
+            c = 0 
+            with open(self.DirPath+'/../Orders.txt', 'r') as file :
+                for x in file:
+                    if c != index:
+                        lines.append(x.replace('\n',''))
+                    c += 1
+            with open(self.DirPath+'/../Orders.txt', 'w') as file :
+                file.write('\n'.join(lines))
+            self.ComboOrder.ComboParam.removeItem(index)
+            self.NbOrdersValue -= 1
+            self.ComboOrder.ComboParam.setCurrentIndex(-1)
+        else:
+            print('Impossible to remove this order')
+
     # Reset all widgets of the parameters window
     def ResetParams(self):
         DelAllWidgetsBtw(self.Layout, 1, self.Layout.count())
@@ -127,14 +191,16 @@ class WindowSetContSimu(QMainWindow):
             with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
                 self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
                 GoFileLines = file.readlines()
-                self.AlgoFileName = GoFileLines[3].split()[0].split('/')[-1][:-4]
+                self.NbCores = GoFileLines
+                self.AlgoFileName = GoFileLines[3].split()[0].split('/')[-1]
                 self.SimuFileName = GoFileLines[12][:-1]+'.dat'
-                self.DumpFileName = GoFileLines[13][:-1]
-                print(f'Do you want continue {self.SimuName} simulation from {self.DumpFileName} dump file ?')
+                self.DumpFileName = GoFileLines[13][:-1].split('/')[-1]
+                print(f'Do you want continue {self.SimuPath.EditPath.text()+self.SimuName} simulation from {self.DumpFileName} dump file ?')
         except:
             print('Simulation not found')
 
-    def ContinueSimu(self):
+
+    def CreateContFile(self):
         self.ContFilePath = self.SimuPath.EditPath.text()+'cont_mcmco.sh'
         if len(self.SimuPath.EditPath.text())==0:
             print('Simulation path not given')
@@ -146,26 +212,24 @@ class WindowSetContSimu(QMainWindow):
                 print('Continuation file was created')
                 print('Just run it')
 
-            # if self.CheckOrder.CheckParam.isChecked():
-            #     result = subprocess.run(self.StartOrder.EditParam.text(), shell=True, capture_output=True, text=True)
-            #     error = result.stderr
-            #     if len(error)!=0:
-            #         print(result.stderr)
-            #         print('Simulation not launched but you can still launch yourself the input continuation shell file.')
-            # else:
-            #     print('All you have to do is launch the input continuation shell file.')
-
 
 
     def DoContFile(self):
-        if self.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
+        # if self.AlgoFileName[-4:]=='_par': self.AlgoFileName = self.AlgoFileName[:-4]
+        # if self.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
 
         self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
 
         with open(self.ContFilePath, "w") as file:
             file.write('#! /bin/bash') # Header
             file.write('\n')
-            file.write('export OMP_NUM_THREADS='+self.NbCores.SpinParam.text())
+            file.write(f'cd {self.SimuPath.EditPath.text()}')
+            file.write('\n')
+            # if self.CheckParallel.CheckParam.isChecked():
+            if self.AlgoFileName[-4:]=='_par':
+                file.write('export OMP_NUM_THREADS='+self.NbCores.SpinParam.text()) # Header
+            else:
+                file.write('export OMP_NUM_THREADS=1')
             file.write('\n')
             file.write('export STACKSIZE=1000000')  
             file.write('\n')
@@ -179,7 +243,29 @@ class WindowSetContSimu(QMainWindow):
             file.write(self.DumpFreq.SpinParam.text())
             file.write(' # Dump frequency')
             file.write('\n')
+            file.write('exit')
+            file.write('\n')
             file.write('!')
+
+
+    def Start(self):
+        self.GoPath = self.SimuPath.EditPath.text()+'cont_mcmco.sh'
+        if not os.path.exists(self.GoPath):
+            self.CreateContFile()
+            if os.path.exists(self.GoPath):
+                print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &   in {self.SimuPath.EditPath.text()}')
+                # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
+                # os.chdir(self.SimuPath.EditPath.text(), )
+                subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
+                subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditPath.text())
+        else:
+            print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &   in {self.SimuPath.EditPath.text()}')
+            # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
+            # os.chdir(self.SimuPath.EditPath.text())
+            subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
+            subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditPath.text())
+
+
 
 
 

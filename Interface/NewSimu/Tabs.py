@@ -466,13 +466,10 @@ class TabStartSet(GeneralTab):
         self.CheckOrder = CheckBox('Starting order', 'If you want to start with bash order')
         self.Layout.addWidget(self.CheckOrder)
         self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
-        
-        # self.NbHours = SpinBox('Simulation duration', 'Simulation duration [hour]', 48, 1, None)
-        # self.Layout.addWidget(self.NbHours, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.NbOrdersValue = 0
         self.OrdersValue = []
-        with open(self.DirPath+'/Orders.txt', 'r') as file:
+        with open(self.DirPath+'/../Orders.txt', 'r') as file:
             for x in file:
                 self.NbOrdersValue += 1
                 self.OrdersValue.append(x.replace('\n',''))
@@ -514,7 +511,7 @@ class TabStartSet(GeneralTab):
         self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())
 
     def SaveOrder(self):
-        with open(self.DirPath+'/Orders.txt', 'a') as file:
+        with open(self.DirPath+'/../Orders.txt', 'a') as file:
             file.write('\n')
             file.write(self.StartOrder.EditParam.text())
             self.ComboOrder.ComboParam.addItem(self.StartOrder.EditParam.text())
@@ -526,12 +523,12 @@ class TabStartSet(GeneralTab):
         if index>2:
             lines = []
             c = 0 
-            with open(self.DirPath+'/Orders.txt', 'r') as file :
+            with open(self.DirPath+'/../Orders.txt', 'r') as file :
                 for x in file:
                     if c != index:
                         lines.append(x.replace('\n',''))
                     c += 1
-            with open(self.DirPath+'/Orders.txt', 'w') as file :
+            with open(self.DirPath+'/../Orders.txt', 'w') as file :
                 file.write('\n'.join(lines))
             self.ComboOrder.ComboParam.removeItem(index)
             self.NbOrdersValue -= 1

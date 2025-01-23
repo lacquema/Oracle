@@ -163,7 +163,10 @@ class WindowSetNewSimu(QMainWindow):
             file.write('\n')
             file.write(f'cd {self.SimuDir}')
             file.write('\n')
-            file.write('export OMP_NUM_THREADS='+self.TabStartSet.NbCores.SpinParam.text()) # Header
+            if self.TabStartSet.CheckParallel.CheckParam.isChecked():
+                file.write('export OMP_NUM_THREADS='+self.TabStartSet.NbCores.SpinParam.text()) # Header
+            else:
+                file.write('export OMP_NUM_THREADS=1')
             file.write('\n')
             file.write('export STACKSIZE=1000000')
             file.write('\n')
