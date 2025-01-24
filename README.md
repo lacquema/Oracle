@@ -55,7 +55,7 @@ Now that the container is ready, you can download the gihub directory inside:
 
 All the necessary python packages are listed in the `<environment_path>/Oracle/requirements.txt` file. You can install them all:
 
-`python3 -m pip install -r <environment_path>/Oracle/requirements.txt`
+`python3 -m <environment_path>/bin/pip install -r <environment_path>/Oracle/requirements.txt`
 
 
 ## 4) Compile fortran code
@@ -78,7 +78,7 @@ You can import the code from github in the same way as on your personal computer
 
 On computing servers, the use of modern package managers such as Guix is highly recommended and often mandatory. These tools enable isolated and reproducible management of software dependencies, thus avoiding unintentional changes to the server environment. In addition, Guix avoids unnecessary duplication of packages by storing shared dependencies only once in the server's `/gnu/store`. This considerably reduces the use of storage space. 
 
-Instead of installing packages directly, you configure them to reference the Guix-managed library. All required Python packages are also explicitly listed in the `<environment_path>/Oracle/manifest.scm` file. You can reference them all:
+Instead of installing packages directly, you configure them to reference the Guix-managed library. All required packages are explicitly listed in the `<environment_path>/Oracle/manifest.scm` file. You can reference them all:
 
 `guix package -m <environment_path>/Oracle/manifest.scm`
 
