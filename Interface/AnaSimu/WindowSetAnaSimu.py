@@ -82,7 +82,7 @@ class WindowSetAnaSimu(QMainWindow):
         # self.Layout.addWidget(self.BtnAutoComp)
         # self.BtnAutoComp.clicked.connect(self.DialBrowseInputFile)
 
-        self.Layout.addWidget(Delimiter(Title='Options:'))
+        self.Layout.addWidget(Delimiter(Title='Options :'))
 
         self.NbSelectOrbits = SpinBox('Number of orbits', 'Number of ramdom selected orbits to analyse', 10000, 1, None, 1)
         self.Layout.addWidget(self.NbSelectOrbits, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -102,11 +102,11 @@ class WindowSetAnaSimu(QMainWindow):
             with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
                 self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
                 GoFileLines = file.readlines()
-                self.DataFileName = GoFileLines[7][:-1]
-                self.SimuFileName = GoFileLines[12][:-1]+'.dat'
-                self.SystDist = float(GoFileLines[10].split(' ')[0])
-                self.SystDistUnit = GoFileLines[10].split(' ')[1]
-                print(f'Do you want analyse {self.SimuName} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
+                self.DataFileName = GoFileLines[8].split('/')[-1][:-1]
+                self.SimuFileName = GoFileLines[13].split('/')[-1][:-1]
+                self.SystDist = float(GoFileLines[11].split(' ')[0])
+                self.SystDistUnit = GoFileLines[11].split(' ')[1]
+                print(f'Do you want analyse {self.SimuPath.EditPath.text()} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
         except:
             print('Simulation not found')
         
@@ -120,7 +120,10 @@ class WindowSetAnaSimu(QMainWindow):
         if len(self.SimuPath.EditPath.text()) == 0:
             print('Simulation directory path not given')
         else:
-            self.OpenWinMain()
+            try:
+                self.OpenWinMain()
+            except:
+                print('Files not found')
 
 
     def OpenWinMain(self):

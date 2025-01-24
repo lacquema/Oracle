@@ -88,7 +88,7 @@ class TabSimuSet(GeneralTab):
         # self.InputFileName = LineEdit('Start file', 'Name you want to give to the start file', 'go_mcmco')
         # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.Layout.addWidget(Delimiter(Title='Adjustment:'))
+        self.Layout.addWidget(Delimiter(Title='Adjustment :'))
 
         self.WidgetH = QWidget()
         self.LayoutH = QHBoxLayout()
@@ -105,7 +105,7 @@ class TabSimuSet(GeneralTab):
         self.Precision = SpinBox('Precision order', 'Order of adjustment precision in powers of 10', 7, 0, 10, 1)
         self.Layout.addWidget(self.Precision, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.Layout.addWidget(Delimiter(Title='Outputs:'))
+        self.Layout.addWidget(Delimiter(Title='Outputs :'))
 
         self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file', 'dump')
         self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -144,7 +144,7 @@ class TabDataSet(GeneralTab):
         
         self.LayoutAstroV = QVBoxLayout()
 
-        self.LayoutAstroV.addWidget(Delimiter(Title='Astrometric data:'))
+        self.LayoutAstroV.addWidget(Delimiter(Title='Astrometric data :'))
 
         self.CheckRelAstro = CheckBox('Relative:', 'If you want use relative astrometric data')
         self.LayoutAstroV.addWidget(self.CheckRelAstro)
@@ -169,7 +169,7 @@ class TabDataSet(GeneralTab):
 
         self.LayoutRVV = QVBoxLayout()
 
-        self.LayoutRVV.addWidget(Delimiter(Title='Radial velocity data:'))
+        self.LayoutRVV.addWidget(Delimiter(Title='Radial velocity data :'))
 
         self.LayoutRVV.addSpacing(10)
 
@@ -291,7 +291,7 @@ class TabPriorSet(GeneralTab):
 
         self.LayoutV2 = QVBoxLayout()
 
-        self.LayoutV2.addWidget(Delimiter(Title = 'Orbits parameters first guess :', Width=0))
+        self.LayoutV2.addWidget(Delimiter(Title = 'Orbits parameters first guess :'))
 
         self.FirstGuessCenterMass = DoubleSpinBox('Center mass', 'First guess of center mass [Msun]', 0, 0, None, 1, 2)
         self.LayoutV2.addWidget(self.FirstGuessCenterMass)
@@ -449,6 +449,8 @@ class TabStartSet(GeneralTab):
 
     def InitWidgets(self):
 
+        self.Layout.addWidget(Delimiter(Title='Options :'))
+
         self.CheckParallel = CheckBox('Parallelization', 'Parallelization of the simulation algorithm')
         self.Layout.addWidget(self.CheckParallel)
         self.CheckParallel.CheckParam.setChecked(True)
@@ -461,11 +463,11 @@ class TabStartSet(GeneralTab):
         self.BtnCreate = QPushButton('Create startup files')
         self.Layout.addWidget(self.BtnCreate, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.Layout.addWidget(Delimiter())
+        self.Layout.addWidget(Delimiter(Title='Order :'))
 
-        self.CheckOrder = CheckBox('Starting order', 'If you want to start with bash order')
-        self.Layout.addWidget(self.CheckOrder)
-        self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
+        # self.CheckOrder = CheckBox('Starting order', 'If you want to start with bash order')
+        # self.Layout.addWidget(self.CheckOrder)
+        # self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
 
         self.NbOrdersValue = 0
         self.OrdersValue = []
@@ -486,7 +488,7 @@ class TabStartSet(GeneralTab):
         self.BtnChangeOrder.clicked.connect(self.ChangeOrder)
         self.ComboOrder.Layout.addWidget(self.BtnChangeOrder)
 
-        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.ComboOrder.ComboParam.currentText())
+        self.StartOrder = LineEdit('Shell order', 'Terminal order to start the adjustment', self.ComboOrder.ComboParam.currentText())
         self.Layout.addWidget(self.StartOrder)
 
         self.BtnSaveOrder = QPushButton('save')
@@ -499,13 +501,13 @@ class TabStartSet(GeneralTab):
         self.BtnStart = QPushButton('Start the simulation')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
+        # self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
 
-    def CheckStartOrderChange(self, state):
-        # self.NbHours.setEnabled(state)
-        self.ComboOrder.setEnabled(state)
-        self.StartOrder.setEnabled(state)
-        self.BtnStart.setEnabled(state)
+    # def CheckStartOrderChange(self, state):
+    #     # self.NbHours.setEnabled(state)
+    #     self.ComboOrder.setEnabled(state)
+    #     self.StartOrder.setEnabled(state)
+    #     self.BtnStart.setEnabled(state)
 
     def ChangeOrder(self):
         self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())

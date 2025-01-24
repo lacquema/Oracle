@@ -72,7 +72,7 @@ class WindowSetContSimu(QMainWindow):
         # self.DumpFileName = LineEdit('Dump file', 'Name of dump file with extension', 'dump.dat')
         # self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.Layout.addWidget(Delimiter(Title='Options:'))
+        self.Layout.addWidget(Delimiter(Title='Options :'))
 
         # self.DumpFileName.Layout.addSpacing(100)
         self.DumpFreq = SpinBox('Save frequency', 'Save frequency in the dump file [yr]', 10000000, 0, 1000000000, 100000)
@@ -95,11 +95,11 @@ class WindowSetContSimu(QMainWindow):
         self.Layout.addWidget(self.BtnCont, alignment=Qt.AlignmentFlag.AlignRight)
         self.BtnCont.clicked.connect(self.CreateContFile)
 
-        self.Layout.addWidget(Delimiter())
+        self.Layout.addWidget(Delimiter(Title='Starting :'))
 
-        self.CheckOrder = CheckBox('Starting order :', 'If you want to start with bash order')
-        self.Layout.addWidget(self.CheckOrder)
-        self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
+        # self.CheckOrder = CheckBox('Starting order :', 'If you want to start with bash order')
+        # self.Layout.addWidget(self.CheckOrder)
+        # self.CheckOrder.CheckParam.stateChanged.connect(self.CheckStartOrderChange)
 
         self.NbOrdersValue = 0
         self.OrdersValue = []
@@ -120,7 +120,7 @@ class WindowSetContSimu(QMainWindow):
         self.BtnChangeOrder.clicked.connect(self.ChangeOrder)
         self.ComboOrder.Layout.addWidget(self.BtnChangeOrder)
 
-        self.StartOrder = LineEdit('Order', 'Terminal order to start the adjustment', self.ComboOrder.ComboParam.currentText())
+        self.StartOrder = LineEdit('Order', 'Terminal order to continue the adjustment', self.ComboOrder.ComboParam.currentText())
         self.Layout.addWidget(self.StartOrder)
 
         self.BtnSaveOrder = QPushButton('save')
@@ -134,15 +134,15 @@ class WindowSetContSimu(QMainWindow):
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
         self.BtnStart.clicked.connect(self.Start)
 
-        self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
+        # self.CheckStartOrderChange(self.CheckOrder.CheckParam.isChecked())
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-    def CheckStartOrderChange(self, state):
-        # self.NbHours.setEnabled(state)
-        self.ComboOrder.setEnabled(state)
-        self.StartOrder.setEnabled(state)
-        self.BtnStart.setEnabled(state)
+    # def CheckStartOrderChange(self, state):
+    #     # self.NbHours.setEnabled(state)
+    #     self.ComboOrder.setEnabled(state)
+    #     self.StartOrder.setEnabled(state)
+    #     self.BtnStart.setEnabled(state)
 
     def ChangeOrder(self):
         self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())
@@ -191,10 +191,10 @@ class WindowSetContSimu(QMainWindow):
             with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
                 self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
                 GoFileLines = file.readlines()
-                self.NbCores = GoFileLines
-                self.AlgoFileName = GoFileLines[3].split()[0].split('/')[-1]
-                self.SimuFileName = GoFileLines[12][:-1]+'.dat'
-                self.DumpFileName = GoFileLines[13][:-1].split('/')[-1]
+                self.NbCores = GoFileLines[2][:-1].split('=')[-1]
+                self.AlgoFileName = GoFileLines[4].split()[0].split('/')[-1]
+                self.SimuFileName = GoFileLines[13][:-1]+'.dat'
+                self.DumpFileName = GoFileLines[14][:-1].split('/')[-1]
                 print(f'Do you want continue {self.SimuPath.EditPath.text()+self.SimuName} simulation from {self.DumpFileName} dump file ?')
         except:
             print('Simulation not found')
@@ -226,12 +226,12 @@ class WindowSetContSimu(QMainWindow):
             file.write(f'cd {self.SimuPath.EditPath.text()}')
             file.write('\n')
             # if self.CheckParallel.CheckParam.isChecked():
-            if self.AlgoFileName[-4:]=='_par':
-                file.write('export OMP_NUM_THREADS='+self.NbCores.SpinParam.text()) # Header
-            else:
-                file.write('export OMP_NUM_THREADS=1')
+            # if self.AlgoFileName[-4:]=='_par':
+            file.write('export OMP_NUM_THREADS='+self.NbCores) # Header
+            # else:
+            #     file.write('export OMP_NUM_THREADS=1')
             file.write('\n')
-            file.write('export STACKSIZE=1000000')  
+            file.write('export STACKSIZE=1000000')
             file.write('\n')
             file.write(self.EnvPath+'/Code/bin/'+self.AlgoFileName+' <<!')
             file.write('\n')
@@ -253,13 +253,13 @@ class WindowSetContSimu(QMainWindow):
         if not os.path.exists(self.GoPath):
             self.CreateContFile()
             if os.path.exists(self.GoPath):
-                print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &   in {self.SimuPath.EditPath.text()}')
+                print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &')
                 # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
                 # os.chdir(self.SimuPath.EditPath.text(), )
                 subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
                 subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditPath.text())
         else:
-            print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &   in {self.SimuPath.EditPath.text()}')
+            print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &')
             # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
             # os.chdir(self.SimuPath.EditPath.text())
             subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
