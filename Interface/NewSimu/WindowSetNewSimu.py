@@ -111,14 +111,14 @@ class WindowSetNewSimu(QMainWindow):
             self.CreateInputFiles()
             if os.path.exists(self.GoPath):
                 print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
-                subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+                # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
                 subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True)
+                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
         else:
             print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
-            subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+            # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
             subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True)
+            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
 
     # def ChangeStartOrder(self):
     #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
