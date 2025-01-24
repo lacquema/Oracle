@@ -195,7 +195,7 @@ class WindowSetContSimu(QMainWindow):
                 self.AlgoFileName = GoFileLines[4].split()[0].split('/')[-1]
                 self.SimuFileName = GoFileLines[13][:-1]+'.dat'
                 self.DumpFileName = GoFileLines[14][:-1].split('/')[-1]
-                print(f'Do you want continue {self.SimuPath.EditPath.text()+self.SimuName} simulation from {self.DumpFileName} dump file ?')
+                print(f'Do you want continue {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file ?')
         except:
             print('Simulation not found')
 
