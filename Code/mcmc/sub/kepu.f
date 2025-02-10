@@ -526,7 +526,7 @@ C
      &                  TP,             ! Tps de passage au periastre
      &                  NN,             ! Maen motion wrt q
      &                  GM,             ! Dynamical masses
-     &                  EXC,            ! eccentricities
+     &                  EXC,EXQ,        ! eccentricities (EXQ useless here)
      &                  CW,SW,CP,SP,    ! cos,sin (omega+Omega,omega-Omega)
      &                  CI2,SI2,        ! cos^2(i/2), sin^2(i/2)
      &                  COM,SOM,CO,SO,  ! cos,sin (omega,Omega)
@@ -550,7 +550,7 @@ C
         
         CHI2 = 0.d0
         SIGJV = 0.d0
-        CALL ELEMENTS(P(1:NPAR),NN,QQ,EXC,CW,SW,CI2,SI2,CP,SP,
+        CALL ELEMENTS(P(1:NPAR),NN,QQ,EXC,EXQ,CW,SW,CI2,SI2,CP,SP,
      &                                CI,SI,COM,SOM,CO,SO,TP,MUF)
         MFRAC = 0.d0
         IF (MULTIPLA) THEN
@@ -631,7 +631,7 @@ C       Calculating orbital elements from a single MCMC orbital model
 C -----------------------------------------------------------------------------
 C
 
-        SUBROUTINE ELEMENTS(P,NQ,Q,EXC,CW,SW,CI2,SI2,CP,SP,
+        SUBROUTINE ELEMENTS(P,NQ,Q,EXC,EXQ,CW,SW,CI2,SI2,CP,SP,
      &                                CI,SI,COM,SOM,CO,SO,TP,MUF)
 
         USE DATA
@@ -643,7 +643,7 @@ C
         REAL*8, DIMENSION(NPLA) ::
      &       Q,                     ! Periastrons
      &       NQ,                    ! Mean motions wrt q
-     &       EXC,                   ! Eccentricities
+     &       EXC,EXQ,               ! Eccentricities (EXQ=dummy here)
      &       CI,SI,                 ! cos,sin(inclinations)
      &       CW,SW,                 ! cos,sin(w=Omega+omega)
      &       CP,SP,                 ! cos,sin(phi=Oomega-Omega)
@@ -668,6 +668,7 @@ C
         ELSE
            MTOT = STAR%MASS
         END IF
+        EXQ = 0.d0 ! EXQ useless here (just for compatibility)
         DO I = 1,NPLA
            DKAL = NEL*(I-1)
            P1 = P(DKAL+1)
@@ -707,7 +708,7 @@ C
               COM(I) = 0.d0
               SOM(I) = 0.d0
            END IF
-           S = P7       ! Universal variable at T=T0
+           S = P7/EXC(I)       ! S=Universal variable at T=T0 / P7 = S*E
            ALPHA = MUF(I)/Q(I)*(1.d0-EXC(I))
            XX = S*S*ALPHA
            CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
@@ -759,9 +760,9 @@ C
 
 c     For each planet,
 c           J/J'=(q/q')^2*(dsdt/dsdt')
-c     Jabobian J (orbite->params) = 1/2*e*sin(i)*dsdt
-c  Prior/planet (default) = sin(i)*1/q*1/P   (prior log in a & in P)
-c     => Jacobian / Prior = 1/2*q*P*e*dsdt= (J/P)_0
+c     Jabobian J (orbite->params) = 1/2*e^2*sin(i)*dsdt
+c  Prior/planet (default) = sin(i)*1/q*1/P   (prior log in q & in P)
+c     => Jacobian / Prior = 1/2*q*P*e^2*dsdt= (J/P)_0
 c           N.B. : sin(i) vanishes in Jacobian / Prior
 c     If prior u(mu) (e.g. Gaussian) then
 c               mu = sum(b_i*M_i) = sum(b_i*n_i^2*q_i^3)
@@ -771,7 +772,7 @@ c     [Jacobian (mu<-P) =-2*(M_i*b_i)/P_i si autres variables inchangées]
 c      With mu<->q :
 c     Jacobian / Prior = (J/P)_0*prior(q)/J(q->mu)*1/prior(mu)
 c                      = (J/P)_0*1/q*(q/(3*M_i*b_i))*1/u(mu)     
-c     RAPQ = (J/p)/(J'/p')=(q/q')*(P/P')*(e/e')*(dsdt/dsdt')
+c     RAPQ = (J/p)/(J'/p')=(q/q')*(P/P')*(e/e')^2*(dsdt/dsdt')
 c                                *(M'_i/M_i)*(u(mu')/u(mu))
 c     Then RAPQ = RAPQ * J(jitter)/J'(jitter)*prior(jitter')/prior(jitter)
 c                = RAPQ * (jitter'/jitter)*(jitter+j0)/(jitter'+j0)
@@ -806,12 +807,12 @@ c
           QT = EXP(PT1)
           UPQ = EXP(-P6)
           UPQT = EXP(-PT6)
-          S = P7
-          ST = PT7
           MTOT(I) = Q**3*(DPI*UPQ)**2
           MTOTT(I) = QT**3*(DPI*UPQT)**2          
           EXC = SQRT(P2*P2+P3*P3)
           EXCT = SQRT(PT2*PT2+PT3*PT3)
+          S = P7/EXC  ! P7 = S*E
+          ST = PT7/EXCT
           CW = P2/EXC
           SW = P3/EXC
           CWT = PT2/EXCT
@@ -837,10 +838,10 @@ c     &             .OR.(VPRIOR(1)%BOUND(2)*UPT.LT.1.d0)
           S2C2 = C2*ST*ST 
           DSDTT = 1.d0/(MTOTT(I)*S2C2+QT*C0)
 
-          RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*(EXC/EXCT)*(DSDT/DSDTT)
+          RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*((EXC/EXCT)**2)*(DSDT/DSDTT)
        END DO
 c...  At this point RAPQ =
-c...    Product((e/e')*(q/q')*(P/P')*(dsdt/dsdt'),planets)
+c...    Product((e/e')^2*(q/q')*(P/P')*(dsdt/dsdt'),planets)
 c     Now consider contribution of mass priors.
 c     For each prior u(mu)=u(sum(b_j*M_j))
 c              RAPQ = RAPQ*u(mu')/u(mu)*product(M'_i/M_i), planets)
@@ -1081,13 +1082,13 @@ C
         CHARACTER*(*), DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
 c                                                #3 = data
 
-        STAR%T0 = 0.d0
-        STAR%SIGJV = 0.d0
         CALL READ_DATAFILE(FILES(3))
         NFREE = 2*SUM(PLA%NDATAS)+STAR%NDATVR
      &          +SUM(PLA%NDATVR)+2*STAR%NDATAS-NPAR  ! # of degrees od freedom
 
         IF (NEW) THEN
+           STAR%T0 = 0.d0
+           STAR%SIGJV = 0.d0           
            WRITE(SD,*)'Give reference time for data (JD) : '
            READ(5,*)STAR%T0
            IF (ISDATA(2)) THEN
@@ -1120,7 +1121,7 @@ c...  Enter orbits and configure parameters for Levenberg-Marquardt
 c...                                hh2 = -2xEnergie = alpha pour kepu          
               M0 =  STAR%T0-PLA(I)%TP
               CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
-              P(DKAL+7) = S
+              P(DKAL+7) = S*PLA(I)%EXC  ! P7 = S*E
            END DO  
            IF (MULTIPLA) P(NPAR) = LOG(STAR%MASS)
            IF (ISDATA(2)) P(NPAR-1) = STAR%V0
@@ -1173,9 +1174,9 @@ C
      &       N,                 ! Mean motion / q
      &       K,H,               ! e*[cos(w),sin(w)]
      &       QQ,PP,             ! tan(i/2)*cos(phi),tan(i/2)*sin(phi)
-     &       DJACXDZ,DJACXDLP,DJACXDS0,DJACXDK,DJACXDH,
+     &       DJACXDZ,DJACXDLP,DJACXDP7,DJACXDK,DJACXDH,
      &       DJACXDPP,DJACXDQQ,DJACXDQ,DJACXDPER,
-     &       DJACYDZ,DJACYDLP,DJACYDS0,DJACYDK,DJACYDH,
+     &       DJACYDZ,DJACYDLP,DJACYDP7,DJACYDK,DJACYDH,
      &       DJACYDPP,DJACYDQQ,DJACYDQ,DJACYDPER,   ! All derivatives
      &       S,S0,              ! Universal variable (at T and T0)
      &       TI,T2,              ! tan(i/2) + square
@@ -1189,7 +1190,7 @@ C
      &       FACT,              ! 1/(1-e*cos(u))
      &       RX,RY,             ! Coordonnes dans la base propre
      &       C0,C1,C2,C3,SC1,S2C2,S3C3,    ! Stumpff functions
-     &       DTPDS0,DTPDALPHA,DTPDM,DTPDQ, ! Derivatives of TP
+     &       DTPDS0,DTPDALPHA,DTPDM,DTPDQ,DTPDE,DTPDP7, ! Derivatives of TP
      &       DSDTP,DSDQ,DSDALPHA,DSDE,DSDPER,DSDM, ! Derivatives of S
      &       DOMDK,DOMDH,DODP,DODQ,DIDP,DIDQ,DOMDP,DOMDQ, ! Intern derivs. 
      &       DWDK,DWDH,DPHIDP,DPHIDQ, ! Derivees interm.
@@ -1198,9 +1199,9 @@ C
      &       DE1DK(2),DE1DH(2),DE1DP(2),DE1DQ(2), ! Derivees de E1
      &       DE2DK(2),DE2DH(2),DE2DP(2),DE2DQ(2), ! Derivees de E2
      &       DEDK,DEDH,         ! Derivees de Exc
-     &       DRXDQ,DRXDS,DRXDE,DRXDS0,DRXDTP, ! Derivees de RX (internal)
+     &       DRXDQ,DRXDS,DRXDE,DRXDP7,DRXDTP, ! Derivees de RX (internal)
      &       DRXDPER,DRXDALPHA,DRXDK,DRXDH,DRXDPP,DRXDQQ,
-     &       DRYDQ,DRYDS,DRYDE,DRYDS0,DRYDTP, ! Derivees de RY (internal)
+     &       DRYDQ,DRYDS,DRYDE,DRYDP7,DRYDTP, ! Derivees de RY (internal)
      &       DRYDPER,DRYDALPHA,DRYDK,DRYDH,DRYDPP,DRYDQQ
         
         POSX = 0.d0
@@ -1217,7 +1218,6 @@ C
           QQ = P(DKAL+4)
           PP = P(DKAL+5)
           PER(I) = EXP(P(DKAL+6))
-          S0 = P(DKAL+7)
           N = DPI/PER(I)         ! Mean motion / q
           Q = EXP(Z)            ! Semi-major axis
           MDYN(I) = N*N*(Q**3)    ! Dynamical mass
@@ -1225,7 +1225,8 @@ C
              MFRAC(I) = (MDYN(I)-MTOT)/MDYN(I) ! Mfrac(i) = (M(i)-M(i-1))/M(i)
              MTOT = MDYN(I)
           END IF
-          EXC = SQRT(K*K+H*H) ! e
+          EXC = SQRT(K*K+H*H) ! e 
+          S0 = P(DKAL+7)/EXC      ! P7 = S*E
           CW = K/EXC            ! cos(w)
           SW = H/EXC                   ! sin(w)
           ALPHA = MDYN(I)/Q*(1.d0-EXC) ! -2*Energy
@@ -1241,7 +1242,9 @@ C
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-
+          DTPDE = -DTPDS0*S0/EXC
+          DTPDP7 = DTPDS0/EXC
+          
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
           RX = Q-MDYN(I)*S2C2
@@ -1285,14 +1288,16 @@ C
           DRXDQ = DRXDQ+2.d0*DRXDTP*DTPDALPHA*ALPHA/Q
           DRXDPER = DRXDPER-2.d0*DRXDTP*DTPDALPHA*ALPHA/PER(I)
           DRXDE = DRXDE-DRXDTP*DTPDALPHA*MDYN(I)/Q
-          DRXDS0 = DRXDTP*DTPDS0
+          DRXDE = DRXDE+DRXDTP*DTPDE
+          DRXDP7 = DRXDTP*DTPDP7
           
           DRYDQ = DRYDQ+DRYDTP*(DTPDQ+3.d0*DTPDM*MDYN(I)/Q)
           DRYDPER = DRYDPER-2.d0*DRYDTP*DTPDM*MDYN(I)/PER(I)         
           DRYDQ = DRYDQ+2.d0*DRYDTP*DTPDALPHA*ALPHA/Q
           DRYDPER = DRYDPER-2.d0*DRYDTP*DTPDALPHA*ALPHA/PER(I)
           DRYDE = DRYDE-DRYDTP*DTPDALPHA*MDYN(I)/Q
-          DRYDS0 = DRYDTP*DTPDS0
+          DRYDE = DRYDE+DRYDTP*DTPDE
+          DRYDP7 = DRYDTP*DTPDP7
 
           DEDK = CW
           DEDH = SW
@@ -1381,7 +1386,7 @@ C
           DJACXDQQ = DRXDQQ*E1(1)+DRYDQQ*E2(1)+RX*DE1DQ(1)+RY*DE2DQ(1)
           DJACXDPP = DRXDPP*E1(1)+DRYDPP*E2(1)+RX*DE1DP(1)+RY*DE2DP(1)
           DJACXDPER = DRXDPER*E1(1)+DRYDPER*E2(1)
-          DJACXDS0 = DRXDS0*E1(1)+DRYDS0*E2(1)
+          DJACXDP7 = DRXDP7*E1(1)+DRYDP7*E2(1)
           
           DJACYDQ = DRXDQ*E1(2)+DRYDQ*E2(2)
           DJACYDK = DRXDK*E1(2)+DRYDK*E2(2)+RX*DE1DK(2)+RY*DE2DK(2)
@@ -1389,7 +1394,7 @@ C
           DJACYDQQ = DRXDQQ*E1(2)+DRYDQQ*E2(2)+RX*DE1DQ(2)+RY*DE2DQ(2)
           DJACYDPP = DRXDPP*E1(2)+DRYDPP*E2(2)+RX*DE1DP(2)+RY*DE2DP(2)
           DJACYDPER = DRXDPER*E1(2)+DRYDPER*E2(2)
-          DJACYDS0 = DRXDS0*E1(2)+DRYDS0*E2(2)
+          DJACYDP7 = DRXDP7*E1(2)+DRYDP7*E2(2)
 
           DJACXDZ = Q*DJACXDQ                                  
           DJACYDZ = Q*DJACYDQ 
@@ -1397,9 +1402,9 @@ C
           DJACYDLP = PER(I)*DJACYDPER
 
           DJACX(:,I) =
-     & (/ DJACXDZ,DJACXDK,DJACXDH,DJACXDQQ,DJACXDPP,DJACXDLP,DJACXDS0 /)
+     & (/ DJACXDZ,DJACXDK,DJACXDH,DJACXDQQ,DJACXDPP,DJACXDLP,DJACXDP7 /)
           DJACY(:,I) =
-     & (/ DJACYDZ,DJACYDK,DJACYDH,DJACYDQQ,DJACYDPP,DJACYDLP,DJACYDS0 /)
+     & (/ DJACYDZ,DJACYDK,DJACYDH,DJACYDQQ,DJACYDPP,DJACYDLP,DJACYDP7 /)
         END DO
        
 c        print*,'mdyn',sngl(mdyn),'mfrac',sngl(mfrac)
@@ -1444,7 +1449,7 @@ c                               => d(POSX,POSY)/d(ln(per(J-1))
                  DPOSX(N1,I) = DPOSX(N1,I)-DMFDM*JACX(J)
 c                                     d(ln(MDYN(J-1))/d(ln(MSTAR)) = 1
                  DPOSY(N1,I) = DPOSY(N1,I)-DMFDM*JACY(J)
-c                                     => d(POSX,POSY)/d(ln(MSTAR)
+c                                     => d(POSX,POSY)/d(ln(MSTAR))
               END IF
            END DO
         END DO
@@ -1491,19 +1496,19 @@ C
      &       FACT,              ! 1/(1-e*cos(u))
      &       RX,RY,             ! Coordonnes dans la base propre
      &       C0,C1,C2,C3,SC1,S2C2,S3C3,    ! Stumpff functions
-     &       DTPDS0,DTPDALPHA,DTPDM,DTPDQ, ! Derivatives of TP
+     &       DTPDE,DTPDS0,DTPDP7,DTPDALPHA,DTPDM,DTPDQ, ! Derivatives of TP
      &       DSDTP,DSDQ,DSDALPHA,DSDE,DSDM, ! Derivatives of S
      &       DOMDK,DOMDH,DODP,DODQ,DIDP,DIDQ,DOMDP,DOMDQ, ! Intern derivs. 
      &       DWDK,DWDH,DPHIDP,DPHIDQ, ! Derivees interm.
      &       DALPHADE,DALPHADM,DALPHADQ, !  
-     &       DMFDM,DMFDMM,DUDH,DUDK, !
+     &       DMFDM,DUDH,DUDK, !
      &       DEDK,DEDH,         ! Derivees de Exc
-     &       DVXDQ,DVXDS,DVXDE,DVXDS0,DVXDTP,DVXDM, ! Derivees de VX (internal)
+     &       DVXDQ,DVXDS,DVXDE,DVXDP7,DVXDTP,DVXDM, ! Derivees de VX (internal)
      &       DVXDPER,DVXDALPHA,DVXDK,DVXDH,DVXDPP,DVXDQQ,
-     &       DVYDQ,DVYDS,DVYDE,DVYDS0,DVYDTP,DVYDM, ! Derivees de VY (internal)
+     &       DVYDQ,DVYDS,DVYDE,DVYDP7,DVYDTP,DVYDM, ! Derivees de VY (internal)
      &       DVYDPER,DVYDALPHA,DVYDK,DVYDH,DVYDPP,DVYDQQ,
      &       DVJACDQ,DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPER,
-     &       DVJACDPP,DVJACDLP,DVJACDS0   ! Derivatives of VJAC   
+     &       DVJACDPP,DVJACDLP,DVJACDP7   ! Derivatives of VJAC   
 
         MSTAR = EXP(P(N1))
         MTOT = MSTAR       
@@ -1515,7 +1520,7 @@ C
           QQ = P(DKAL+4)
           PP = P(DKAL+5)
           PER(I) = EXP(P(DKAL+6))
-          S0 = P(DKAL+7)
+          S0 = P(DKAL+7)/EXC
           N = DPI/PER(I)         ! Mean motion / q
           Q = EXP(Z)            ! Semi-major axis
           MDYN(I) = N*N*(Q**3)    ! Dynamical mass
@@ -1539,7 +1544,9 @@ C
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-
+          DTPDE = -DTPDS0*S0/EXC
+          DTPDP7 = DTPDS0/EXC
+          
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
           UFA = SQRT(Q*MDYN(I)*(1.d0+EXC))
@@ -1578,7 +1585,8 @@ C
           DVXDQ = DVXDQ+2.d0*DVXDTP*DTPDALPHA*ALPHA/Q
           DVXDPER = DVXDPER-2.d0*DVXDTP*DTPDALPHA*ALPHA/PER(I)
           DVXDE = DVXDE-DVXDTP*DTPDALPHA*MDYN(I)/Q
-          DVXDS0 = DVXDTP*DTPDS0          
+          DVXDE = DVXDE+DVXDTP*DTPDE
+          DVXDP7 = DVXDTP*DTPDP7
           
           DVYDALPHA = -0.5d0*VY*(S*SC1/C0
      &          +MDYN(I)*(EXC*S*SC1-2.d0*S2C2)*FACT/ALPHA)          
@@ -1599,7 +1607,8 @@ C
           DVYDQ = DVYDQ+2.d0*DVYDTP*DTPDALPHA*ALPHA/Q
           DVYDPER = DVYDPER-2.d0*DVYDTP*DTPDALPHA*ALPHA/PER(I)
           DVYDE = DVYDE-DVYDTP*DTPDALPHA*MDYN(I)/Q
-          DVYDS0 = DVYDTP*DTPDS0
+          DVYDE = DVYDE+DVYDTP*DTPDE
+          DVYDP7 = DVYDTP*DTPDP7
           
           T2 = QQ*QQ+PP*PP        
           TI = SQRT(T2)        ! Tan(i/2)
@@ -1633,13 +1642,13 @@ C
           DVJACDPP = (VX*COM-VY*SOM)*DOMDP*SI+(VX*SOM+VY*COM)*CI*DIDP
           DVJACDQQ = (VX*COM-VY*SOM)*DOMDQ*SI+(VX*SOM+VY*COM)*CI*DIDQ
           DVJACDPER = (DVXDPER*SOM+DVYDPER*COM)*SI
-          DVJACDS0 = (DVXDS0*SOM+DVYDS0*COM)*SI
+          DVJACDP7 = (DVXDP7*SOM+DVYDP7*COM)*SI
 
           DVJACDZ = DVJACDQ*Q
           DVJACDLP = DVJACDPER*PER(I)
 
           DVJAC(:,I) =
-     & (/ DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPP,DVJACDLP,DVJACDS0 /) 
+     & (/ DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPP,DVJACDLP,DVJACDP7 /) 
           
         END DO
         
@@ -1661,32 +1670,18 @@ c...  Derivatives
                  MTOT = MSTAR
               END IF
               DMFDM = MTOT/MDYN(J) ! d(MFRAC(J))/d(ln(MDYN(J))
-              DMFDMM = DMFDM*PER(J)*PER(J)
               DVRADP(DKAL+1,I) = DVRADP(DKAL+1,I)-3.d0*DMFDM*VJAC(J)
-c                        d(ln(MDYN(J))/d(ln(a(J))=3.=> d(VRADP)/d(ln(a(J))
-              DVRADP(DKAL+6,I) = DVRADP(DKAL+6,I)
-     &                             -2.d0*DMFDMM*VJAC(J)*P(DKAL+6)
-c              d(ln(MDYN(J))/d(P6(J))=2*P6/(P6^2+P7^2)=2*PER(J)^2*P6(J)
-c                                                  => d(VRADP)/d(P6(J))
-              DVRADP(DKAL+7,I) = DVRADP(DKAL+7,I)
-     &                             -2.d0*DMFDMM*VJAC(J)*P(DKAL+7)
-c              d(ln(MDYN(J))/d(P7(J))=2*P7/(P6^2+P7^2)=2*PER(J)^2*P7(J)
-c                                                  => d(POSX,POSY)/d(P7(J)         
+c                     d(ln(MDYN(J))/d(ln(q(J))=3.=> d(VRADP)/d(ln(q(J))
+              DVRADP(DKAL+6,I) = DVRADP(DKAL+6,I)+2.d0*DMFDM*VJAC(J)
+c                     d(ln(MDYN(J))/d(ln(per(J))=-2.=> d(VRADP)/d(ln(per(J))
               IF (J.GT.1) THEN
-                 DMFDMM = DMFDM*PER(J-1)*PER(J-1)
                  DVRADP(DKAL-6,I) = DVRADP(DKAL-6,I)+3.d0*DMFDM*VJAC(J)
-c                  d(ln(MDYN(J-1))/d(ln(a(J-1))=3.=> d(VRADP)/d(ln(a(J-1))
-                 DVRADP(DKAL-1,I) = DVRADP(DKAL-1,I)
-     &                      +2.d0*DMFDMM*VJAC(J)*P(DKAL-1)
-c            d(ln(MDYN(J-1))/d(P6(J-1))=2*P6/(P6^2+P7^2)=2*PER(J-1)^2*P6(J-1)
-c                                              => d(VRADP)/d(P6(J-1))
-                 DVRADP(DKAL,I) = DVRADP(DKAL,I)
-     &                      +2.d0*DMFDMM*VJAC(J)*P(DKAL)
-c            d(ln(MDYN(J-1))/d(P7(J-1))=2*P7/(P6^2+P7^2)=2*PER(J-1)^2*P7(J-1)
-c                                              => d(VRADP)/d(P7(J-1))
+c            d(ln(MDYN(J-1)))/d(ln(q(J-1))=3.=> d(VRADP)/d(ln(q(J-1))
+                 DVRADP(DKAL-1,I) = DVRADP(DKAL-1,I)-2.d0*DMFDM*VJAC(J)
+c            d(ln(MDYN(J-1)))/d(ln(per(J-1)))=-2.=> d(VRADP)/d(ln(per(J-1)))
               ELSE
                  DVRADP(N1,I) = DVRADP(N1,I)+DMFDM*VJAC(J)
-c                d(ln(MDYN(J-1))/d(ln(MSTAR)) = 1 => d(VRADP)/d(ln(MSTAR)
+c            d(ln(MDYN(J-1)))/d(ln(MSTAR)) = 1 => d(VRADP)/d(ln(MSTAR))
               END IF
            END DO
         END DO
@@ -1731,19 +1726,19 @@ C
      &       FACT,              ! 1/(1-e*cos(u))
      &       RX,RY,             ! Coordonnes dans la base propre
      &       C0,C1,C2,C3,SC1,S2C2,S3C3,    ! Stumpff functions
-     &       DTPDS0,DTPDALPHA,DTPDM,DTPDQ, ! Derivatives of TP
+     &       DTPDE,DTPDS0,DTPDP7,DTPDALPHA,DTPDM,DTPDQ, ! Derivatives of TP
      &       DSDTP,DSDQ,DSDALPHA,DSDE,DSDM, ! Derivatives of S
      &       DOMDK,DOMDH,DODP,DODQ,DIDP,DIDQ,DOMDP,DOMDQ, ! Intern derivs. 
      &       DWDK,DWDH,DPHIDP,DPHIDQ, ! Derivees interm.
      &       DALPHADE,DALPHADM,DALPHADQ, !  
      &       DMFDM,DMFDMM,DUDH,DUDK, !
      &       DEDK,DEDH,         ! Derivees de Exc
-     &       DVXDQ,DVXDS,DVXDE,DVXDS0,DVXDTP,DVXDM, ! Derivees de VX (internal)
+     &       DVXDQ,DVXDS,DVXDE,DVXDP7,DVXDTP,DVXDM, ! Derivees de VX (internal)
      &       DVXDPER,DVXDALPHA,DVXDK,DVXDH,DVXDPP,DVXDQQ,
-     &       DVYDQ,DVYDS,DVYDE,DVYDS0,DVYDTP,DVYDM, ! Derivees de VY (internal)
+     &       DVYDQ,DVYDS,DVYDE,DVYDP7,DVYDTP,DVYDM, ! Derivees de VY (internal)
      &       DVYDPER,DVYDALPHA,DVYDK,DVYDH,DVYDPP,DVYDQQ,
      &       DVJACDQ,DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPER,
-     &       DVJACDPP,DVJACDLP,DVJACDS0   ! Derivatives of VJAC   
+     &       DVJACDPP,DVJACDLP,DVJACDP7   ! Derivatives of VJAC   
 
         VRAD = P(NEL*NPLA+1)    ! Offset velocity
         DVRAD = 0.d0
@@ -1776,12 +1771,14 @@ C
           S3C3 = C3*S0*S0*S0
           DT = MDYN(I)*S3C3+Q*SC1  ! Kepler's equation
           TP = STAR%T0-DT
-          DTPDS0 = -PLA(I)%MDYN*S2C2-PLA(I)%Q*C0
+          DTPDS0 = -MDYN(I)*S2C2-Q*C0
           DTPDALPHA = -(0.5d0/ALPHA)*(MDYN(I)*(S0*S2C2-3.d0*S3C3)
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-
+          DTPDE = -DTPDS0*S0/EXC
+          DTPDP7 = DTPDS0/EXC
+          
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
           UFA = SQRT(Q*MDYN(I)*(1.d0+EXC))
@@ -1820,7 +1817,8 @@ C
           DVXDQ = DVXDQ+2.d0*DVXDTP*DTPDALPHA*ALPHA/Q
           DVXDPER = DVXDPER-2.d0*DVXDTP*DTPDALPHA*ALPHA/PER(I)
           DVXDE = DVXDE-DVXDTP*DTPDALPHA*MDYN(I)/Q
-          DVXDS0 = DVXDTP*DTPDS0
+          DVXDE = DVXDE+DVXDTP*DTPDE
+          DVXDP7 = DVXDTP*DTPDP7
           
           DVYDALPHA = -0.5d0*VY*(S*SC1/C0
      &          +MDYN(I)*(EXC*S*SC1-2.d0*S2C2)*FACT/ALPHA)          
@@ -1841,7 +1839,8 @@ C
           DVYDQ = DVYDQ+2.d0*DVYDTP*DTPDALPHA*ALPHA/Q
           DVYDPER = DVYDPER-2.d0*DVYDTP*DTPDALPHA*ALPHA/PER(I)
           DVYDE = DVYDE-DVYDTP*DTPDALPHA*MDYN(I)/Q
-          DVYDS0 = DVYDTP*DTPDS0
+          DVYDE = DVYDE+DVYDTP*DTPDE
+          DVYDP7 = DVYDTP*DTPDP7
 
           T2 = QQ*QQ+PP*PP        
           TI = SQRT(T2)        ! Tan(i/2)
@@ -1875,13 +1874,13 @@ C
           DVJACDPP = (VX*COM-VY*SOM)*DOMDP*SI+(VX*SOM+VY*COM)*CI*DIDP
           DVJACDQQ = (VX*COM-VY*SOM)*DOMDQ*SI+(VX*SOM+VY*COM)*CI*DIDQ
           DVJACDPER = (DVXDPER*SOM+DVYDPER*COM)*SI
-          DVJACDS0 = (DVXDS0*SOM+DVYDS0*COM)*SI
+          DVJACDP7 = (DVXDP7*SOM+DVYDP7*COM)*SI
 
           DVJACDZ = DVJACDQ*Q
           DVJACDLP = DVJACDPER*PER(I)
 
           DVJAC(:,I) =
-     & (/ DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPP,DVJACDLP,DVJACDS0 /) 
+     & (/ DVJACDZ,DVJACDK,DVJACDH,DVJACDQQ,DVJACDPP,DVJACDLP,DVJACDP7 /) 
           
         END DO
 
@@ -1898,30 +1897,18 @@ c... Basic formula Jacobi coords => radial velocity
               MTOT = MSTAR
            END IF
            DMFDM = MTOT/MDYN(J) ! d(MFRAC(J))/d(ln(MDYN(J))
-           DMFDMM = DMFDM*PER(J)*PER(J)
            DVRAD(DKAL+1) = DVRAD(DKAL+1)+3.d0*DMFDM*VJAC(J)
-c                d(ln(MDYN(J))/d(ln(a(J))=3. => d(VRAD)/d(ln(a(J))
-           DVRAD(DKAL+6) = DVRAD(DKAL+6)+2.d0*DMFDMM*VJAC(J)*P(DKAL+6)
-c              d(ln(MDYN(J))/d(P6(J))=2*P6/(P6^2+P7^2)=2*PER(J)^2*P6(J)
-c                                           => d(VRAD)/d(P6(J))
-           DVRAD(DKAL+7) = DVRAD(DKAL+7)+2.d0*DMFDMM*VJAC(J)*P(DKAL+7)
-c              d(ln(MDYN(J))/d(P7(J))=2*P7/(P6^2+P7^2)=2*PER(J)^2*P7(J)
-c                                           => d(VRAD)/d(P7(J))   
+c                d(ln(MDYN(J))/d(ln(q(J))=3. => d(VRAD)/d(ln(q(J))
+           DVRAD(DKAL+6) = DVRAD(DKAL+6)-2.d0*DMFDM*VJAC(J)
+c                d(ln(MDYN(J))/d(ln(per(J)))=-2. => d(VRAD)/d(ln(per(J)))
            IF (J.GT.1) THEN
-              DMFDMM = DMFDM*PER(J-1)*PER(J-1)
               DVRAD(DKAL-6) = DVRAD(DKAL-6)-3.d0*DMFDM*VJAC(J)
 c           d(ln(MDYN(J-1))/d(ln(a(J-1))=3. => d(POSX,POSY)/d(ln(a(J-1))
-              DVRAD(DKAL-1) = DVRAD(DKAL-1)
-     &                      -2.d0*DMFDMM*VJAC(J)*P(DKAL-1)
-c           d(ln(MDYN(J-1))/d(P6(J-1))=2*P6/(P6^2+P7^2)=2*PER(J-1)^2*P6(J-1)
-c                                           => d(VRAD)/d(P6(J-1))
-              DVRAD(DKAL) = DVRAD(DKAL)
-     &                      -2.d0*DMFDMM*VJAC(J)*P(DKAL)
-c           d(ln(MDYN(J-1))/d(P7(J-1))=2*P7/(P6^2+P7^2)=2*PER(J-1)^2*P7(J-1)
-c                                           => d(VRAD)/d(P7(J-1))              
+              DVRAD(DKAL-1) = DVRAD(DKAL-1)+2.d0*DMFDM*VJAC(J)
+c           d(ln(MDYN(J-1))/d(ln(per(J-1)))=-2. => d(VRAD)/d(ln(per(J-1)))
            ELSE
               DVRAD(N1) = DVRAD(N1)-DMFDM*VJAC(J)
-c                                     d(ln(MDYN(J-1))/d(ln(MSTAR)) = 1
+c           d(ln(MDYN(J-1)))/d(ln(MSTAR)) = 1 => d(VRAD)/d(ln(MSTAR))
            END IF
         END DO        
         END    
@@ -1976,12 +1963,12 @@ C
            PLA(I)%PER = EXP(P(DKAL+6))
            PLA(I)%DPER = SQRT(ABS(COV(DKAL+6,DKAL+6)))*PLA(I)%PER
            NN = DPI/PLA(I)%PER
-           S = P(DKAL+7)
            K = P(DKAL+2)
            H = P(DKAL+3)
            QQ = P(DKAL+4)
            PP = P(DKAL+5)
            PLA(I)%EXC = SQRT(K*K+H*H)
+           S = P(DKAL+7)/PLA(I)%EXC ! P7 = S*E
            PLA(I)%A = PLA(I)%Q/(1.d0-PLA(I)%EXC)
            PLA(I)%CW = K/PLA(I)%EXC ! cos(w=omega+Omega)
            PLA(I)%SW = H/PLA(I)%EXC          ! sin(w)
@@ -2038,7 +2025,9 @@ C
            DTPDP(1:NPAR) = 0.d0
            DTPDP(DKAL+1) = -DTTDQ*PLA(I)%Q
            DTPDP(1:NPAR) = DTPDP(1:NPAR)-DTTDM*DMUDP(1:NPAR) 
-           DTPDP(DKAL+7) = DTPDP(DKAL+7)-DTTDS
+           DTPDP(DKAL+7) = DTPDP(DKAL+7)-DTTDS/PLA(I)%EXC
+           DTPDP(DKAL+2) = DTPDP(DKAL+2)+DTTDS*DEDP(DKAL+2)*S/PLA(I)%EXC
+           DTPDP(DKAL+3) = DTPDP(DKAL+3)+DTTDS*DEDP(DKAL+3)*S/PLA(I)%EXC
            DTPDP(DKAL+1) = DTPDP(DKAL+1)+DTTDA*ALPHA
            DTPDP(1:NPAR) = DTPDP(1:NPAR)
      &          -DTTDA*ALPHA/PLA(I)%MDYN*DMUDP(1:NPAR)
@@ -2167,7 +2156,8 @@ c       print*,'avant',sngl(p)
           PP = P(DKAL+5)
           Q = EXP(Z)            ! Periastron       
           PER = EXP(P(DKAL+6))
-          S0 = P(DKAL+7)
+          EXC = SQRT(K*K+H*H)
+          S0 = P(DKAL+7)/EXC
           NN = DPI/PER          ! Mean motion
           MDYN(I) = NN*NN*(Q**3)    ! Dynamical mass
           IF (MULTIPLA) THEN
@@ -2176,7 +2166,6 @@ c       print*,'avant',sngl(p)
 c             TEST = TEST.OR.(MFRAC.LE.0.d0)
 c             IF (TEST) print*,'Bahhh !'
           END IF
-          EXC = SQRT(K*K+H*H)
           TEST = TEST.OR.(EXC.GT.VPRIOR(3)%BOUND(2))
 c          if (test) print*,'test exc',test,exc,k,h
 c          TEST = TEST.OR.(PER.GT.VPRIOR(1)%BOUND(2))
@@ -2252,7 +2241,7 @@ C
 c...                                hh2 = -2xEnergie = alpha pour kepu          
            M0 =  (STAR%T0-PLA(I)%TP)*(2.d0*R-1.d0)
            CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
-           P(DKAL+7) = S
+           P(DKAL+7) = S*PLA(I)%EXC
         END DO
         IF (RADVEL) THEN
            P(NEL*NPLA+1) = STAR%V0
@@ -2262,7 +2251,7 @@ c...                                hh2 = -2xEnergie = alpha pour kepu
 
         END    
         
-C     
+C     xxxxx
 C -----------------------------------------------------------------------------
 C    Calculation of FMAP & derivatives (HCI part only)
 C        MAP = exp(-Chi2/2)*f(parameters) (f = priors)
@@ -2398,4 +2387,3 @@ c          FF2 = 2.d0*CI*CI/T2-4.d0/(T2*(1.d0+T2)*(1.d0+T2))
         
         END
       
-       

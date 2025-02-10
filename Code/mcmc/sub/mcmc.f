@@ -174,6 +174,7 @@ C
                  CHCCOV = 0.d0
                  CHCP = CHN(C)%P
                  CHCCHI2 = CHN(C)%CHI2
+c                 write(sd,*)'ps ',sngl(chn(c)%p)
                  DO K = 1,NGROUP
                     LLC(1:NPAR) = LL(1:NPAR,K)
                     DO I = 1,NPAR
@@ -392,10 +393,10 @@ C
         IF (VERBOSE) THEN
            WRITE(SD,*)'nmod = ',nmod,
      &          'long = ',long,' chi2 = ',sngl(chn(1:nch)%chi2)
-           WRITE(SD,*)'exc 1',
-     &          (sngl(sqrt(chn(i)%p(2)**2+chn(i)%p(3)**2)),i=1,nch)
-           WRITE(SD,*)'exc 2',
-     &      (sngl(sqrt(chn(i)%p(9)**2+chn(i)%p(10)**2)),i=1,nch) 
+c           WRITE(SD,*)'exc 1',
+c     &          (sngl(sqrt(chn(i)%p(2)**2+chn(i)%p(3)**2)),i=1,nch)
+c           WRITE(SD,*)'exc 2',
+c     &      (sngl(sqrt(chn(i)%p(9)**2+chn(i)%p(10)**2)),i=1,nch) 
         end if
         
         IF (INFCRIT.AND.(.NOT.INFER)) THEN
@@ -427,7 +428,11 @@ c...  Inférence quand le critère est atteint
            END IF
            IF ((MOD(LONG,WRITFREQ).LT.10).AND.(NMOD.EQ.NMAX)) THEN
               WRITE(SD,*)'Creating an output file...'
-              CALL WRITE_DISTRIB(NMOD,FILES(1))
+              IF (RADVEL) THEN
+                 CALL WRITE_DISTRIB(NMOD,FILES(1))
+              ELSE
+                 CALL WRITE_DISTRIB_DOUBLING(NMOD,FILES(1))
+              END IF          
            END IF
         END IF
 
@@ -540,7 +545,7 @@ C        END DO
           ALPHA = 0.d0
         ELSE
            CALL CHI2SEUL(PTRY,CHI2TRY)
-          ALPHA = MIN(EXP(-0.5d0*(CHI2TRY-CHI2))*RAPQ,1.d0)
+           ALPHA = MIN(EXP(-0.5d0*(CHI2TRY-CHI2))*RAPQ,1.d0)
         END IF
         CALL RANDOM_NUMBER(R)
         ACC = .FALSE.
@@ -601,9 +606,9 @@ c          DIRS(I,I) = 1.d0
 c        END DO
         FAIL = .FALSE.
         P(1:NPAR) = PTRY(1:NPAR)
-c        WRITE(SD,*)p(1:n)        
+c        WRITE(SD,*)'p = ',sngl(p(1:npar))        
         CALL CHI2SEUL(P,CHI2)
-c        WRITE(SD,*)'chi2init = ',chi2
+c        WRITE(SD,*)'chi2init = ',sngl(chi2)
         NS = 0
         NSL(1:NPAR) = 0
         BETAM1(1:NPAR) = BETA(1:NPAR)

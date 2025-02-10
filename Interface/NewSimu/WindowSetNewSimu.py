@@ -106,7 +106,7 @@ class WindowSetNewSimu(QMainWindow):
 
 
     def Start(self):
-        self.GoPath = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/go_mcmco.sh'
+        self.GoPath = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/start.sh'
         if not os.path.exists(self.GoPath):
             self.CreateInputFiles()
             if os.path.exists(self.GoPath):
@@ -158,7 +158,7 @@ class WindowSetNewSimu(QMainWindow):
 
         self.SimuDir = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'
         
-        with open(self.SimuDir+'go_mcmco.sh', 'w') as file:
+        with open(self.SimuDir+'start.sh', 'w') as file:
             file.write('#! /bin/bash')
             file.write('\n')
             file.write(f'cd {self.SimuDir}')

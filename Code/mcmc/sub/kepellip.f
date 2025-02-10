@@ -255,7 +255,7 @@ c...  Compute fractional masses
               MFRAC(I) = MUF(I)/SIGMA
            END DO
         END IF
-
+        
 c...  Define vectors & amplitudes (formulas differ depending on whether
 c...                             there are radial velocities or not)        
         IF (RADVEL) THEN
@@ -280,7 +280,7 @@ c...                             there are radial velocities or not)
 
 c...  Contribution of HCI (type 1 data) to Chi2        
         DO I = 1,NPLA
-          DO K = 1,PLA(I)%NDATAS
+           DO K = 1,PLA(I)%NDATAS
              CALL POSFITS(PLA(I)%TAS(K),
      &                    NN,A,EXC,EXQ,E1,E2,TP,MFRAC,POSX,POSY)
              DX = (PLA(I)%X(K)-POSX(I))*PLA(I)%SIGXM1(K)
@@ -311,7 +311,6 @@ c...        Note use of jitter (=0 if no jitter)
               END DO           
            END IF
         END IF
-        
         END
       
 C
@@ -383,7 +382,7 @@ C
            SII = SQRT(SI2(I))      ! sin(i/2)
            IF (RADVEL) THEN
               CI(I) = 1.d0-2.d0*SI2(I)              ! cos(i)
-              SI(I) = 2.d0*SII*SQRT(CI2(I))       ! sin(i)
+              SI(I) = 2.d0*SII*SQRT(CI2(I))         ! sin(i)
               CO(I) = P4/SII/SQEXQ ! cos(Omega)
               SO(I) = P5/SII/SQEXQ ! sin(Omega)
               COM(I) = CW(I)*CO(I)+SW(I)*SO(I) ! omega = w-Omega
@@ -393,8 +392,8 @@ C
            ELSE
               CP(I) = P4/SII/SQEXQ ! cos(phi)  phi=omega-Omega
               SP(I) = P5/SII/SQEXQ ! sin(phi)
-              CI(I) = 0.d0
-              SI(I) = 0.d0
+              CI(I) = 0.d0         ! No need for cos(i),sin(i) here
+              SI(I) = 0.d0         ! 
               CO(I) = 0.d0
               SO(I) = 0.d0
               COM(I) = 0.d0
@@ -402,7 +401,6 @@ C
            END IF
            CL = PER*P6       ! lambda = Omega+omega+v0 = w+v0
            SL = PER*P7
-
            CALL LAMBDA_TO_TP(STAR%T0,NN(I),EXC(I),EXQ(I),
      &           CL,SL,CW(I),SW(I),TP(I))
         END DO
@@ -749,13 +747,13 @@ C
         CHARACTER*(*), DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
 c                                                #3 = data
 
-        STAR%T0 = 0.d0
-        STAR%SIGJV = 0.d0
         CALL READ_DATAFILE(FILES(3))
         NFREE = 2*SUM(PLA%NDATAS)+STAR%NDATVR
      &          +SUM(PLA%NDATVR)+2*STAR%NDATAS-NPAR  ! # of degrees od freedom
 
         IF (NEW) THEN
+           STAR%T0 = 0.d0
+           STAR%SIGJV = 0.d0
            WRITE(SD,*)'Give reference time for data (JD) : '
            READ(5,*)STAR%T0
            IF (ISDATA(2)) THEN
@@ -2010,4 +2008,3 @@ c...        and related derivatives
         END DO
         END
       
-       

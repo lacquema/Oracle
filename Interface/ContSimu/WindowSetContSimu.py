@@ -127,7 +127,7 @@ class WindowSetContSimu(QMainWindow):
         self.StartOrder.Layout.addWidget(self.BtnSaveOrder)
         self.BtnSaveOrder.clicked.connect(self.SaveOrder)
 
-        self.LblGo = QLabel('./cont_mcmco.sh')
+        self.LblGo = QLabel('./continuation.sh')
         self.StartOrder.Layout.addWidget(self.LblGo)
 
         self.BtnStart = QPushButton('Continue the simulation')
@@ -188,20 +188,23 @@ class WindowSetContSimu(QMainWindow):
 
     def FindSettings(self):
         try:  
-            with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
+            with open(self.SimuPath.EditPath.text()+'start.sh', 'r') as file:
                 self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
                 GoFileLines = file.readlines()
                 self.NbCores = GoFileLines[2][:-1].split('=')[-1]
                 self.AlgoFileName = GoFileLines[4].split()[0].split('/')[-1]
                 self.SimuFileName = GoFileLines[13][:-1]+'.dat'
                 self.DumpFileName = GoFileLines[14][:-1].split('/')[-1]
-                print(f'Do you want continue {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file ?')
+                if self.AlgoFileName[-4:]=='_par':
+                    print(f'Do you want continue the {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file (in parallel with {self.NbCores} cores)?')
+                else:
+                    print(f'Do you want continue the {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file (not in parallel)?')
         except:
             print('Simulation not found')
 
 
     def CreateContFile(self):
-        self.ContFilePath = self.SimuPath.EditPath.text()+'cont_mcmco.sh'
+        self.ContFilePath = self.SimuPath.EditPath.text()+'continuation.sh'
         if len(self.SimuPath.EditPath.text())==0:
             print('Simulation path not given')
         else:
@@ -249,7 +252,7 @@ class WindowSetContSimu(QMainWindow):
 
 
     def Start(self):
-        self.GoPath = self.SimuPath.EditPath.text()+'cont_mcmco.sh'
+        self.GoPath = self.SimuPath.EditPath.text()+'continuation.sh'
         if not os.path.exists(self.GoPath):
             self.CreateContFile()
             if os.path.exists(self.GoPath):

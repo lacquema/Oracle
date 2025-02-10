@@ -8,7 +8,7 @@ c 10h30 v3/3
         END MODULE DATA
 
 c-------------------------------------------------------------------------
-       
+        
         PROGRAM ASTROM_MCMCO
 
         USE DATA

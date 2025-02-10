@@ -28,7 +28,6 @@ class GeneralTab(QWidget):
         # Directory path
         self.DirPath = os.path.dirname(__file__)
 
-
         # Layout initialisation
         self.Layout = QVBoxLayout()
 
@@ -396,13 +395,14 @@ class TabPriorSet(GeneralTab):
                     x.Layout.removeWidget(x.Layout.itemAt(x.Layout.indexOf(x.Distrib)-2).widget())
 
     def ValidationItemTbl(self):
-        # if self.TablePriors.currentRow() != -1 and self.TablePriors.currentColumn() != -1: # corresponding of initial state (-1,-1) of the table where item is None
-        TextNew = self.TablePriors.currentItem().text()
-        try:
-            if self.TablePriors.currentColumn() not in [3,4,5] and float(TextNew)<0:
+        if self.TablePriors.currentItem()!=None:
+            TextNew = self.TablePriors.currentItem().text()
+            try:
+                TextNew = float(TextNew)
+                if self.TablePriors.currentColumn() not in [3,4,5] and TextNew<0:
+                    self.TablePriors.currentItem().setText(self.TextOld)
+            except:
                 self.TablePriors.currentItem().setText(self.TextOld)
-        except:
-            self.TablePriors.currentItem().setText(self.TextOld)
                 
     def SaveOldTextTbl(self):
         self.TextOld = self.TablePriors.currentItem().text()
@@ -458,7 +458,7 @@ class TabStartSet(GeneralTab):
         self.CheckParallel.Layout.setSpacing(60)
         self.NbCores = SpinBox('Number of cores', 'Number of cores use for parallelization', 8, 1, None, 1)
         self.CheckParallel.Layout.addWidget(self.NbCores, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.CheckParallel.CheckParam.stateChanged.connect(self.NbCores.setEnabled)
+        self.CheckParallel.CheckParam.stateChanged.connect(self.CheckParallelChange)
 
         self.BtnCreate = QPushButton('Create startup files')
         self.Layout.addWidget(self.BtnCreate, alignment=Qt.AlignmentFlag.AlignRight)
@@ -508,6 +508,11 @@ class TabStartSet(GeneralTab):
     #     self.ComboOrder.setEnabled(state)
     #     self.StartOrder.setEnabled(state)
     #     self.BtnStart.setEnabled(state)
+
+    def CheckParallelChange(self, state):
+        print(state)
+        self.NbCores.setEnabled(state)
+        self.NbCores.SpinParam.setValue(state*8//2)
 
     def ChangeOrder(self):
         self.StartOrder.EditParam.setText(self.ComboOrder.ComboParam.currentText())

@@ -381,7 +381,7 @@ c...  Priors #0..NPLA tell that individual masses must be positive
            WRITE(SD,*)'Dump frequency ?'
            READ(5,*)FREQDUMP  
            CALL READ_DUMP0(NMOD,FILES)
-           CORR = (MOD(DATATYP(1),2).NE.0)
+cxx           CORR = (MOD(DATATYP(1),2).NE.0)
         END IF
 
         END 
@@ -594,7 +594,7 @@ C
         READ(18,*,IOSTAT=ERROR)NPAR,NPLA,NPRIOR,JITNUM,
      &                         DATEINPUT,XYFORMAT,CORRNUM
         MULTIPLA = (NPLA.GT.1)
-        MULTIPLA = (MULTIPLA.OR.RADVEL)
+        MULTIPLA = (MULTIPLA.OR.ISDATA(2).OR.ISDATA(4))
 
         DO I = 1,NLIM
            READ(18,*,IOSTAT=ERROR)VPRIOR(I)%BOUND(1:2)
@@ -669,182 +669,7 @@ C
         CLOSE(18)        
 
         END
-        
-C
-C -----------------------------------------------------------------------------
-C       Ecrire un ficher resultat (doublement des solutions (O,w))
-C -----------------------------------------------------------------------------
-C
-        SUBROUTINE WRITE_DISTRIB_DOUBLING(NMOD,DEV)
-
-        USE DATA
-
-        IMPLICIT NONE
-
-        INTEGER*4 ::    NMOD,         ! Number of models 
-     &                  NSAV          ! Number of pars. to store per planet
-        CHARACTER*(*) :: DEV          ! 
-        REAL*8, DIMENSION(:), ALLOCATABLE ::
-     &                  NN,           ! Moyen mouvement
-     &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
-        REAL*8 ::       CHI2,         ! Chi2
-     &                  FMAP,         ! MAP
-     &                  SIGMA         ! Cumulative mass
-        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
-        INTEGER*4       I,K
-
-        NSAV = NEL+4
-        ALLOCATE(DATA4(2*(NMOD+1),NSAV,NPLA))
-        ALLOCATE(NN(NPLA))
-        ALLOCATE(CI2(NPLA))
-        ALLOCATE(SI2(NPLA))
-        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &       PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,PLA%TP,PLA%MU)
-        IF (MULTIPLA) STAR%MASS = EXP(PSTART(NPAR))
-        
-        PLA%PER = DPI/NN
-        PLA%W = ATAN2(PLA%SW,PLA%CW)
-        PLA%PHI = ATAN2(PLA%SP,PLA%CP)
-        PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
-        PLA%O = 0.5d0*(PLA%W-PLA%PHI)
-        PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
-        CHI2 = PSTART(NPAR+1)
-        FMAP = PSTART(NPAR+2)
-        DO K = 1,NPLA
-           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-        END DO
-        PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
-        PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
-        DO K = 1,NPLA
-           DATA4(2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-        END DO
-        DO I = 1,NMOD
-          CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &       PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,PLA%TP,PLA%MU)
-          IF (MULTIPLA) STAR%MASS = EXP(PSAV(NPAR,I))
-          PLA%PER = DPI/NN
-          PLA%W = ATAN2(PLA%SW,PLA%CW)
-          PLA%PHI = ATAN2(PLA%SP,PLA%CP)
-          PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
-          PLA%O = 0.5d0*(PLA%W-PLA%PHI)
-          PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
-          CHI2 = PSAV(NPAR+1,I)
-          FMAP = PSAV(NPAR+2,I)
-          DO K = 1,NPLA
-             DATA4(2*I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-          END DO
-          PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
-          PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
-          DO K = 1,NPLA
-             DATA4(2*I+2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-          END DO
-        END DO
-c...      Save everything into output file
-        OPEN(18,FILE=DEV,STATUS='UNKNOWN')
-        WRITE(18,*)2*(NMOD+1),NSAV,NPLA
-        WRITE(18,*)DATA4
-        CLOSE(18)
-        DEALLOCATE(DATA4)
-        DEALLOCATE(NN)
-        DEALLOCATE(CI2)
-        DEALLOCATE(SI2)
-        END
-
-C
-C -----------------------------------------------------------------------------
-C       Ecrire un ficher resultat
-C -----------------------------------------------------------------------------
-C
-        SUBROUTINE WRITE_DISTRIB(NMOD,DEV)
-
-        USE DATA
-
-        IMPLICIT NONE
-
-        INTEGER*4 ::    NMOD,         ! Number of models 
-     &                  NSAV          ! Number of pars. to store per planet
-        CHARACTER*(*) :: DEV          ! 
-        REAL*8, DIMENSION(:), ALLOCATABLE ::
-     &                  NN,           ! Moyen mouvement
-     &                  CI,SI         ! cos(i), sin(i)
-        REAL*8 ::       CHI2,         ! Chi2
-     &                  FMAP,         ! MAP
-     &                  SIGMA         ! Cumulative mass
-        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
-        INTEGER*4       I,K
-
-        STAR%SIGJV = 0.d0
-        NSAV = NEL+6
-        ALLOCATE(DATA4(NMOD+1,NSAV,NPLA))
-        ALLOCATE(NN(NPLA))
-        ALLOCATE(CI(NPLA))
-        ALLOCATE(SI(NPLA))
-        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &       CI,SI,PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-
-        STAR%MASS = EXP(PSTART(NPAR))
-        STAR%V0 = PSTART(NEL*NPLA+1)
-        IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSTART(NEL*NPLA+2))
-        PLA%PER = DPI/NN
-        PLA%OM = ATAN2(PLA%SOM,PLA%COM)
-        PLA%O = ATAN2(PLA%SO,PLA%CO)
-        PLA%INC = ATAN2(SI,CI)
-        CHI2 = PSTART(NPAR+1)
-        FMAP = PSTART(NPAR+2)
-        DO K = 1,NPLA
-           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
-     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
-     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
-     &          SNGL(CHI2),SNGL(FMAP) /)
-        END DO
-        DO I = 1,NMOD
-          CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &       CI,SI,PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-          STAR%MASS = EXP(PSAV(NPAR,I))
-          STAR%V0 = PSAV(NEL*NPLA+1,I)
-          IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSAV(NEL*NPLA+2,I))
-          PLA%PER = DPI/NN
-          PLA%OM = ATAN2(PLA%SOM,PLA%COM)
-          PLA%O = ATAN2(PLA%SO,PLA%CO)
-          PLA%INC = ATAN2(SI,CI)
-          CHI2 = PSAV(NPAR+1,I)
-          FMAP = PSAV(NPAR+2,I)
-          DO K = 1,NPLA
-             DATA4(I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
-     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
-     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
-     &          SNGL(CHI2),SNGL(FMAP) /)
-          END DO
-        END DO
-c...      Save everything into output file
-        OPEN(18,FILE=DEV,STATUS='UNKNOWN')
-        WRITE(18,*)NMOD+1,NSAV,NPLA
-        WRITE(18,*)DATA4
-        CLOSE(18)
-        DEALLOCATE(DATA4)
-        DEALLOCATE(NN)
-        DEALLOCATE(CI)
-        DEALLOCATE(SI)
-        END
-
-
-      
+              
 C
 C-----------------------------------------------------------------------------
 C    Displays a solution on screen
@@ -1295,3 +1120,199 @@ c... Conversion JJ-MM-YR -> JD
 
         END
 
+C
+C -----------------------------------------------------------------------------
+C       Writing an output file (with (O,w) solutions doubling)
+C -----------------------------------------------------------------------------
+C
+        SUBROUTINE WRITE_DISTRIB_DOUBLING(NMOD,DEV)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    NMOD,         ! Number of models 
+     &                  NSAV          ! Number of pars. to store per planet
+        CHARACTER*(*) :: DEV          ! 
+        REAL*8, DIMENSION(:), ALLOCATABLE ::
+     &                  NN,           ! Mean motion (wrt/q if univ. var.)
+     &                  CI,SI,        ! cos(i),sin(i)
+     &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
+        REAL*8 ::       CHI2,         ! Chi2
+     &                  FMAP,         ! MAP
+     &                  SIGMA         ! Cumulative mass
+        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
+        INTEGER*4       I,K
+
+        NSAV = NEL+4
+        ALLOCATE(DATA4(2*(NMOD+1),NSAV,NPLA))
+        ALLOCATE(NN(NPLA))
+        ALLOCATE(CI2(NPLA))
+        ALLOCATE(SI2(NPLA))
+        ALLOCATE(CI(NPLA))
+        ALLOCATE(SI(NPLA))
+c...  Note : In the case of universal variables,
+c...           the periastron is stored here in pla%a 
+        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+        IF (MULTIPLA) STAR%MASS = EXP(PSTART(NPAR))
+        
+        PLA%PER = DPI/NN  ! wtr q if universal variables.
+        PLA%W = ATAN2(PLA%SW,PLA%CW)
+        PLA%PHI = ATAN2(PLA%SP,PLA%CP)
+        PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
+        PLA%O = 0.5d0*(PLA%W-PLA%PHI)
+        PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
+        CHI2 = PSTART(NPAR+1)
+        FMAP = PSTART(NPAR+2)
+        DO K = 1,NPLA
+           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
+     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
+        END DO
+        PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
+        PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
+        DO K = 1,NPLA
+           DATA4(2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
+     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
+        END DO
+        DO I = 1,NMOD
+          CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+          IF (MULTIPLA) STAR%MASS = EXP(PSAV(NPAR,I))
+          PLA%PER = DPI/NN
+          PLA%W = ATAN2(PLA%SW,PLA%CW)
+          PLA%PHI = ATAN2(PLA%SP,PLA%CP)
+          PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
+          PLA%O = 0.5d0*(PLA%W-PLA%PHI)
+          PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
+          CHI2 = PSAV(NPAR+1,I)
+          FMAP = PSAV(NPAR+2,I)
+          DO K = 1,NPLA
+             DATA4(2*I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
+     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
+          END DO
+          PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
+          PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
+          DO K = 1,NPLA
+             DATA4(2*I+2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
+     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
+          END DO
+        END DO
+c...      Save everything into output file
+        OPEN(18,FILE=DEV,STATUS='UNKNOWN')
+        WRITE(18,*)2*(NMOD+1),NSAV,NPLA
+        WRITE(18,*)DATA4
+        CLOSE(18)
+        DEALLOCATE(DATA4)
+        DEALLOCATE(NN)
+        DEALLOCATE(CI2)
+        DEALLOCATE(SI2)
+        DEALLOCATE(CI)
+        DEALLOCATE(SI)
+
+        END
+
+C
+C -----------------------------------------------------------------------------
+C       Writing an output file
+C -----------------------------------------------------------------------------
+C
+        SUBROUTINE WRITE_DISTRIB(NMOD,DEV)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    NMOD,         ! Number of models 
+     &                  NSAV          ! Number of pars. to store per planet
+        CHARACTER*(*) :: DEV          ! 
+        REAL*8, DIMENSION(:), ALLOCATABLE ::
+     &                  NN,           ! Mean motion (wrt/q if univ. var.)
+     &                  CI,SI,        ! cos(i),sin(i)
+     &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
+        REAL*8 ::       CHI2,         ! Chi2
+     &                  FMAP,         ! MAP
+     &                  SIGMA         ! Cumulative mass
+        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
+        INTEGER*4       I,K
+
+        STAR%SIGJV = 0.d0
+        NSAV = NEL+6
+        ALLOCATE(DATA4(NMOD+1,NSAV,NPLA))
+        ALLOCATE(NN(NPLA))
+        ALLOCATE(CI(NPLA))
+        ALLOCATE(SI(NPLA))
+        ALLOCATE(CI2(NPLA))
+        ALLOCATE(SI2(NPLA))
+c...  Note : In the case of universal variables,
+c...           the periastron is stored here in pla%a 
+        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+        STAR%MASS = EXP(PSTART(NPAR))
+        STAR%V0 = PSTART(NEL*NPLA+1)
+        IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSTART(NEL*NPLA+2))
+
+        PLA%PER = DPI/NN   ! wtr q if universal variables.
+        PLA%OM = ATAN2(PLA%SOM,PLA%COM)
+        PLA%O = ATAN2(PLA%SO,PLA%CO)
+        PLA%INC = ATAN2(SI,CI)
+        CHI2 = PSTART(NPAR+1)
+        FMAP = PSTART(NPAR+2)
+        DO K = 1,NPLA
+           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
+     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
+     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
+     &          SNGL(CHI2),SNGL(FMAP) /)
+        END DO
+        DO I = 1,NMOD
+           CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+          STAR%MASS = EXP(PSAV(NPAR,I))
+          STAR%V0 = PSAV(NEL*NPLA+1,I)
+          IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSAV(NEL*NPLA+2,I))
+          PLA%PER = DPI/NN
+          PLA%OM = ATAN2(PLA%SOM,PLA%COM)
+          PLA%O = ATAN2(PLA%SO,PLA%CO)
+          PLA%INC = ATAN2(SI,CI)
+          CHI2 = PSAV(NPAR+1,I)
+          FMAP = PSAV(NPAR+2,I)
+          DO K = 1,NPLA
+             DATA4(I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
+     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
+     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
+     &          SNGL(CHI2),SNGL(FMAP) /)
+          END DO
+        END DO
+c...      Save everything into output file
+        OPEN(18,FILE=DEV,STATUS='UNKNOWN')
+        WRITE(18,*)NMOD+1,NSAV,NPLA
+        WRITE(18,*)DATA4
+        CLOSE(18)
+        DEALLOCATE(DATA4)
+        DEALLOCATE(NN)
+        DEALLOCATE(CI)
+        DEALLOCATE(SI)
+        DEALLOCATE(CI2)
+        DEALLOCATE(SI2)
+
+        END
+
+
+      
+       
