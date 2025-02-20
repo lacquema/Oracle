@@ -4,7 +4,7 @@
 
 # Transverse packages
 import numpy as np
-from Utils import SEPPAtoRADEC, RADECtoSEPPA, MJDtoDate, DatetoMJD, jd_to_mjd
+from Utils import *
 from PyQt6.QtWidgets import QWidget
 
 
@@ -68,7 +68,8 @@ def TransfertData(PathInputData):
         Pa = []
         DSep = []
         DPa = []
-        CorrRelAstro = []
+        CorrDecRa = []
+        CorrSepPa = []
         SourceRelAstro = []
 
         RvAbsRv = []
@@ -99,28 +100,32 @@ def TransfertData(PathInputData):
                             JJRelAstro.append(int(Conv[2]))
                             MMRelAstro.append(int(Conv[1]))
                             YYRelAstro.append(int(Conv[0]))
-                        if len(DataLine) != (8 or 10): CorrRelAstro.append(0) # no Corr
-                        else: CorrRelAstro.append(float(DataLine[5+NbVarDate]))
                         if 'RA' in Header:
+                            if len(DataLine) != (8 or 10): CorrDecRa.append(0) # no Corr
+                            else: CorrDecRa.append(float(DataLine[5+NbVarDate]))
                             Ra.append(float(DataLine[2+NbVarDate]))
                             Dec.append(float(DataLine[1+NbVarDate]))
                             DRa.append(float(DataLine[4+NbVarDate]))
                             DDec.append(float(DataLine[3+NbVarDate]))
-                            Conv = RADECtoSEPPA(Ra[-1], Dec[-1], DRa[-1], DDec[-1], CorrRelAstro[-1])
+                            Conv = cartesian_to_polar_with_errors(Dec[-1], Ra[-1], DDec[-1], DRa[-1], CorrDecRa[-1])
                             Sep.append(Conv[0])
                             Pa.append(Conv[1])
                             DSep.append(Conv[2])
                             DPa.append(Conv[3])
+                            CorrSepPa.append(Conv[4])
                         elif 'SEP' in Header:
+                            if len(DataLine) != (8 or 10): CorrSepPa.append(0) # no Corr
+                            else: CorrSepPa.append(float(DataLine[5+NbVarDate]))
                             Sep.append(float(DataLine[1+NbVarDate]))
                             Pa.append(float(DataLine[2+NbVarDate]))
                             DSep.append(float(DataLine[3+NbVarDate]))
                             DPa.append(float(DataLine[4+NbVarDate]))
-                            Conv = SEPPAtoRADEC(Sep[-1], Pa[-1], DSep[-1], DPa[-1], CorrRelAstro[-1])
+                            Conv = polar_to_cartesian_with_errors(Sep[-1], Pa[-1], DSep[-1], DPa[-1], CorrSepPa[-1])
                             Dec.append(Conv[0])
                             Ra.append(Conv[1])
                             DDec.append(Conv[2])
                             DRa.append(Conv[3])
+                            CorrDecRa.append(Conv[4])
                         NbDataRelAstro += 1
                         count += 1
                         if i+count == len(DataLines): break
@@ -142,7 +147,7 @@ def TransfertData(PathInputData):
                 # if DataLines[i-2][0] == '4': # Absolute astrometry (not yet)
                 #         return
 
-        DataRelAstro = [NbDataRelAstro, IRelAstro, MJDRelAstro, JJRelAstro, MMRelAstro, YYRelAstro, Ra, Dec, DRa, DDec, Sep, Pa, DSep, DPa, CorrRelAstro, SourceRelAstro] # format I, MJD, JJ, MM, YY, Dec, Ra, DDec, DRa, Sep, Pa, DSep, DPa, Corr, Source
+        DataRelAstro = [NbDataRelAstro, IRelAstro, MJDRelAstro, JJRelAstro, MMRelAstro, YYRelAstro, Ra, Dec, DRa, DDec, CorrDecRa, Sep, Pa, DSep, DPa, CorrSepPa, SourceRelAstro] # format I, MJD, JJ, MM, YY, Dec, Ra, DDec, DRa, Sep, Pa, DSep, DPa, Corr, Source
 
         # if len(DataAbsRV) !=0 :
         #     DataAbsRV = np.transpose(DataAbsRV)

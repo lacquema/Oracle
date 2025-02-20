@@ -1,78 +1,79 @@
-#! ../bin/python3
+#!/Users/lacquema/Oracle.env/bin/python3
 
-# Transverse packages
 import sys
 import os
-
-# PyQt packages
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QLabel, QStatusBar, QWidget, QApplication, QPushButton
+from PyQt6.QtWidgets import (
+    QMainWindow, QVBoxLayout, QLabel, QStatusBar, QWidget, QApplication, QPushButton
+)
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import Qt 
+from PyQt6.QtCore import Qt
 
-### --- Loading Window Generating --- ###
+
 class WindowMenuClass(QMainWindow):
-    
+    """Fenêtre principale du menu, permettant de naviguer entre les simulations."""
+
     def __init__(self):
         super().__init__()
 
-        # Directory path
+        # Définition du répertoire du fichier
         self.DirPath = os.path.dirname(__file__)
 
-        # Window settings
+        # Configuration de la fenêtre
         self.setWindowTitle("Oracle 1.0")
         self.setFixedSize(850, 450)
 
-        # Background image
-        self.setStyleSheet(f"background-image: url({self.DirPath}/Items/LoadingBackground.png)") 
-        # button.setStyleSheet('QPushButton {background-color: #A3C1DA; color: red;}')
+        # Ajout d'une image de fond
+        self.setStyleSheet(f"background-image: url({self.DirPath}/Items/LoadingBackground.png)")
 
-        # Layout intialisation
-        Layout = QVBoxLayout()
+        # Initialisation du layout principal
+        self.init_ui()
 
-        Layout.addSpacing(20)
+    def init_ui(self):
+        """Initialisation des widgets et du layout."""
+        layout = QVBoxLayout()
+        layout.addSpacing(20)
 
-        # Button new simulation
-        self.BtnNew = QPushButton('New Simulation')
-        # Front = QFont('', 20, italic=True)
-        # self.BtnNew.setFont(Front)
-        self.BtnNew.setFixedSize(200, 40)
-        self.BtnNew.setStyleSheet('QPushButton {background-color: grey; color: white; font: italic 15px;}')
-        Layout.addWidget(self.BtnNew, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # Création des boutons
+        self.BtnNew = self.create_button("New Simulation")
+        layout.addWidget(self.BtnNew, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        Layout.addSpacing(20)
+        layout.addSpacing(20)
 
-        # Button simulation Continue
-        self.BtnContinue = QPushButton('Continue')
-        # self.BtnContinue.setFont(Front)
-        self.BtnContinue.setFixedSize(200, 40)
-        self.BtnContinue.setStyleSheet('QPushButton {background-color: grey; color: white; font: italic 15px;}')
-        Layout.addWidget(self.BtnContinue, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.BtnContinue = self.create_button("Continue")
+        layout.addWidget(self.BtnContinue, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        Layout.addSpacing(95)
+        layout.addSpacing(95)
 
-        # Button analyse simulation
-        self.BtnAnalyse = QPushButton('Analyse')
-        # self.BtnAnalyse.setFont(Front)
-        self.BtnAnalyse.setFixedSize(200, 40)
-        self.BtnAnalyse.setStyleSheet('QPushButton {background-color: grey; color: white; font: italic 15px;}')
-        Layout.addWidget(self.BtnAnalyse, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.BtnAnalyse = self.create_button("Analyse")
+        layout.addWidget(self.BtnAnalyse, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        Layout.addSpacing(500)
+        layout.addSpacing(40)  # Ajustement de l'espacement
 
-        # Credits in status bar
-        StatusBar = QStatusBar(self)
-        StatusBar.addWidget(QLabel(' Version 1.0, 2024, IPAG, Hervé Beust, Antoine Lacquement'))
-        self.setStatusBar(StatusBar)
+        # Ajout de la barre de statut avec crédits
+        self.init_status_bar()
 
-        # Widget container
-        Container = QWidget()
-        Container.setLayout(Layout)
-        self.setCentralWidget(Container)
+        # Conteneur central
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
 
-        # Showing
-        self.show()
+    def create_button(self, text):
+        """Crée un bouton stylisé avec une taille définie."""
+        button = QPushButton(text)
+        button.setFixedSize(200, 40)
+        button.setStyleSheet(
+            "QPushButton {background-color: grey; color: white; font: italic 15px;}"
+        )
+        return button
 
-if __name__=="__main__":
-    app = QApplication(sys.argv) # Application creation
-    LoadWin = WindowMenuClass() # Loading window showing
-    sys.exit(app.exec()) # Application execution
+    def init_status_bar(self):
+        """Initialise la barre de statut avec les crédits."""
+        status_bar = QStatusBar(self)
+        status_bar.addWidget(QLabel(" Version 1.0, 2024, IPAG, Hervé Beust, Antoine Lacquement"))
+        self.setStatusBar(status_bar)
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)  # Création de l'application PyQt
+    main_menu = WindowMenuClass()  # Affichage du menu principal
+    sys.exit(app.exec())  # Exécution de l'application

@@ -10,18 +10,19 @@ import subprocess
 # Transverse packages
 
 # PyQt packages
-from PyQt6.QtWidgets import QTabWidget, QMainWindow, QStatusBar, QApplication, QVBoxLayout, QPushButton, QFileDialog
+from PyQt6.QtWidgets import QTabWidget, QMainWindow, QStatusBar, QApplication, QVBoxLayout, QPushButton, QFileDialog, QTreeWidgetItem, QTreeView
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon
 
 # My packages
 from Parameters import *
 from Utils import *
+from WindowWithFinder import WindowWithFinder
 
 
 ### --- Parameters Window Generating --- ###
 
-class WindowSetContSimu(QMainWindow):
+class WindowSetContSimu(WindowWithFinder):
 
     SignalCloseWindowSetContSimu = pyqtSignal()
     
@@ -33,7 +34,7 @@ class WindowSetContSimu(QMainWindow):
 
         # Window characteristics
         self.setWindowTitle('Parameters to continue the simulation')
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(1000)
 
         # Layout initialisation
         self.Layout = QVBoxLayout()
@@ -51,25 +52,37 @@ class WindowSetContSimu(QMainWindow):
         self.Container.setLayout(self.Layout)
 
         # Container
-        self.setCentralWidget(self.Container)
+        # self.setCentralWidget(self.Container)
+
+        # Add container to the split main window
+        self.Splitter.addWidget(self.Container)
+
+        # Connect folder to edit path
+        self.Finder.doubleClicked.connect(self.ChangePath)
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
 
 
+    def ChangePath(self):
+        index = self.Finder.selectedIndexes()[0]
+        info = self.Model.fileInfo(index)
+        self.SimuPath.EditParam.setText(info.absoluteFilePath()+'/')
+
+
 
     def InitWidgets(self):
         
-        self.SimuPath = PathBrowser('Directory path', 'Path to the directory of the simulation to continue', 0)
+        self.SimuPath = LineEdit('Directory path', 'Path to the directory of the simulation to continue', '')
         self.Layout.addWidget(self.SimuPath)
-        self.SimuPath.EditPath.textChanged.connect(self.FindSettings)
+        self.SimuPath.EditParam.textChanged.connect(self.FindSettings)
         # self.SimuPath.EditPath.textChanged.connect(self.ChangeStartOrder)
 
-        # self.InputFileName = LineEdit('Continuation file', 'Name you want to give to the input continuation shell file with extension', 'inputcont.sh')
+        # self.StartFileName = LineEdit('Startup file', 'Name you want to give to the input continuation shell file with extension', 'inputcont.sh')
         # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
         # self.InputFileName.EditParam.textChanged.connect(self.ChangeStartOrder)
 
-        # self.DumpFileName = LineEdit('Dump file', 'Name of dump file with extension', 'dump.dat')
+        # self.DumpFileName = LineEdit('Dump file', 'Name of dump file with extension', '')
         # self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.Layout.addWidget(Delimiter(Title='Options :'))
@@ -138,6 +151,9 @@ class WindowSetContSimu(QMainWindow):
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        self.BtnStart.setEnabled(False)
+        self.BtnCont.setEnabled(False)
+
     # def CheckStartOrderChange(self, state):
     #     # self.NbHours.setEnabled(state)
     #     self.ComboOrder.setEnabled(state)
@@ -171,7 +187,7 @@ class WindowSetContSimu(QMainWindow):
             self.NbOrdersValue -= 1
             self.ComboOrder.ComboParam.setCurrentIndex(-1)
         else:
-            print('Impossible to remove this order')
+            print('\nImpossible to remove this order')
 
     # Reset all widgets of the parameters window
     def ResetParams(self):
@@ -184,49 +200,49 @@ class WindowSetContSimu(QMainWindow):
         self.SignalCloseWindowSetContSimu.emit() 
 
     # def ChangeStartOrder(self):
-    #     self.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla {self.SimuPath.EditPath.text()+self.InputFileName.EditParam.text()}')
+    #     self.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core=8,walltime={self.NbHours.SpinParam.value()} --project dynapla {self.SimuPath.EditParam.text()+self.InputFileName.EditParam.text()}')
 
     def FindSettings(self):
         try:  
-            with open(self.SimuPath.EditPath.text()+'start.sh', 'r') as file:
-                self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
+            with open(self.SimuPath.EditParam.text()+'start.sh', 'r') as file:
+                self.SimuName = self.SimuPath.EditParam.text().split('/')[-2]
                 GoFileLines = file.readlines()
                 self.NbCores = GoFileLines[2][:-1].split('=')[-1]
                 self.AlgoFileName = GoFileLines[4].split()[0].split('/')[-1]
                 self.SimuFileName = GoFileLines[13][:-1]+'.dat'
                 self.DumpFileName = GoFileLines[14][:-1].split('/')[-1]
                 if self.AlgoFileName[-4:]=='_par':
-                    print(f'Do you want continue the {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file (in parallel with {self.NbCores} cores)?')
+                    print(f'\nDo you want continue the {self.SimuPath.EditParam.text()} simulation from {self.DumpFileName} dump file (in parallel with {self.NbCores} cores)?')
                 else:
-                    print(f'Do you want continue the {self.SimuPath.EditPath.text()} simulation from {self.DumpFileName} dump file (not in parallel)?')
+                    print(f'\nDo you want continue the {self.SimuPath.EditParam.text()} simulation from {self.DumpFileName} dump file (not in parallel)?')
+                self.BtnStart.setEnabled(True)
+                self.BtnCont.setEnabled(True)
+
         except:
-            print('Simulation not found')
+            print('\nSimulation not found')
+            self.BtnStart.setEnabled(False)
+            self.BtnCont.setEnabled(False)
 
 
     def CreateContFile(self):
-        self.ContFilePath = self.SimuPath.EditPath.text()+'continuation.sh'
-        if len(self.SimuPath.EditPath.text())==0:
-            print('Simulation path not given')
+        self.ContFilePath = self.SimuPath.EditParam.text()+'continuation.sh'
+
+        if len(self.SimuPath.EditParam.text())==0:
+            print('\nSimulation path not given')
         else:
-            # if os.path.exists(self.ContFilePath):
-            #     print('Continuation file already exists')
-            # else:
-                self.DoContFile()
-                print('Continuation file was created')
-                print('Just run it')
+            self.DoContFile()
+            print('\nContinuation file was created')
+            print('Just run it')
 
 
 
     def DoContFile(self):
-        # if self.AlgoFileName[-4:]=='_par': self.AlgoFileName = self.AlgoFileName[:-4]
-        # if self.CheckParallel.CheckParam.isChecked(): self.AlgoFileName += '_par'
-
         self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
 
         with open(self.ContFilePath, "w") as file:
             file.write('#! /bin/bash') # Header
             file.write('\n')
-            file.write(f'cd {self.SimuPath.EditPath.text()}')
+            file.write(f'cd {self.SimuPath.EditParam.text()}')
             file.write('\n')
             # if self.CheckParallel.CheckParam.isChecked():
             # if self.AlgoFileName[-4:]=='_par':
@@ -241,7 +257,7 @@ class WindowSetContSimu(QMainWindow):
             file.write('1') # continuation
             file.write(' # Simulation continuation')
             file.write('\n')
-            file.write(self.SimuPath.EditPath.text()+self.DumpFileName)
+            file.write(self.SimuPath.EditParam.text()+self.DumpFileName)
             file.write('\n')
             file.write(self.DumpFreq.SpinParam.text())
             file.write(' # Dump frequency')
@@ -252,21 +268,21 @@ class WindowSetContSimu(QMainWindow):
 
 
     def Start(self):
-        self.GoPath = self.SimuPath.EditPath.text()+'continuation.sh'
+        self.GoPath = self.SimuPath.EditParam.text()+'continuation.sh'
         if not os.path.exists(self.GoPath):
             self.CreateContFile()
             if os.path.exists(self.GoPath):
                 print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &')
-                # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
-                # os.chdir(self.SimuPath.EditPath.text(), )
+                # subprocess.Popen(f'cd {self.SimuPath.EditParam.text()}', shell=True, text=True)
+                # os.chdir(self.SimuPath.EditParam.text(), )
                 subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-                subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditPath.text())
+                subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditParam.text())
         else:
             print(f'> {self.StartOrder.EditParam.text()} {self.GoPath} &')
-            # subprocess.Popen(f'cd {self.SimuPath.EditPath.text()}', shell=True, text=True)
-            # os.chdir(self.SimuPath.EditPath.text())
+            # subprocess.Popen(f'cd {self.SimuPath.EditParam.text()}', shell=True, text=True)
+            # os.chdir(self.SimuPath.EditParam.text())
             subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-            subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditPath.text())
+            subprocess.run(f'{self.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.SimuPath.EditParam.text())
 
 
 

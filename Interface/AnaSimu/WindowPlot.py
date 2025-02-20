@@ -51,9 +51,9 @@ class WindowPlotClass(QMainWindow):
         Layout.addWidget(Toolbar)
 
         # Widget container
-        Container = QWidget()
-        Container.setLayout(Layout)
-        self.setCentralWidget(Container)
+        self.Container = QWidget()
+        self.Container.setLayout(Layout)
+        self.setCentralWidget(self.Container)
 
     # Emition of the CloseEvent signal when the plot window is closed
     def closeEvent(self, e):

@@ -120,11 +120,12 @@ class WindowMainClass(QMainWindow):
 if __name__=="__main__":
     app = QApplication(sys.argv) # Application creation
 
-    n = '1'
-    SystName = 'BetaPic'
-    PathInputData = '/Users/lacquema/Documents/Research/Simulations/Oracle/'+SystName+f'/simu_bpic_b_'+n+'/data.txt'
-    PathOutputData = '/Users/lacquema/Documents/Research/Simulations/Oracle/'+SystName+f'/simu_bpic_b_'+n+'/adjustment.dat'
-    SystDist = 19.4   
+    # n = '1'
+    Simu = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2_Ab1_fit/ggtau_Ab2_Ab1_fit_1/'
+    PathInputData = Simu+'ggtau_Ab12_hci.dat'
+    PathOutputData = Simu+'solggtauAb12.dat'
+    SystDist = 240  
+    SystName = 'ggtau'
 
     # LoadWin = LoadWindowClass() # Loading window showing
     # app.processEvents() # Continue the program

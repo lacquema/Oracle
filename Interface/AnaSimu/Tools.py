@@ -20,6 +20,7 @@ from WindowPlot import WindowPlotClass
 from Parameters import *
 from BestOrbits import BestOrbitsClass
 from SelectOrbits import SelectOrbitsClass
+from WindowSplit import WindowSpliter
 
 
 
@@ -62,7 +63,7 @@ class GeneralToolClass(QWidget):
         self.WindowPlot.SignalCloseWindowPlot.connect(lambda: self.BtnPlot.setEnabled(True)) # reception of the closeEvent of the plot window and set enabled the associed button
 
         # Initialisation of Data
-        if InputData != None: self.NbInputData_RA, self.I_RA, self.MJD_RA, self.JJ_RA, self.MM_RA, self.YY_RA, self.Ra, self.Dec, self.DRa,  self.DDec, self.Sep, self.Pa, self.DSep, self.DPa, self.Corr_RA, self.Source_RA = InputData
+        if InputData != None: self.NbInputData_RA, self.I_RA, self.MJD_RA, self.JJ_RA, self.MM_RA, self.YY_RA, self.Ra, self.Dec, self.DRa,  self.DDec, self.Corr_DecRa, self.Sep, self.Pa, self.DSep, self.DPa, self.Corr_SepPa, self.Source_RA = InputData
         
         if OutputParams != None: self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.Mdyn, self.Chi2, self.map = OutputParams
        
@@ -71,6 +72,16 @@ class GeneralToolClass(QWidget):
 
         if BestOrbitsParams != None: self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = BestOrbitsParams
         if BestOrbitsEllipses != None: self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestX, self.BestY, self.BestZ = BestOrbitsEllipses
+
+        # self.WindowSplitter = WindowSpliter()
+        # self.WindowSplitter.Splitter.addWidget(self.WindowParam.Container)
+        # self.WindowSplitter.Splitter.addWidget(self.WindowPlot.Container)
+
+
+        # self.BtnSplitter = QPushButton('Splitter')
+        # self.BtnSplitter.clicked.connect(self.Toggle_WindowSpliter)
+        # Layout.addWidget(self.BtnSplitter)
+
 
         # Widget container
         self.setLayout(Layout) # GeneralToolClass is directly the widget container
@@ -129,7 +140,8 @@ class GeneralToolClass(QWidget):
         else:
             return 'Unkown variable'
 
-
+    # def Toggle_WindowSpliter(self):
+    #     self.WindowSplitter.show()
 
 class SpaceView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
@@ -877,7 +889,6 @@ class Corner(GeneralToolClass):
         # Update canvas
         self.WindowPlot.Canvas.draw()
 
-    
 
 
 ### --- Check --- ###

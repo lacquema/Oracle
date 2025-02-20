@@ -76,12 +76,12 @@ class TabSimuSet(GeneralTab):
     def InitWidgets(self):
 
         
-        self.SimuPath = PathBrowser('Path', 'Path where create the adjustment directory', 0)
+        self.SimuPath = LineEdit('Path', 'Path where create the adjustment folder', '')
         self.Layout.addWidget(self.SimuPath)
 
         self.SimuPath.Layout.addSpacing(20)
 
-        self.SimuName = LineEdit('Directory', 'Name you want to give to the adjustment directory', '')
+        self.SimuName = LineEdit('New folder', 'Name you want to give to the adjustment folder', '')
         self.SimuPath.Layout.addWidget(self.SimuName)
 
         # self.InputFileName = LineEdit('Start file', 'Name you want to give to the start file', 'go_mcmco')
@@ -106,14 +106,14 @@ class TabSimuSet(GeneralTab):
 
         self.Layout.addWidget(Delimiter(Title='Outputs :'))
 
-        self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file', 'dump')
-        self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.DumpFileName.Layout.addSpacing(50)
+        # self.DumpFileName = LineEdit('Dump file', 'Name you want to give to the dump file', 'dump')
+        # self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.DumpFileName.Layout.addSpacing(50)
         self.DumpFreq = SpinBox('Save frequency', 'Number of iterations between two saves to dump file', 10000000, 0, 1000000000, 100000)
-        self.DumpFileName.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.OutFileName = LineEdit('Results file', 'Name you want to give to the results file', 'simulation')
-        self.Layout.addWidget(self.OutFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.OutFileName = LineEdit('Results file', 'Name you want to give to the results file', 'simulation')
+        # self.Layout.addWidget(self.OutFileName, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.Layout.setSpacing(0)
@@ -495,7 +495,7 @@ class TabStartSet(GeneralTab):
         self.StartOrder.Layout.addWidget(self.BtnSaveOrder)
         self.BtnSaveOrder.clicked.connect(self.SaveOrder)
 
-        self.LblGo = QLabel('./go_mcmco.sh')
+        self.LblGo = QLabel('./start.sh')
         self.StartOrder.Layout.addWidget(self.LblGo)
 
         self.BtnStart = QPushButton('Start the simulation')
@@ -510,7 +510,6 @@ class TabStartSet(GeneralTab):
     #     self.BtnStart.setEnabled(state)
 
     def CheckParallelChange(self, state):
-        print(state)
         self.NbCores.setEnabled(state)
         self.NbCores.SpinParam.setValue(state*8//2)
 
@@ -541,7 +540,7 @@ class TabStartSet(GeneralTab):
             self.NbOrdersValue -= 1
             self.ComboOrder.ComboParam.setCurrentIndex(-1)
         else:
-            print('Impossible to remove this order')
+            print('\nImpossible to remove this order')
 
         
     

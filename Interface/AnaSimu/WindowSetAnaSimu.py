@@ -17,11 +17,12 @@ from Parameters import *
 from Utils import DelAllWidgetsBtw
 from WindowMain import WindowMainClass
 # from WindowMenu import LoadWindowClass
+from WindowWithFinder import WindowWithFinder
 
 
 ### --- Parameters Window Generating --- ###
 
-class WindowSetAnaSimu(QMainWindow):
+class WindowSetAnaSimu(WindowWithFinder):
 
     SignalCloseWindowSetAnaSimu = pyqtSignal()
     ReSignalCloseWindowMain = pyqtSignal()
@@ -31,7 +32,7 @@ class WindowSetAnaSimu(QMainWindow):
 
         # Window characteristics
         self.setWindowTitle('Settings of the analysis')
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(1000)
 
         # Layout initialisation
         self.Layout = QVBoxLayout()
@@ -48,35 +49,48 @@ class WindowSetAnaSimu(QMainWindow):
         self.Container = QWidget()
         self.Container.setLayout(self.Layout)
 
-        # Container
-        self.setCentralWidget(self.Container)
+        # # Container
+        # self.setCentralWidget(self.Container)
+
+        # Add container to the split main window
+        self.Splitter.addWidget(self.Container)
+
+        # Connect folder to edit path
+        self.Finder.doubleClicked.connect(self.ChangePath)
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
+
+    
+    def ChangePath(self):
+        index = self.Finder.selectedIndexes()[0]
+        info = self.Model.fileInfo(index)
+        self.SimuPath.EditParam.setText(info.absoluteFilePath()+'/')
+
 
 
 
     def InitWidgets(self):
         
-        self.SimuPath = PathBrowser('Directory path', 'Path to the adjustment to analyse', 0)
+        self.SimuPath = LineEdit('Directory path', 'Path to the adjustment to analyse', '')
         self.Layout.addWidget(self.SimuPath)
-        self.SimuPath.EditPath.textChanged.connect(self.FindSettings)
+        self.SimuPath.EditParam.textChanged.connect(self.FindSettings)
 
-        # self.InputFileName = LineEdit('Input file', 'Name of the input simulation file with extension', 'start.sh')
-        # self.Layout.addWidget(self.InputFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.InputFileNameW = LineEdit('Start file', 'Name of the input simulation file with extension', 'start.sh')
+        # self.Layout.addWidget(self.InputFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.InputFileNameW.EditParam.textChanged.connect(self.FindSettings)
 
-        # self.SimuFileName = LineEdit('Simulation file', 'Name of the simulation file to analyse with extension', '')
-        # self.Layout.addWidget(self.SimuFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SimuFileNameW = LineEdit('Simulation file', 'Name of the simulation file to analyse with extension', '')
+        self.Layout.addWidget(self.SimuFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.DataFileName = LineEdit('Data file', 'Name of data file with extension', '')
-        # self.Layout.addWidget(self.DataFileName, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.DataFileNameW = LineEdit('Data file', 'Name of data file with extension', '')
+        self.Layout.addWidget(self.DataFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.SystDistValue = 0
-        # self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 0.01)
-        # self.Layout.addWidget(self.SystDist, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SystDistW = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None)
+        self.Layout.addWidget(self.SystDistW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
-        # self.SystDist.Layout.addWidget(self.SystDistUnit, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
+        self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # self.BtnAutoComp = QPushButton('Autocomplete by go file')
         # self.Layout.addWidget(self.BtnAutoComp)
@@ -96,19 +110,49 @@ class WindowSetAnaSimu(QMainWindow):
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        self.EnableBtnStartOrNot()
+        self.SimuFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
+        self.DataFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
+        self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
+
+
+    def EnableBtnStartOrNot(self):
+        self.BtnStart.setEnabled(False)
+        if self.SimuFileNameW.EditParam.text()!=0 and self.DataFileNameW.EditParam.text()!=0 and self.SystDistW.SpinParam.value()!=0:
+            # if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
+            self.BtnStart.setEnabled(True)
+
 
     def FindSettings(self):
         try:  
-            with open(self.SimuPath.EditPath.text()+'go_mcmco.sh', 'r') as file:
-                self.SimuName = self.SimuPath.EditPath.text().split('/')[-2]
+            with open(self.SimuPath.EditParam.text()+'start.sh', 'r') as file:
+                self.SimuName = self.SimuPath.EditParam.text().split('/')[-2]
                 GoFileLines = file.readlines()
                 self.DataFileName = GoFileLines[8].split('/')[-1][:-1]
                 self.SimuFileName = GoFileLines[13].split('/')[-1][:-1]
                 self.SystDist = float(GoFileLines[11].split(' ')[0])
                 self.SystDistUnit = GoFileLines[11].split(' ')[1]
-                print(f'Do you want analyse {self.SimuPath.EditPath.text()} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
+                if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
+                    self.DataFileNameW.EditParam.setText(self.DataFileName)
+                    self.SimuFileNameW.EditParam.setText(self.SimuFileName)
+                    self.SystDistW.SpinParam.setValue(self.SystDist)
+                    self.SystDistUnitW.ComboParam.setCurrentText(self.SystDistUnit)
+                else:
+                    print('\nAutocomplete failed')
+                    self.ClearEdits()
+                    self.EnableBtnStartOrNot()
+                # print(f'Do you want analyse {self.SimuPath.EditParam.text()} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
         except:
-            print('Simulation not found')
+            print('\nAutocomplete failed')
+            self.EnableBtnStartOrNot()
+            self.ClearEdits()
+
+
+    def ClearEdits(self):
+        self.DataFileNameW.EditParam.setText('')
+        self.SimuFileNameW.EditParam.setText('')
+        self.SystDistW.SpinParam.setValue(0)
+        self.SystDistUnitW.ComboParam.setCurrentIndex(0)
         
     # Reset all widgets of the parameters window
     def ResetParams(self):
@@ -117,22 +161,27 @@ class WindowSetAnaSimu(QMainWindow):
 
 
     def AnalyseSimu(self):
-        if len(self.SimuPath.EditPath.text()) == 0:
-            print('Simulation directory path not given')
+        if len(self.SimuPath.EditParam.text()) == 0:
+            print('\nSimulation directory path not given')
         else:
             try:
                 self.OpenWinMain()
             except:
-                print('Files not found')
+                print('\nThere is a problem with inputs')
 
 
     def OpenWinMain(self):
-        if self.SystDistUnit == 'pc':
-            self.SystDistValue = self.SystDist
-        elif self.SystDistUnit == 'mas':
-            self.SystDistValue = 1000/self.SystDist
+        if self.SystDistUnitW.ComboParam.currentText() == 'pc':
+            self.SystDistValue = self.SystDistW.SpinParam.value()
+        elif self.SystDistUnitW.ComboParam.currentText() == 'mas':
+            self.SystDistValue = 1000/self.SystDistW.SpinParam.value()
     
-        self.WinMain = WindowMainClass(self.SimuPath.EditPath.text().split('/')[-2], self.SimuPath.EditPath.text()+self.DataFileName, self.SimuPath.EditPath.text()+self.SimuFileName, self.SystDistValue, self.NbSelectOrbits.SpinParam.value(), 1000)
+        self.WinMain = WindowMainClass(self.SimuPath.EditParam.text().split('/')[-2], 
+                                       self.SimuPath.EditParam.text()+self.DataFileNameW.EditParam.text(), 
+                                       self.SimuPath.EditParam.text()+self.SimuFileNameW.EditParam.text(), 
+                                       self.SystDistValue, 
+                                       self.NbSelectOrbits.SpinParam.value(), 
+                                       1000)
         self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
         self.WinMain.show()
         self.close()

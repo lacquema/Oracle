@@ -108,105 +108,175 @@ def RotMatrix(AngleRot, Axis='x'or'y'or'z'):
     
 
 
-# # Conversion (Sep, PA) to (Ra, Dec) en mas
-# def SEPPAtoRADEC(Sep, Pa, DSep, DPa):
+# def RADECtoSEPPA(Ra, Dec, DRa, DDec, Corr=None): # Ra [mas] and Dec [mas]
 
-#     Pa = np.deg2rad(Pa) # Conversion de Pa en rad
-#     # DPa = DPa/3600/1000 # Conversion de DPa en mas
-#     DPa = np.deg2rad(DPa)
+#     if type(Ra)=='int' or 'float':
+#         NbData = 1
+#         Ra = [Ra]
+#         Dec = [Dec]
+#         DRa = [DRa]
+#         DDec = [DDec]
+#     else:
+#         NbData = np.shape(Ra)[0]
 
-#     Ra = Sep*np.sin(Pa)
-#     DRa = np.sqrt((np.sin(Pa)*DSep)**2 + (Sep*np.cos(Pa)*DPa)**2)
+#     if Corr==None:
+#         Corr = 0
 
-#     Dec = Sep*np.cos(Pa)
-#     DDec = np.sqrt((np.cos(Pa)*DSep)**2 + (Sep*np.sin(Pa)*DPa)**2)
-
-#     return Ra, Dec, DRa, DDec
-
-
-
-def RADECtoSEPPA(Ra, Dec, DRa, DDec, Corr): # Ra [mas] and Dec [mas]
-
-    if type(Ra)=='int' or 'float':
-        NbData = 1
-        Ra = [Ra]
-        Dec = [Dec]
-        DRa = [DRa]
-        DDec = [DDec]
-    else:
-        NbData = np.shape(Ra)[0]
-
-    if Corr==None:
-        Corr = 0
-
-    # Initialisation outputs
-    Sep, Pa, DSep, DPa = [np.zeros(NbData) for i in range(4)]
+#     # Initialisation outputs
+#     Sep, Pa, DSep, DPa = [np.zeros(NbData) for i in range(4)]
     
-    # Conversions inputs
-    Ra = np.array(Ra)
-    Dec = np.array(Dec)
-    DRa = np.array(DRa)
-    DDec = np.array(DDec)
+#     # Conversions inputs
+#     Ra = np.array(Ra)
+#     Dec = np.array(Dec)
+#     DRa = np.array(DRa)
+#     DDec = np.array(DDec)
 
-    for i in range(NbData):
+#     for i in range(NbData):
 
-        V = np.array([[DDec[i]**2, DDec[i]*DRa[i]*Corr],
-                    [DDec[i]*DRa[i]*Corr, DRa[i]**2]])
+#         V = np.array([[DDec[i]**2, DDec[i]*DRa[i]*Corr],
+#                     [DDec[i]*DRa[i]*Corr, DRa[i]**2]])
 
-        Sep[i] = np.sqrt(Dec[i]**2 + Ra[i]**2)
-        gSep = np.array([Dec[i]/np.sqrt(Dec[i]**2 + Ra[i]**2), Ra[i]/np.sqrt(Dec[i]**2 + Ra[i]**2)])
-        DSep[i] = np.sqrt(np.matmul(np.transpose(gSep), np.matmul(V, np.transpose(gSep))))
+#         Sep[i] = np.sqrt(Dec[i]**2 + Ra[i]**2)
+#         gSep = np.array([Dec[i]/np.sqrt(Dec[i]**2 + Ra[i]**2), Ra[i]/np.sqrt(Dec[i]**2 + Ra[i]**2)])
+#         DSep[i] = np.sqrt(np.matmul(np.transpose(gSep), np.matmul(V, np.transpose(gSep))))
         
-        Pa[i] = np.arctan(Ra[i]/Dec[i])
-        gPa = np.array([1/(Dec[i]+Ra[i]**2/Dec[i]), -1/(Ra[i]+Dec[i]**2/Ra[i])])
-        DPa[i] = np.sqrt(np.matmul(np.transpose(gPa), np.matmul(V, np.transpose(gPa))))
+#         Pa[i] = np.arctan(Ra[i]/Dec[i])
+#         gPa = np.array([1/(Dec[i]+Ra[i]**2/Dec[i]), -1/(Ra[i]+Dec[i]**2/Ra[i])])
+#         DPa[i] = np.sqrt(np.matmul(np.transpose(gPa), np.matmul(V, np.transpose(gPa))))
 
-    # Conversions outputs
-    Pa = np.rad2deg(Pa)
-    DPa = np.rad2deg(DPa)
+#     # Conversions outputs
+#     Pa = np.rad2deg(Pa)
+#     DPa = np.rad2deg(DPa)
     
-    return Sep, Pa, DSep, DPa # Sep [mas] and Pa [deg]
+#     return Sep, Pa, DSep, DPa # Sep [mas] and Pa [deg]
 
 
 
 
-def SEPPAtoRADEC(Sep, Pa, DSep, DPa, Corr=None): # Sep [mas] and Pa [deg]
+# def SEPPAtoRADEC(Sep, Pa, DSep, DPa, Corr=None): # Sep [mas] and Pa [deg]
 
-    if type(Sep)=='int' or 'float':
-        NbData = 1
-        Sep = [Sep]
-        Pa = [Pa]
-        DSep = [DSep]
-        DPa = [DPa]
-    else:
-        NbData = np.shape(Sep)[0]
+#     if type(Sep)=='int' or 'float':
+#         NbData = 1
+#         Sep = [Sep]
+#         Pa = [Pa]
+#         DSep = [DSep]
+#         DPa = [DPa]
+#     else:
+#         NbData = np.shape(Sep)[0]
 
-    if Corr==None:
-        Corr = 0
+#     if Corr==None:
+#         Corr = 0
 
-    # Initialisation outputs
-    Ra, Dec, DRa, DDec = [np.zeros(NbData) for i in range(4)]
+#     # Initialisation outputs
+#     Ra, Dec, DRa, DDec = [np.zeros(NbData) for i in range(4)]
     
-    # Conversions inputs
-    Sep = np.array(Sep)
-    Pa = np.deg2rad(np.array(Pa))
-    DSep = np.array(DSep)
-    DPa = np.deg2rad(np.array(DPa))
+#     # Conversions inputs
+#     Sep = np.array(Sep)
+#     Pa = np.deg2rad(np.array(Pa))
+#     DSep = np.array(DSep)
+#     DPa = np.deg2rad(np.array(DPa))
 
-    for i in range(NbData):
+#     for i in range(NbData):
 
-        V = np.array([[DSep[i]**2, DSep[i]*DPa[i]*Corr],
-                      [DSep[i]*DPa[i]*Corr, DPa[i]**2]])
+#         V = np.array([[DSep[i]**2, DSep[i]*DPa[i]*Corr],
+#                       [DSep[i]*DPa[i]*Corr, DPa[i]**2]])
         
-        Ra[i] = Sep[i]*np.sin(Pa[i])
-        gRa = np.array([np.sin(Pa[i]), Sep[i]*np.cos(Pa[i])])
-        DRa[i] = np.sqrt(np.matmul(np.transpose(gRa), np.matmul(V, np.transpose(gRa))))
+#         Ra[i] = Sep[i]*np.sin(Pa[i])
+#         gRa = np.array([np.sin(Pa[i]), Sep[i]*np.cos(Pa[i])])
+#         DRa[i] = np.sqrt(np.matmul(np.transpose(gRa), np.matmul(V, np.transpose(gRa))))
 
-        Dec[i] = Sep[i]*np.cos(Pa[i])
-        gDec = np.array([np.cos(Pa[i]), -Sep[i]*np.sin(Pa[i])])
-        DDec[i] = np.sqrt(np.matmul(np.transpose(gDec), np.matmul(V, np.transpose(gDec))))
+#         Dec[i] = Sep[i]*np.cos(Pa[i])
+#         gDec = np.array([np.cos(Pa[i]), -Sep[i]*np.sin(Pa[i])])
+#         DDec[i] = np.sqrt(np.matmul(np.transpose(gDec), np.matmul(V, np.transpose(gDec))))
     
-    return Ra, Dec, DRa, DDec # Dep [mas] and Ra [mas]
+#     return Ra, Dec, DRa, DDec # Dep [mas] and Ra [mas]
+
+
+def cartesian_to_polar_with_errors(x, y, sigma_x, sigma_y, rho_xy):
+    """
+    Convertit des coordonnées cartésiennes (x, y) en polaires (r, theta)
+    en propageant les erreurs et la corrélation.
+
+    Paramètres :
+    - x, y : coordonnées cartésiennes
+    - sigma_x, sigma_y : erreurs associées à x et y
+    - rho_xy : coefficient de corrélation entre x et y
+
+    Retourne :
+    - r, theta : coordonnées polaires
+    - sigma_r, sigma_theta : erreurs associées à r et theta
+    - rho_rt : coefficient de corrélation entre r et theta
+    """
+    # Transformation en polaire
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+
+    # Matrice de covariance en cartésien
+    Sigma_xy = np.array([[sigma_x**2, rho_xy * sigma_x * sigma_y],
+                         [rho_xy * sigma_x * sigma_y, sigma_y**2]])
+
+    # Jacobien de la transformation (cartésien -> polaire)
+    J_rt = np.array([[x/r, y/r],
+                     [-y/r**2, x/r**2]])
+
+    # Matrice de covariance en polaire
+    Sigma_rt = J_rt @ Sigma_xy @ J_rt.T
+
+    # Extraction des nouvelles erreurs et corrélation
+    sigma_r = np.sqrt(Sigma_rt[0, 0])
+    sigma_theta = np.sqrt(Sigma_rt[1, 1])
+    rho_rt = Sigma_rt[0, 1] / (sigma_r * sigma_theta)
+
+    # Conversion rad to deg
+    theta = np.rad2deg(theta)
+    sigma_theta = np.rad2deg(sigma_theta)
+
+    
+
+    return r, theta, sigma_r, sigma_theta, rho_rt
+
+
+
+def polar_to_cartesian_with_errors(r, theta, sigma_r, sigma_theta, rho_rt):
+    """
+    Convertit des coordonnées polaires (r, theta) en cartésiennes (x, y)
+    en propageant les erreurs et la corrélation.
+
+    Paramètres :
+    - r, theta : coordonnées polaires
+    - sigma_r, sigma_theta : erreurs associées à r et theta
+    - rho_rt : coefficient de corrélation entre r et theta
+
+    Retourne :
+    - x, y : coordonnées cartésiennes
+    - sigma_x, sigma_y : erreurs associées à x et y
+    - rho_xy : coefficient de corrélation entre x et y
+    """
+    # Conversion deg to rad
+    theta = np.deg2rad(theta)
+    sigma_theta = np.deg2rad(sigma_theta)
+
+    # Transformation inverse en cartésien
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+
+    # Matrice de covariance en polaire
+    Sigma_rt = np.array([[sigma_r**2, rho_rt * sigma_r * sigma_theta],
+                         [rho_rt * sigma_r * sigma_theta, sigma_theta**2]])
+
+    # Jacobien de la transformation (polaire -> cartésien)
+    J_xy = np.array([[np.cos(theta), -r * np.sin(theta)],
+                     [np.sin(theta), r * np.cos(theta)]])
+
+    # Matrice de covariance en cartésien
+    Sigma_xy = J_xy @ Sigma_rt @ J_xy.T
+
+    # Extraction des nouvelles erreurs et corrélation
+    sigma_x = np.sqrt(Sigma_xy[0, 0])
+    sigma_y = np.sqrt(Sigma_xy[1, 1])
+    rho_xy = Sigma_xy[0, 1] / (sigma_x * sigma_y)
+
+    return x, y, sigma_x, sigma_y, rho_xy
 
 
     

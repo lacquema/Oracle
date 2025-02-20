@@ -1,77 +1,60 @@
-#! /Users/lacquema/Oracle.env/bin/python3
+#!/Users/lacquema/Oracle.env/bin/python3
+
 import sys
 import os
+from PyQt6.QtWidgets import QApplication, QMainWindow
 
+# Ajout des chemins des modules internes
 sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.dirname(__file__)+'/AnaSimu')
-sys.path.append(os.path.dirname(__file__)+'/NewSimu')
-sys.path.append(os.path.dirname(__file__)+'/ContSimu')
+sys.path.append(os.path.join(os.path.dirname(__file__), 'AnaSimu'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'NewSimu'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'ContSimu'))
 
-### --- Packages --- ###
-
-# Transverse packages
-
-# PyQt packages
-from PyQt6.QtWidgets import QApplication
-
-# My packages
+# Importation des fenêtres de l'application
 from WindowMenu import WindowMenuClass
 from NewSimu.WindowSetNewSimu import WindowSetNewSimu
 from ContSimu.WindowSetContSimu import WindowSetContSimu
 from AnaSimu.WindowSetAnaSimu import WindowSetAnaSimu
 
 
-### --- Main Window Generating --- ###
-
-class MainClass():
+class MainWindow(QMainWindow):
+    """Fenêtre principale gérant le menu et la navigation entre les fenêtres de simulation."""
 
     def __init__(self):
         super().__init__()
 
-        # Windows initialisation
-        self.WinMenu = WindowMenuClass()
-        self.WinSetNewSimu = WindowSetNewSimu()
-        self.WinSetNewSimu.SignalCloseWindowSetNewSimu.connect(self.ReOpenWinLoad)
-        self.WinSetContSimu = WindowSetContSimu()
-        self.WinSetContSimu.SignalCloseWindowSetContSimu.connect(self.ReOpenWinLoad)
-        self.WinSetAnaSimu = WindowSetAnaSimu()
-        self.WinSetAnaSimu.SignalCloseWindowSetAnaSimu.connect(self.ReOpenWinLoad)
-        self.WinSetAnaSimu.ReSignalCloseWindowMain.connect(self.ReOpenWinLoad)
-        
-        # Showing
-        self.WinMenu.show()
-        
-        # Actions of buttons
-        self.WinMenu.BtnNew.clicked.connect(self.OpenWinSetNewSimu)
-        self.WinMenu.BtnContinue.clicked.connect(self.OpenWinSetContSimu)
-        self.WinMenu.BtnAnalyse.clicked.connect(self.OpenWinSetAnaSimu)
+        # Initialisation du menu principal
+        self.menu_window = WindowMenuClass()
+        self.menu_window.show()
 
-    def OpenWinSetNewSimu(self):
-        self.WinMenu.close()
-        self.WinSetNewSimu.show()
+        # Initialisation des fenêtres secondaires
+        self.new_simu_window = WindowSetNewSimu()
+        self.cont_simu_window = WindowSetContSimu()
+        self.ana_simu_window = WindowSetAnaSimu()
 
-    def OpenWinSetContSimu(self):    
-        self.WinMenu.close()
-        self.WinSetContSimu.show()
+        # Connexion des signaux de fermeture des fenêtres secondaires
+        self.new_simu_window.SignalCloseWindowSetNewSimu.connect(self.reopen_menu)
+        self.cont_simu_window.SignalCloseWindowSetContSimu.connect(self.reopen_menu)
+        self.ana_simu_window.SignalCloseWindowSetAnaSimu.connect(self.reopen_menu)
+        self.ana_simu_window.ReSignalCloseWindowMain.connect(self.reopen_menu)
 
-    def OpenWinSetAnaSimu(self):
-        self.WinMenu.close()
-        self.WinSetAnaSimu.show()
+        # Connexion des boutons du menu aux méthodes d'ouverture des fenêtres
+        self.menu_window.BtnNew.clicked.connect(lambda: self.open_window(self.new_simu_window))
+        self.menu_window.BtnContinue.clicked.connect(lambda: self.open_window(self.cont_simu_window))
+        self.menu_window.BtnAnalyse.clicked.connect(lambda: self.open_window(self.ana_simu_window))
 
-    def closeEvent(self, e):
-        self.WinMenu.show()
+    def open_window(self, window):
+        """Ferme le menu et ouvre la fenêtre spécifiée."""
+        self.menu_window.close()
+        window.show()
 
-    def ReOpenWinLoad(self):
-        app.closeAllWindows()
-        self.WinMenu.show()
+    def reopen_menu(self):
+        """Ferme toutes les fenêtres et réaffiche le menu principal."""
+        QApplication.closeAllWindows()
+        self.menu_window.show()
 
 
-
-
-
-if __name__=="__main__":
-    app = QApplication(sys.argv) # Application creation
-    WindowMain = MainClass() # Main window showing
-    sys.exit(app.exec()) # Application execution
-
-    
+if __name__ == "__main__":
+    app = QApplication(sys.argv)  # Création de l'application PyQt
+    main_window = MainWindow()  # Instanciation et affichage de la fenêtre principale
+    sys.exit(app.exec())  # Lancement de l'application

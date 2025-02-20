@@ -15,11 +15,12 @@ from PyQt6.QtWidgets import QTabWidget, QMainWindow, QStatusBar, QApplication
 
 # My packages
 from Tabs import *
+from WindowWithFinder import WindowWithFinder
 
 
 ### --- Parameters Window Generating --- ###
 
-class WindowSetNewSimu(QMainWindow):
+class WindowSetNewSimu(WindowWithFinder):
 
     SignalCloseWindowSetNewSimu = pyqtSignal() # initiation of the closeEvent signal
     
@@ -57,10 +58,25 @@ class WindowSetNewSimu(QMainWindow):
         self.InitInterTabConnect('TabStartSet')
 
         # Container
-        self.setCentralWidget(self.Container)
+        # self.setCentralWidget(self.Container)
+
+        # Add container to the split main window
+        self.Splitter.addWidget(self.Container)
+        # self.Container.setMinimumWidth(1000)
+
+        # Connect folder to edit path
+        self.Finder.doubleClicked.connect(self.ChangePath)
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
+
+
+
+    def ChangePath(self):
+        index = self.Finder.selectedIndexes()[0]
+        info = self.Model.fileInfo(index)
+        self.TabSimuSet.SimuPath.EditParam.setText(info.absoluteFilePath()+'/')
+
 
     def InitInterTabConnect(self, IdTab):
         if IdTab=='TabSimuSet':
@@ -106,45 +122,45 @@ class WindowSetNewSimu(QMainWindow):
 
 
     def Start(self):
-        self.GoPath = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/start.sh'
+        self.GoPath = self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()+'/start.sh'
         if not os.path.exists(self.GoPath):
             self.CreateInputFiles()
             if os.path.exists(self.GoPath):
                 print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
-                # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+                # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
                 subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
+                subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text())
         else:
             print(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &')
-            # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+            # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
             subprocess.run(f'chmod +x {self.GoPath}', shell=True, text=True)
-            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
+            subprocess.run(f'{self.TabStartSet.StartOrder.EditParam.text()} {self.GoPath} &', shell=True, text=True, cwd=self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text())
 
     # def ChangeStartOrder(self):
-    #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
+    #     self.TabStartSet.StartOrder.EditParam.setText(f'oarsub -l nodes=1/core={self.TabStartSet.NbCores.SpinParam.value()},walltime={self.TabStartSet.NbHours.SpinParam.value()} --project dynapla {self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()}/{self.TabSimuSet.InputFileName.EditParam.text()}')
     
     def CreateInputFiles(self):
-        if len(self.TabSimuSet.SimuPath.EditPath.text())==0:
-            print('Simulation path not given')
+        if len(self.TabSimuSet.SimuPath.EditParam.text())==0:
+            print('\nSimulation path not given')
         else:
-            if os.path.exists(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()):
-                print('This simulation already exists')
+            if os.path.exists(self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()):
+                print('\nThis simulation already exists')
             else: 
-                os.makedirs(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
+                os.makedirs(self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text())
                 if len(self.TabDataSet.PathData.EditPath.text())==0:
-                    os.rmdir(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
-                    print('Data file not given')
+                    os.rmdir(self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text())
+                    print('\nData file not given')
                 else:
                     if self.TabDataSet.FormatRelAstro.ComboParam.currentIndex() == 0:
-                        os.rmdir(self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text())
-                        print('Astrometric data format not given')
+                        os.rmdir(self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text())
+                        print('\nAstrometric data format not given')
                     else:
-                        print(f'{self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}/ directory was created.')
-                        # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
-                        shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'+self.TabDataSet.PathData.EditPath.text().split('/')[-1])                    
-                        print('Data file was copied')
+                        print(f'{self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()}/ directory was created.')
+                        # subprocess.run(f'cd {self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()}', shell=True, text=True)
+                        shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'+self.TabDataSet.PathData.EditPath.text().split('/')[-1])                    
+                        print('\nData file was copied')
                         self.DoGoFile()
-                        print('Go file was created')
+                        print('\nGo file was created')
                         print('Just run it')
                 
 
@@ -156,7 +172,7 @@ class WindowSetNewSimu(QMainWindow):
 
         self.EnvPath = '/'.join(self.DirPath.split('/')[:-2])
 
-        self.SimuDir = self.TabSimuSet.SimuPath.EditPath.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'
+        self.SimuDir = self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'
         
         with open(self.SimuDir+'start.sh', 'w') as file:
             file.write('#! /bin/bash')
@@ -221,10 +237,12 @@ class WindowSetNewSimu(QMainWindow):
             file.write(self.TabPriorSet.FirstGuessCenterMass.SpinParam.text())
             file.write(' # First guess of center mass [Msun]')
             file.write('\n')
-            file.write(self.SimuDir+self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
+            # file.write(self.SimuDir+self.TabSimuSet.OutFileName.EditParam.text()+'.dat')
+            file.write('results.dat')
             # file.write(' # Result file')
             file.write('\n')
-            file.write(self.SimuDir+self.TabSimuSet.DumpFileName.EditParam.text()+'.dat')
+            # file.write(self.SimuDir+self.TabSimuSet.DumpFileName.EditParam.text()+'.dat')
+            file.write('dump.dat')
             # file.write(' # Dump file')
             file.write('\n')
             file.write(self.TabSimuSet.DumpFreq.SpinParam.text())
@@ -320,5 +338,6 @@ class WindowSetNewSimu(QMainWindow):
 if __name__=="__main__":
     app = QApplication(sys.argv) # Application creation
     WindowParam = WindowSetNewSimu()
+    # WindowParam.show()
     WindowParam.show()
     app.exec() # Application execution
