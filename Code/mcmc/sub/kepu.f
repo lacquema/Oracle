@@ -54,7 +54,8 @@ c..     laguerre's method, in case newton's method fails.
              itnew = 500
              call kepu_new(itnew,s,dt,q,mu,alpha,c0,sc1,s2c2,s3c3,iflg)
              if (iflg.ne.0) then
-               WRITE(SD,*)'epic fail !'
+                WRITE(SD,*)'epic fail !',
+     &                sngl(dt),sngl(q),sngl(mu),sngl(alpha)
                stop
              end if
            end if
@@ -437,7 +438,37 @@ c...      Laguerre's method succeeded
         return
 
         end    !    kepu_lag
-C     
+
+
+      
+C      
+C -----------------------------------------------------------------------------
+C     Eccentricity function used for Parameter #7 : f(e)*s
+C-----------------------------------------------------------------------------
+C
+        SUBROUTINE ECC_FUNC(E,F,DF)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        REAL*8 ::
+     &       E,                 ! Eccentricity
+     &       F,                 ! Multiplicative function
+     &       DF,                ! Derivative
+     &       EXM,EX,EXF,DENO    ! Internals   
+
+        INTEGER*4, PARAMETER :: XE = 2 ! Exponent
+        REAL*8, PARAMETER :: FAC = 10.d0 ! Multiplicative factor
+        
+        EXM = E**(XE-1)
+        EX = EXM*E
+        EXF = FAC*EX
+        DENO = 1.d0/(1.d0+EXF)
+        F = EXF*DENO        
+        DF = FAC*XE*EXM*DENO*DENO
+        END        
+C      
 C -----------------------------------------------------------------------------
 C     Compute MAP = p(data|orb)*prior(orb)
 C                = prior(orb)*exp(-Chi2/2)*Product(1/sqrt(j^2+j0^2))
@@ -661,6 +692,7 @@ C
      &       ALPHA,XX,              ! -Energy
      &       SC1,S3C3,              ! Stumpff functions
      &       C0,C1,C2,C3,           !  "     "       "
+     &       FE,DFE,                ! Eccentricity function & derivative
      &       TT                     ! Time
         
         IF (MULTIPLA) THEN
@@ -708,7 +740,8 @@ C
               COM(I) = 0.d0
               SOM(I) = 0.d0
            END IF
-           S = P7/EXC(I)       ! S=Universal variable at T=T0 / P7 = S*E
+           CALL ECC_FUNC(EXC(I),FE,DFE)
+           S = P7/FE  ! S=Universal variable at T=T0 / P7 = S*f(e)
            ALPHA = MUF(I)/Q(I)*(1.d0-EXC(I))
            XX = S*S*ALPHA
            CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
@@ -756,13 +789,14 @@ C
      &       MUF,MUFT,          ! Fractional masses
      &       MSTAR, MSTART,     ! Stellar mass 
      &       SIGJV,SIGJVT,      ! Velocity Jitters
+     &       FE,DFE,FET,DFET,   ! Eccentricity function
      &       UPQ,UPQT           ! Inverses de périodes
 
 c     For each planet,
 c           J/J'=(q/q')^2*(dsdt/dsdt')
-c     Jabobian J (orbite->params) = 1/2*e^2*sin(i)*dsdt
+c     Jabobian J (orbite->params) = 1/2*f(e)*e*sin(i)*dsdt
 c  Prior/planet (default) = sin(i)*1/q*1/P   (prior log in q & in P)
-c     => Jacobian / Prior = 1/2*q*P*e^2*dsdt= (J/P)_0
+c     => Jacobian / Prior = 1/2*q*P*f(e)*e*dsdt= (J/P)_0
 c           N.B. : sin(i) vanishes in Jacobian / Prior
 c     If prior u(mu) (e.g. Gaussian) then
 c               mu = sum(b_i*M_i) = sum(b_i*n_i^2*q_i^3)
@@ -772,7 +806,7 @@ c     [Jacobian (mu<-P) =-2*(M_i*b_i)/P_i si autres variables inchangées]
 c      With mu<->q :
 c     Jacobian / Prior = (J/P)_0*prior(q)/J(q->mu)*1/prior(mu)
 c                      = (J/P)_0*1/q*(q/(3*M_i*b_i))*1/u(mu)     
-c     RAPQ = (J/p)/(J'/p')=(q/q')*(P/P')*(e/e')^2*(dsdt/dsdt')
+c     RAPQ = (J/p)/(J'/p')=(q/q')*(P/P')*f(e)/f(e')*(e/e')*(dsdt/dsdt')
 c                                *(M'_i/M_i)*(u(mu')/u(mu))
 c     Then RAPQ = RAPQ * J(jitter)/J'(jitter)*prior(jitter')/prior(jitter)
 c                = RAPQ * (jitter'/jitter)*(jitter+j0)/(jitter'+j0)
@@ -811,8 +845,10 @@ c
           MTOTT(I) = QT**3*(DPI*UPQT)**2          
           EXC = SQRT(P2*P2+P3*P3)
           EXCT = SQRT(PT2*PT2+PT3*PT3)
-          S = P7/EXC  ! P7 = S*E
-          ST = PT7/EXCT
+          CALL ECC_FUNC(EXC,FE,DFE)
+          CALL ECC_FUNC(EXCT,FET,DFET)
+          S = P7/FE     ! P7 = S*f(E)
+          ST = PT7/FET
           CW = P2/EXC
           SW = P3/EXC
           CWT = PT2/EXCT
@@ -838,10 +874,11 @@ c     &             .OR.(VPRIOR(1)%BOUND(2)*UPT.LT.1.d0)
           S2C2 = C2*ST*ST 
           DSDTT = 1.d0/(MTOTT(I)*S2C2+QT*C0)
 
-          RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*((EXC/EXCT)**2)*(DSDT/DSDTT)
+          RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*
+     &                           (EXC/EXCT)*(FE/FET)*(DSDT/DSDTT)
        END DO
 c...  At this point RAPQ =
-c...    Product((e/e')^2*(q/q')*(P/P')*(dsdt/dsdt'),planets)
+c...    Product((e/e')*(f(e)/f(e'))*(q/q')*(P/P')*(dsdt/dsdt'),planets)
 c     Now consider contribution of mass priors.
 c     For each prior u(mu)=u(sum(b_j*M_j))
 c              RAPQ = RAPQ*u(mu')/u(mu)*product(M'_i/M_i), planets)
@@ -886,7 +923,28 @@ c...          (resulting from Eqs. (5) and (12))
         END         
 
 
+C     
+C -----------------------------------------------------------------------------
+C       Computing DT=T-TP modulo PER => between -PER/2 and PER/2   
+C-----------------------------------------------------------------------------
+C
+        SUBROUTINE DT_MODULO_PER(DT,NQ,UEXC)
 
+        USE DATA
+
+        IMPLICIT NONE
+
+        REAL*8 ::       DT,             ! t-tp
+     &                  NQ,             ! Mean motion wrt periastron
+     &                  UEXC,           ! 1-e
+     &                  PER             ! Orbital period
+        
+        PER = (DPI/NQ)/(UEXC*SQRT(UEXC))
+        DT = DT-FLOOR(DT/PER+0.5d0)*PER
+
+        END
+      
+C
 C -----------------------------------------------------------------------------
 C       Fit of the velocity without derivatives
 C -----------------------------------------------------------------------------
@@ -925,10 +983,7 @@ c             ds/dt(i) = 1/r(i) = 1/(GM(i)*s(i)^2*c2(i)+q(i)*c0(i))
           DT = TT-TP(I)
           UEXC = 1.d0-EXC(I)
           ALPHA = GM(I)/Q(I)*UEXC
-          IF (EXC(I).LT.1.d0) THEN
-            PER = (DPI/NQ(I))/(UEXC*SQRT(UEXC))
-            DT = DT-FLOOR(DT/PER+0.5d0)*PER
-          END IF
+          IF (EXC(I).LT.1.d0) CALL DT_MODULO_PER(DT,NQ(I),UEXC)
           CALL KEP_UNIV(DT,Q(I),GM(I),ALPHA,S,C0,SC1,S2C2,S3C3)
           DSDT = 1.d0/(GM(I)*S2C2+Q(I)*C0) ! ds/dt = 1/r     
           VRAD = VRAD+(AMPX(I)*SC1+AMPY(I)*C0)*DSDT
@@ -978,10 +1033,7 @@ c                AMX, AMY = Same as AMPX,AMPY without mfrac
           DT = TT-TP(I)
           UEXC = 1.d0-EXC(I)
           ALPHA = GM(I)/Q(I)*UEXC
-          IF (EXC(I).LT.1.d0) THEN
-            PER = (DPI/N(I))/(UEXC*SQRT(UEXC))
-            DT = DT-FLOOR(DT/PER+0.5d0)*PER
-          END IF
+          IF (EXC(I).LT.1.d0) CALL DT_MODULO_PER(DT,N(I),UEXC)
           CALL KEP_UNIV(DT,Q(I),GM(I),ALPHA,S,C0,SC1,S2C2,S3C3)
           DSDT = 1.d0/(GM(I)*S2C2+Q(I)*C0) ! ds/dt = 1/r     
           VRAD = VRAD-(AMPX(I)*SC1+AMPY(I)*C0)*DSDT
@@ -989,10 +1041,7 @@ c                AMX, AMY = Same as AMPX,AMPY without mfrac
         DT = TT-TP(IPLA)
         UEXC = 1.d0-EXC(IPLA)
         ALPHA = GM(IPLA)/Q(IPLA)*UEXC
-        IF (EXC(IPLA).LT.1.d0) THEN
-           PER = (DPI/N(IPLA))/(UEXC*SQRT(UEXC))
-           DT = DT-FLOOR(DT/PER+0.5d0)*PER
-        END IF
+        IF (EXC(IPLA).LT.1.d0) CALL DT_MODULO_PER(DT,N(IPLA),UEXC)
         CALL KEP_UNIV(DT,Q(IPLA),GM(IPLA),ALPHA,S,C0,SC1,S2C2,S3C3)
         DSDT = 1.d0/(GM(IPLA)*S2C2+Q(IPLA)*C0) ! ds/dt = 1/r     
         VRAD = VRAD-(AMX*SC1+AMY*C0)*DSDT
@@ -1037,10 +1086,7 @@ C
            DT = TT-TP(I)
            UEXC = 1.d0-EXC(I)
            ALPHA = GM(I)/QQ(I)*UEXC
-           IF (EXC(I).LT.1.d0) THEN
-              PER = (DPI/N(I))/(UEXC*SQRT(UEXC))
-              DT = DT-FLOOR(DT/PER+0.5d0)*PER
-           END IF
+           IF (EXC(I).LT.1.d0) CALL DT_MODULO_PER(DT,N(I),UEXC)
            CALL KEP_UNIV(DT,QQ(I),GM(I),ALPHA,S,C0,SC1,S2C2,S3C3)
            RX = QQ(I)-GM(I)*S2C2
            RY = SQRT(QQ(I)*GM(I)*(1.d0+EXC(I)))*SC1
@@ -1075,6 +1121,7 @@ C
      &       M0,                ! Anomalie moyenne de reference
      &       MASS,              ! Dynamical mass
      &       S,                 ! Universal variable   
+     &       FE,DFE,            ! Eccentricity function
      &       HH2,               ! -2xEnergie = alpha de kepu
      &       C0,SC1,S2C2,S3C3   ! Fonctions de Stumpff
 
@@ -1121,7 +1168,8 @@ c...  Enter orbits and configure parameters for Levenberg-Marquardt
 c...                                hh2 = -2xEnergie = alpha pour kepu          
               M0 =  STAR%T0-PLA(I)%TP
               CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
-              P(DKAL+7) = S*PLA(I)%EXC  ! P7 = S*E
+              CALL ECC_FUNC(PLA(I)%EXC,FE,DFE)
+              P(DKAL+7) = S*FE ! P7 = S*f(E)
            END DO  
            IF (MULTIPLA) P(NPAR) = LOG(STAR%MASS)
            IF (ISDATA(2)) P(NPAR-1) = STAR%V0
@@ -1143,6 +1191,120 @@ c           READ(5,*)VPRIOR(1)%BOUND(1:2)
         END IF
 
         END
+
+C      
+C -----------------------------------------------------------------------------
+C       Derivatives (for Levenberg-Marquardt)
+C -----------------------------------------------------------------------------
+C
+c
+c        SUBROUTINE MRQDERIV(N1,TT,P,POSX,POSY,DPOSX,DPOSY)
+c
+c        USE DATA
+c
+c        IMPLICIT NONE
+c
+c        INTEGER*4 ::    N1               ! Dimension of parameter space 
+c        REAL*8, DIMENSION(N1) :: P       ! Parameters 
+c        REAL*8, DIMENSION(NPLA) :: POSX,POSY ! Heliocentric positions
+c        REAL*8, DIMENSION(N1,NPLA) :: DPOSX,DPOSY ! Derivatives / parameters
+c        REAL*8, DIMENSION(NPLA) :: JACX,JACY ! Jacobi pos
+c        REAL*8, DIMENSION(7,NPLA) :: DJACX,DJACY ! Jac. deriv.
+c        REAL*8, DIMENSION(NPLA) :: MDYN,PER ! Dynamical masses & Periods / q
+c        REAL*8, DIMENSION(NPLA) :: MFRAC ! Fractional masses
+c        INTEGER*4 ::    I,J,L,DKAL ! Indexes
+c        REAL*8 ::
+c     &       TT,DT,             ! Temps
+c     &       MTOT,MSTAR,        ! Total mass up to planet #i
+c     &       Z,Q,               ! Periastron & ln()
+c     &       TP,                ! Tps de passage au periastre
+c     &       N,                 ! Mean motion / q
+c     &       K,H,               ! e*[cos(w),sin(w)]
+c     &       QQ,PP,             ! tan(i/2)*cos(phi),tan(i/2)*sin(phi)
+c     &       DJACXDZ,DJACXDLP,DJACXDP7,DJACXDK,DJACXDH,
+c     &       DJACXDPP,DJACXDQQ,DJACXDQ,DJACXDPER,
+c     &       DJACYDZ,DJACYDLP,DJACYDP7,DJACYDK,DJACYDH,
+c     &       DJACYDPP,DJACYDQQ,DJACYDQ,DJACYDPER,   ! All derivatives
+c     &       S,S0,              ! Universal variable (at T and T0)
+c     &       TI,T2,              ! tan(i/2) + square
+c     &       EXC,               ! eccentricity
+c     &       CW,SW,CP,SP,CO,SO, ! cos,sin (w,phi,O)
+c     &       CI,SI,COM,SOM,     ! cos,sin (i,Om)
+c     &       ALPHA,XX,UFA,      ! Energy
+c     &       CI2,SI2,           ! cos(i/2)^2, sin(i/2)^2
+c     &       E1(2),E2(2),       ! Vecteurs de la base propre (X,Y)
+c     &       U,CU,SU,           ! Anomalie excentrique
+c     &       FACT,              ! 1/(1-e*cos(u))
+c     &       RX,RY,             ! Coordonnes dans la base propre
+c     &       C0,C1,C2,C3,SC1,S2C2,S3C3,    ! Stumpff functions
+c     &       DTPDS0,DTPDALPHA,DTPDM,DTPDQ,DTPDE,DTPDP7, ! Derivatives of TP
+c     &       DSDTP,DSDQ,DSDALPHA,DSDE,DSDPER,DSDM, ! Derivatives of S
+c     &       DOMDK,DOMDH,DODP,DODQ,DIDP,DIDQ,DOMDP,DOMDQ, ! Intern derivs. 
+c     &       DWDK,DWDH,DPHIDP,DPHIDQ, ! Derivees interm.
+c     &       DCI2DP,DCI2DQ,DSI2DP,DSI2DQ, !  
+c     &       DMFDM,DMFDMM,DUDH,DUDK, !
+c     &       DE1DK(2),DE1DH(2),DE1DP(2),DE1DQ(2), ! Derivees de E1
+c     &       DE2DK(2),DE2DH(2),DE2DP(2),DE2DQ(2), ! Derivees de E2
+c     &       DEDK,DEDH,         ! Derivees de Exc
+c     &       DRXDQ,DRXDS,DRXDE,DRXDP7,DRXDTP, ! Derivees de RX (internal)
+c     &       DRXDPER,DRXDALPHA,DRXDK,DRXDH,DRXDPP,DRXDQQ,
+c     &       DRYDQ,DRYDS,DRYDE,DRYDP7,DRYDTP, ! Derivees de RY (internal)
+c     &       DRYDPER,DRYDALPHA,DRYDK,DRYDH,DRYDPP,DRYDQQ
+        
+
+cxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+C
+c        Z = P(1)
+c        K = P(2)
+c        H = P(3)
+c        QQ = P(4)
+c        PP = P(5)
+c        PER = EXP(P(6))
+c        N = DPI/PER         ! Mean motion / q
+c        Q = EXP(Z)            ! Semi-major axis
+c        MDYN(I) = N*N*(Q**3)    ! Dynamical mass
+c          IF (MULTIPLA) THEN
+c             MFRAC(I) = (MDYN(I)-MTOT)/MDYN(I) ! Mfrac(i) = (M(i)-M(i-1))/M(i)
+c             MTOT = MDYN(I)
+c          END IF
+c          EXC = SQRT(K*K+H*H) ! e 
+c          S0 = P(DKAL+7)/EXC**XE      ! P7 = S*(E^XE)
+c          CW = K/EXC            ! cos(w)
+c          SW = H/EXC                   ! sin(w)
+c          ALPHA = MDYN(I)/Q*(1.d0-EXC) ! -2*Energy
+c          XX = S0*S0*ALPHA
+c          CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
+c          SC1 = C1*S0 
+c          S2C2 = C2*S0*S0
+c          S3C3 = C3*S0*S0*S0
+c          DT = MDYN(I)*S3C3+Q*SC1  ! Kepler's equation
+c          TP = STAR%T0-DT
+c          DTPDS0 = -MDYN(I)*S2C2-Q*C0
+c          DTPDALPHA = -(0.5d0/ALPHA)*(MDYN(I)*(S0*S2C2-3.d0*S3C3)
+c     &          +Q*(S0*C0-SC1))
+c          DTPDM = -S3C3
+c          DTPDQ = -SC1
+c          DTPDE = -DTPDS0*XE*S0/EXC
+c          DTPDP7 = DTPDS0*S0/P(DKAL+7)
+c          
+c          DT = TT-TP
+c          CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
+c          RX = Q-MDYN(I)*S2C2
+c          UFA = SQRT(Q*MDYN(I)*(1.d0+EXC))
+c          RY = UFA*SC1
+c          FACT = 1.d0/(MDYN(I)*S2C2+Q*C0)
+c          DSDTP = -FACT
+c          DSDQ = -SC1*FACT
+c          DSDM = -S3C3*FACT
+c          DSDALPHA = -0.5d0*FACT/ALPHA*
+c     &                  (MDYN(I)*(S*S2C2-3.d0*S3C3)+Q*(S*C0-SC1))
+c          DSDE = -DSDALPHA*MDYN(I)/Q
+c          DSDQ = 2.d0*DSDALPHA*ALPHA/Q+DSDQ
+c          DSDPER = -2.d0*DSDALPHA*ALPHA/PER(I)
+c          DSDQ = DSDQ+DSDM*3.d0*MDYN(I)/Q
+c          DSDPER = DSDPER-DSDM*2.d0*MDYN(I)/PER(I)
+c          cc
+
 
 
 C      
@@ -1179,7 +1341,8 @@ C
      &       DJACYDZ,DJACYDLP,DJACYDP7,DJACYDK,DJACYDH,
      &       DJACYDPP,DJACYDQQ,DJACYDQ,DJACYDPER,   ! All derivatives
      &       S,S0,              ! Universal variable (at T and T0)
-     &       TI,T2,              ! tan(i/2) + square
+     &       FE,DFE,            ! Eccentricity function
+     &       TI,T2,             ! tan(i/2) + square
      &       EXC,               ! eccentricity
      &       CW,SW,CP,SP,CO,SO, ! cos,sin (w,phi,O)
      &       CI,SI,COM,SOM,     ! cos,sin (i,Om)
@@ -1226,7 +1389,8 @@ C
              MTOT = MDYN(I)
           END IF
           EXC = SQRT(K*K+H*H) ! e 
-          S0 = P(DKAL+7)/EXC      ! P7 = S*E
+          CALL ECC_FUNC(EXC,FE,DFE)
+          S0 = P(DKAL+7)/FE ! P7 = S*f(E)
           CW = K/EXC            ! cos(w)
           SW = H/EXC                   ! sin(w)
           ALPHA = MDYN(I)/Q*(1.d0-EXC) ! -2*Energy
@@ -1242,8 +1406,8 @@ C
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-          DTPDE = -DTPDS0*S0/EXC
-          DTPDP7 = DTPDS0/EXC
+          DTPDE = -DTPDS0*S0*DFE/FE
+          DTPDP7 = DTPDS0/FE
           
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
@@ -1486,6 +1650,7 @@ C
      &       K,H,               ! e*[cos(w),sin(w)]
      &       QQ,PP,             ! tan(i/2)*cos(phi),tan(i/2)*sin(phi)
      &       S,S0,              ! Universal variable (at T and T0)
+     &       FE,DFE,            ! Eccentricity function
      &       TI,T2,             ! tan(i/2) + square
      &       EXC,               ! eccentricity
      &       CW,SW,CP,SP,CO,SO, ! cos,sin (w,phi,O)
@@ -1520,7 +1685,6 @@ C
           QQ = P(DKAL+4)
           PP = P(DKAL+5)
           PER(I) = EXP(P(DKAL+6))
-          S0 = P(DKAL+7)/EXC
           N = DPI/PER(I)         ! Mean motion / q
           Q = EXP(Z)            ! Semi-major axis
           MDYN(I) = N*N*(Q**3)    ! Dynamical mass
@@ -1529,7 +1693,9 @@ C
              MTOT = MDYN(I)
           END IF
           EXC = SQRT(K*K+H*H) ! e
-          CW = K/EXC                   ! cos(w)
+          CALL ECC_FUNC(EXC,FE,DFE)
+          S0 = P(DKAL+7)/FE ! P7 = S*f(E)
+          CW = K/EXC            ! cos(w)
           SW = H/EXC                   ! sin(w)
           ALPHA = MDYN(I)/Q*(1.d0-EXC) ! -2*Energy
           XX = S0*S0*ALPHA
@@ -1544,8 +1710,8 @@ C
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-          DTPDE = -DTPDS0*S0/EXC
-          DTPDP7 = DTPDS0/EXC
+          DTPDE = -DTPDS0*S0*DFE/FE
+          DTPDP7 = DTPDS0/FE
           
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
@@ -1716,6 +1882,7 @@ C
      &       K,H,               ! e*[cos(w),sin(w)]
      &       QQ,PP,             ! tan(i/2)*cos(phi),tan(i/2)*sin(phi)
      &       S,S0,              ! Universal variable (at T and T0)
+     &       FE,DFE,            ! Eccentricity function
      &       TI,T2,             ! tan(i/2) + square
      &       EXC,               ! eccentricity
      &       CW,SW,CP,SP,CO,SO, ! cos,sin (w,phi,O)
@@ -1752,7 +1919,6 @@ C
           QQ = P(DKAL+4)
           PP = P(DKAL+5)
           PER(I) = EXP(P(DKAL+6))
-          S0 = P(DKAL+7)
           N = DPI/PER(I)         ! Mean motion / q
           Q = EXP(Z)            ! Semi-major axis
           MDYN(I) = N*N*(Q**3)    ! Dynamical mass
@@ -1761,7 +1927,9 @@ C
              MTOT = MDYN(I)
           END IF
           EXC = SQRT(K*K+H*H) ! e
-          CW = K/EXC                   ! cos(w)
+          CALL ECC_FUNC(EXC,FE,DFE)
+          S0 = P(DKAL+7)/FE ! P7 = S*f(E)
+          CW = K/EXC            ! cos(w)
           SW = H/EXC                   ! sin(w)
           ALPHA = MDYN(I)/Q*(1.d0-EXC) ! -2*Energy
           XX = S0*S0*ALPHA
@@ -1776,8 +1944,8 @@ C
      &          +Q*(S0*C0-SC1))
           DTPDM = -S3C3
           DTPDQ = -SC1
-          DTPDE = -DTPDS0*S0/EXC
-          DTPDP7 = DTPDS0/EXC
+          DTPDE = -DTPDS0*S0*DFE/FE
+          DTPDP7 = DTPDS0/FE
           
           DT = TT-TP
           CALL KEP_UNIV(DT,Q,MDYN(I),ALPHA,S,C0,SC1,S2C2,S3C3)
@@ -1935,6 +2103,7 @@ C
      &       NN,DNN,                    ! Moyen mouvement
      &       K,H,                       ! e*(cos(w),sin(w))        
      &       S,                         ! Universal variable at T0
+     &       FE,DFE,                    ! Eccentricity function
      &       ALPHA,XX,T2,               ! Auxiliary variables
      &       C0,C1,C2,C3,SC1,S2C2,S3C3, ! Stumpff functions
      &       TT,                        ! T-T0 (Kepler's equation)   
@@ -1968,7 +2137,8 @@ C
            QQ = P(DKAL+4)
            PP = P(DKAL+5)
            PLA(I)%EXC = SQRT(K*K+H*H)
-           S = P(DKAL+7)/PLA(I)%EXC ! P7 = S*E
+           CALL ECC_FUNC(PLA(I)%EXC,FE,DFE)
+           S = P(DKAL+7)/FE ! P7 = S*f(E)
            PLA(I)%A = PLA(I)%Q/(1.d0-PLA(I)%EXC)
            PLA(I)%CW = K/PLA(I)%EXC ! cos(w=omega+Omega)
            PLA(I)%SW = H/PLA(I)%EXC          ! sin(w)
@@ -2025,7 +2195,7 @@ C
            DTPDP(1:NPAR) = 0.d0
            DTPDP(DKAL+1) = -DTTDQ*PLA(I)%Q
            DTPDP(1:NPAR) = DTPDP(1:NPAR)-DTTDM*DMUDP(1:NPAR) 
-           DTPDP(DKAL+7) = DTPDP(DKAL+7)-DTTDS/PLA(I)%EXC
+           DTPDP(DKAL+7) = DTPDP(DKAL+7)-DTTDS/FE
            DTPDP(DKAL+2) = DTPDP(DKAL+2)+DTTDS*DEDP(DKAL+2)*S/PLA(I)%EXC
            DTPDP(DKAL+3) = DTPDP(DKAL+3)+DTTDS*DEDP(DKAL+3)*S/PLA(I)%EXC
            DTPDP(DKAL+1) = DTPDP(DKAL+1)+DTTDA*ALPHA
@@ -2134,8 +2304,9 @@ C
      &                  K,H,            ! e*[cos(w),sin(w)]/sqrt(1-e^2)
      &                  QQ,PP,          ! tan(i/2)*[cos(O),sin(O)]
      &                  PER,            ! Period / q
-     &                  S0,             ! e/sqrt(1-e^2) + carre
-     &                  EXC             ! excentricite
+     &                  S0,             ! universal variable at T0
+     &       FE,DFE,            ! Eccentricity function
+     &       EXC                ! excentricite
 
         LOGICAL ::      TEST
         
@@ -2157,7 +2328,8 @@ c       print*,'avant',sngl(p)
           Q = EXP(Z)            ! Periastron       
           PER = EXP(P(DKAL+6))
           EXC = SQRT(K*K+H*H)
-          S0 = P(DKAL+7)/EXC
+          CALL ECC_FUNC(EXC,FE,DFE)
+          S0 = P(DKAL+7)/FE
           NN = DPI/PER          ! Mean motion
           MDYN(I) = NN*NN*(Q**3)    ! Dynamical mass
           IF (MULTIPLA) THEN
@@ -2205,8 +2377,10 @@ C
      &                  M0,     ! Mean anomaly at T0
      &                  HH2,    ! Energy
      &                  C0,SC1,S2C2,S3C3, ! Stumpff functions        
-     &                  S       ! Universal variable
+     &                  S,      ! Universal variable
+     &                  FE,DFE  ! Eccentricity function
 
+        
         DO I = 1,NPLA
            CALL RANDOM_NUMBER(R)
            PLA(I)%O = 360.d0*R
@@ -2241,7 +2415,8 @@ C
 c...                                hh2 = -2xEnergie = alpha pour kepu          
            M0 =  (STAR%T0-PLA(I)%TP)*(2.d0*R-1.d0)
            CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
-           P(DKAL+7) = S*PLA(I)%EXC
+           CALL ECC_FUNC(PLA(I)%EXC,FE,DFE)
+           P(DKAL+7) = S*FE ! P7 = S*f(E)
         END DO
         IF (RADVEL) THEN
            P(NEL*NPLA+1) = STAR%V0
@@ -2251,7 +2426,7 @@ c...                                hh2 = -2xEnergie = alpha pour kepu
 
         END    
         
-C     xxxxx
+C    
 C -----------------------------------------------------------------------------
 C    Calculation of FMAP & derivatives (HCI part only)
 C        MAP = exp(-Chi2/2)*f(parameters) (f = priors)

@@ -139,7 +139,7 @@ C
      &                  LL(NPAR,200),! Permutation of integers
      &                  LLC(NPAR),
      &                  NMOD         ! # of models
-        INTEGER*8 ::    LONG,LONGC,
+        INTEGER*8 ::    LONG,
      &                  NGROUP,JGROUP,! Number of grouped steps (=NGEL..)
      &                  NGEL         ! Time for Gelman-Rubin
         LOGICAL ::      NEW,         ! True if new computation

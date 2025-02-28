@@ -101,7 +101,7 @@ c        FORMAT((f),a2,(f))
           READ(5,*)MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
           CALL CONVERT_UNIT(UNIT,FAC)
           MPRIOR(IV)%MEAN = MPRIOR(IV)%MEAN*FAC ! Convert into the right unit
-          MPRIOR(IV)%SDEV = MPRIOR(IV)%MEAN*FAC
+          MPRIOR(IV)%SDEV = MPRIOR(IV)%SDEV*FAC
         CASE(2)                  ! Log-normal
           WRITE(SD,*)
      &           'Enter mean and standard deviation + unit (ms or mj) '

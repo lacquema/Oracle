@@ -98,7 +98,7 @@ c              M0 =  STAR%T0-P(DKAL+6)
 c              CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
               PSTART(DKAL+1) = LOG(PLA(I)%Q)           ! Par 1 = ln(q)
               PSTART(DKAL+6) = LOG(PLA(I)%PER)         ! Par 6 = ln(perq)
-              PSTART(DKAL+7) = P(DKAL+7) ! Par 7 = E*S = E*universal variable at t=T0    
+              PSTART(DKAL+7) = P(DKAL+7) ! Par 7=f(E)*S=f(E)*univ.var@t=T0    
            END DO
            IF (MULTIPLA) PSTART(NPAR) = LOG(STAR%MASS) ! Stellar mass
            IF (ISDATA(2)) THEN
