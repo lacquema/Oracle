@@ -8,19 +8,20 @@ import numpy as np
 from random import random, randint
 import corner
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.signal import find_peaks, peak_widths
+from scipy.ndimage import gaussian_filter1d
 
 # PyQt packages
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QDateEdit
-from PyQt6.QtCore import QDateTime, QDate
+from PyQt6.QtCore import QDateTime, QDate, QSize
 from Utils import date_to_jd, jd_to_mjd, mjd_to_jd, jd_to_date
 
 # My packages
-from WindowParam import WindowParamClass
-from WindowPlot import WindowPlotClass
 from Parameters import *
 from BestOrbits import BestOrbitsClass
 from SelectOrbits import SelectOrbitsClass
-from WindowSplit import WindowSpliter
+
+from WindowPlot import WindowPlot
 
 
 
@@ -41,26 +42,18 @@ class GeneralToolClass(QWidget):
         LblTool.setStatusTip(ToolStatus)
         Layout.addWidget(LblTool)
 
-        # Parameters button
-        self.BtnParam = QPushButton('Parameters')
-        self.BtnParam.clicked.connect(self.Toggle_WindowParam)
-        Layout.addWidget(self.BtnParam)
-
-        # Initialisation of parameters windows
-        self.WindowParam = WindowParamClass(ToolName)
-        self.WindowParam.BtnReset.clicked.connect(self.ResetParams)
-        self.WindowParam.BtnRefresh.clicked.connect(self.Refresh_ActivePlots)
-        self.WindowParam.SignalCloseWindowParam.connect(lambda: self.BtnParam.setEnabled(True)) # reception of the closeEvent of the parameter window and set enabled the associed button
-        self.WindowParam.resize(self.WindowParam.minimumSize())
-
         # Plot button
         self.BtnPlot = QPushButton('Plot')
         self.BtnPlot.clicked.connect(self.Toggle_WindowPlot)
         Layout.addWidget(self.BtnPlot)
 
-        # Initialisation of plot windows
-        self.WindowPlot = WindowPlotClass(ToolName)
-        self.WindowPlot.SignalCloseWindowPlot.connect(lambda: self.BtnPlot.setEnabled(True)) # reception of the closeEvent of the plot window and set enabled the associed button
+        # Initialisation of parameters windows
+        self.WindowPlot = WindowPlot(ToolName)
+        self.WindowPlot.SignalCloseWindowPlot.connect(lambda: self.BtnPlot.setEnabled(True)) # reception of the closeEvent of the parameter window and set enabled the associed button
+
+        # Connections between parameters and plot
+        self.WindowPlot.WidgetParam.BtnReset.clicked.connect(self.ResetParams)
+        self.WindowPlot.WidgetParam.BtnRefresh.clicked.connect(self.Refresh_ActivePlots)
 
         # Initialisation of Data
         if InputData != None: self.NbInputData_RA, self.I_RA, self.MJD_RA, self.JJ_RA, self.MM_RA, self.YY_RA, self.Ra, self.Dec, self.DRa,  self.DDec, self.Corr_DecRa, self.Sep, self.Pa, self.DSep, self.DPa, self.Corr_SepPa, self.Source_RA = InputData
@@ -73,30 +66,30 @@ class GeneralToolClass(QWidget):
         if BestOrbitsParams != None: self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = BestOrbitsParams
         if BestOrbitsEllipses != None: self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestX, self.BestY, self.BestZ = BestOrbitsEllipses
 
-        # self.WindowSplitter = WindowSpliter()
-        # self.WindowSplitter.Splitter.addWidget(self.WindowParam.Container)
-        # self.WindowSplitter.Splitter.addWidget(self.WindowPlot.Container)
+        self.InitParams()
+        # self.WindowPlot.WidgetParam.setFixedSize(self.WindowPlot.WidgetParam.baseSize())
 
-
-        # self.BtnSplitter = QPushButton('Splitter')
-        # self.BtnSplitter.clicked.connect(self.Toggle_WindowSpliter)
-        # Layout.addWidget(self.BtnSplitter)
-
+        # Fixer la taille pour éviter le redimensionnement des parametres.
+        left_width = self.WindowPlot.WidgetParam.sizeHint().width()
+        self.WindowPlot.WidgetParam.setFixedWidth(left_width)
 
         # Widget container
         self.setLayout(Layout) # GeneralToolClass is directly the widget container
 
-    # Open the parameters window when the parameters button is clicked
-    def Toggle_WindowParam(self):
-            # self.WindowParam.move(self.x()-500, self.pos().y())
-            self.WindowParam.show()
-            self.BtnParam.setEnabled(False)
+    # # Open the parameters window when the parameters button is clicked
+    # def Toggle_WindowParam(self):
+    #         # self.WindowPlot.WidgetParam.move(self.x()-500, self.pos().y())
+    #         self.WindowPlot.WidgetParam.show()
+    #         self.BtnParam.setEnabled(False)
 
-    # Open the plot window when the Plot button is clicked
-    def Toggle_WindowPlot(self):
-            self.Plot()
-            self.WindowPlot.show()
-            self.BtnPlot.setEnabled(False)
+    # # Open the plot window when the Plot button is clicked
+    # def Toggle_WindowPlot(self):
+    #         self.Plot()
+    #         self.WindowPlot.WidgetPlot.show()
+    #         self.BtnPlot.setEnabled(False)
+
+    def InitParams(self):
+        return
 
     # Refresh all active plot when the refresh button is clicked
     def Refresh_ActivePlots(self):
@@ -109,9 +102,9 @@ class GeneralToolClass(QWidget):
 
     # Reset all widgets of the parameters window
     def ResetParams(self):
-        for i in reversed(range(2, self.WindowParam.Layout.count())): 
-            WidgetToRemove = self.WindowParam.Layout.itemAt(i).widget()
-            self.WindowParam.Layout.removeWidget(WidgetToRemove)
+        for i in reversed(range(2, self.WindowPlot.WidgetParam.Layout.count())): 
+            WidgetToRemove = self.WindowPlot.WidgetParam.Layout.itemAt(i).widget()
+            self.WindowPlot.WidgetParam.Layout.removeWidget(WidgetToRemove)
             WidgetToRemove.setParent(None)
         self.InitParams()
 
@@ -140,15 +133,20 @@ class GeneralToolClass(QWidget):
         else:
             return 'Unkown variable'
 
-    # def Toggle_WindowSpliter(self):
-    #     self.WindowSplitter.show()
+    def Toggle_WindowPlot(self):
+        self.Plot()
+        self.WindowPlot.show()
+        self.BtnPlot.setEnabled(False)
+
 
 class SpaceView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
         super().__init__('Space view', 'Space view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
+        
+
 
     # Parameters initialisation
     def InitParams(self):
@@ -159,28 +157,28 @@ class SpaceView(GeneralToolClass):
             self.ListBody.append(str(k+1))
         self.ListBody.append('all')
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Number of shown orbits
         self.NbShownOrbits = 500
         self.NbShownOrbitsWidget = SpinBox('Number of orbits', 'Number of shown orbits', ParamDefault=self.NbShownOrbits, ParamMin=0, ParamMax=self.NbSelectOrbits)
-        self.WindowParam.Layout.addWidget(self.NbShownOrbitsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbShownOrbitsWidget)
 
         # Type of view
         self.indexView = 0
         self.ViewWidget = ComboBox('View', 'Dimension', ['2D XY', '2D XZ', '3D'])
         self.ViewWidget.ComboParam.setCurrentIndex(self.indexView)
-        self.WindowParam.Layout.addWidget(self.ViewWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.ViewWidget)
 
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
-        self.WindowParam.Layout.addWidget(self.CheckBestFit)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
-        self.WindowParam.Layout.addWidget(self.CheckObs)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
 
     # Parameters update
     def UpdateParams(self):
@@ -195,21 +193,21 @@ class SpaceView(GeneralToolClass):
     def Plot(self):
 
         # Clear axis
-        for i in range(len(self.WindowPlot.Canvas.fig.axes)):
-            self.WindowPlot.Canvas.fig.delaxes(self.WindowPlot.Canvas.fig.axes[0])
+        for i in range(len(self.WindowPlot.WidgetPlot.Canvas.fig.axes)):
+            self.WindowPlot.WidgetPlot.Canvas.fig.delaxes(self.WindowPlot.WidgetPlot.Canvas.fig.axes[0])
 
         # Update of parameters
         try:
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
 
         if self.indexView == 0: # 2D (x,y)
 
             # Initialisation of axis
-            self.Subplot2D = self.WindowPlot.Canvas.fig.add_subplot(111, aspect='equal')
+            self.Subplot2D = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111, aspect='equal')
 
             # Plot
             self.Subplot2D.plot(0, 0, marker='*', color='orange', markersize=10)
@@ -238,7 +236,7 @@ class SpaceView(GeneralToolClass):
         elif self.indexView == 1: # 2D (x,z)
 
             # Initialisation of axis
-            self.Subplot2D = self.WindowPlot.Canvas.fig.add_subplot(111, aspect='equal')
+            self.Subplot2D = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111, aspect='equal')
 
             # Plot
             self.Subplot2D.plot(0, 0, marker='*', color='orange', markersize=10)
@@ -264,7 +262,7 @@ class SpaceView(GeneralToolClass):
         elif self.indexView == 2: # 3D
 
             # Initialisation of axis
-            self.Subplot3D = self.WindowPlot.Canvas.fig.add_subplot(111, projection='3d', aspect='equal')
+            self.Subplot3D = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111, projection='3d', aspect='equal')
 
             # Plot
             self.Subplot3D.plot(0, 0, 0, marker='*', color='orange', markersize=10)
@@ -290,7 +288,7 @@ class SpaceView(GeneralToolClass):
 
 
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
 
 
 class TempoView(GeneralToolClass):
@@ -298,11 +296,11 @@ class TempoView(GeneralToolClass):
         super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
         # Plots initialisation
-        self.Subplot1 = self.WindowPlot.Canvas.fig.add_subplot(211)
-        self.Subplot2 = self.WindowPlot.Canvas.fig.add_subplot(212)
+        self.Subplot1 = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(211)
+        self.Subplot2 = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(212)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -312,18 +310,18 @@ class TempoView(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Number of shown orbits
         self.NbShownOrbits = 500
         self.NbShownOrbitsWidget = SpinBox('Number of orbits', 'Number of shown orbits', ParamDefault=self.NbShownOrbits, ParamMin=0, ParamMax=self.NbSelectOrbits)
-        self.WindowParam.Layout.addWidget(self.NbShownOrbitsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbShownOrbitsWidget)
 
         # Choice of coordinate
         self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRa', 'dDec'])
-        self.WindowParam.Layout.addWidget(self.CoordinateWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
 
     # Parameters update
     def UpdateParams(self):
@@ -348,7 +346,7 @@ class TempoView(GeneralToolClass):
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
 
         # Plots with current paramaters
@@ -397,7 +395,7 @@ class TempoView(GeneralToolClass):
 
 
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
 
 
 class Conv(GeneralToolClass):
@@ -405,10 +403,10 @@ class Conv(GeneralToolClass):
         super().__init__('Convergence', 'Convergence of the fit orbit parameters', None, OutputParams, None, None, None, None)
 
         # Plot initialisation
-        self.Subplot = self.WindowPlot.Canvas.fig.add_subplot(111)
+        self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -418,13 +416,13 @@ class Conv(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Orbit parameters
         self.ParamOrbitWidget = ComboBox('Orbital parameter', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp','m', 'Mdyn', 'Chi2'])
-        self.WindowParam.Layout.addWidget(self.ParamOrbitWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
 
     # Parameters update
     def UpdateParams(self):
@@ -442,7 +440,7 @@ class Conv(GeneralToolClass):
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
         
 
@@ -457,7 +455,7 @@ class Conv(GeneralToolClass):
         self.Subplot.set_ylabel(self.LabelOf(self.ParamOrbit))
 
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
 
 
 class Hist(GeneralToolClass):
@@ -465,10 +463,10 @@ class Hist(GeneralToolClass):
         super().__init__('Histogram', "Histogram of an orbital parameter", None, OutputParams, None, None, BestOrbitsParams, None)
 
         # Plot initialisation
-        self.Subplot = self.WindowPlot.Canvas.fig.add_subplot(111)
+        self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -478,37 +476,43 @@ class Hist(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Orbit parameters
         self.ParamOrbitWidget = ComboBox('Orbital parameter', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp','m', 'Mdyn', 'Chi2'])
-        self.WindowParam.Layout.addWidget(self.ParamOrbitWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
 
         # Histogram binning
         self.NbBins = 100
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
-        self.WindowParam.Layout.addWidget(self.NbBinsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         # self.CheckBestFit.CheckParam.setChecked(True)
-        self.WindowParam.Layout.addWidget(self.CheckBestFit)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
         # Show confidence interval
         self.CheckMedian = CheckBox('Median', 'Show the median and the 1 sigma confidence interval')
         # self.CheckBestFit.CheckParam.setChecked(True)
-        self.WindowParam.Layout.addWidget(self.CheckMedian)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMedian)
+
+        self.CheckMedian.Layout.addSpacing(20)
 
         self.IntConf = 68
-
+        self.IntConfWidget = SpinBox('Confidence', 'Acceptable level of confidence', self.IntConf, 0, 100, 1)
+        self.CheckMedian.Layout.addWidget(self.IntConfWidget)
+        self.IntConfWidget.setEnabled(self.CheckMedian.CheckParam.isChecked())
+        self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.IntConfWidget.setEnabled(state))
 
     # Parameters update
     def UpdateParams(self):
         self.nBody = int(self.nBodyWidget.ComboParam.currentText())-1
         self.ParamOrbit = self.ParamOrbitWidget.ComboParam.currentText()
         self.NbBins = self.NbBinsWidget.SpinParam.value()
+        self.IntConf = self.IntConfWidget.SpinParam.value()/100
         
     # Plot
     def Plot(self):
@@ -521,7 +525,7 @@ class Hist(GeneralToolClass):
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
         
         # Plot with current parameters
@@ -533,74 +537,244 @@ class Hist(GeneralToolClass):
             BestParam = eval('self.Best'+self.ParamOrbit)[self.nBody]
 
             self.Subplot.axvline(BestParam, color='red')
-            self.Subplot.text(BestParam, 0.5*self.Subplot.get_ylim()[1], s='+{}'.format(np.around(BestParam,3)), color='r', bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='r'), fontsize = 9, horizontalalignment='center', verticalalignment='center', rotation=0)
+            self.Subplot.text(BestParam, 0.5*self.Subplot.get_ylim()[1], s='{}'.format(np.around(BestParam,3)), color='r', bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='r'), fontsize = 9, horizontalalignment='center', verticalalignment='center', rotation=0)
 
         # Median
+        # if self.CheckMedian.CheckParam.isChecked():
+
+        #     counts, bin_edges = np.histogram(self.EvalParamOrbit, self.NbBins)
+        #     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Centres des bins
+
+        #     extended_counts = np.concatenate([counts, counts])  # Copie de l’histogramme
+        #     extended_bins = np.concatenate([bin_edges[:-1], bin_edges[:-1] + 360])  # Double les bins
+
+        #     # Détection des pics avec une contrainte sur la proéminence
+        #     prom = np.median(counts[counts > 0]) * 0.3
+        #     peaks, properties = find_peaks(counts, prominence=prom)
+
+        #     # Ramener les pics dans [0, 360]
+        #     peaks = np.sort(peaks % len(counts))
+
+        #     # Fusionner les pics en double (distance proche de 360°)
+        #     merged_peaks = []
+        #     for i, p in enumerate(peaks):
+        #         print(i, p)
+        #         if i == 0 or p - peaks[i - 1] > len(counts) * 0.2:  # On fusionne si trop proche
+        #             merged_peaks.append(p)
+
+        #     merged_peaks = np.array(merged_peaks)
+
+        #     # Calcul des largeurs des pics à mi-hauteur
+        #     rh = 0.5 if prom > np.median(counts) * 0.3 else 0.3
+        #     width_results = peak_widths(extended_counts, merged_peaks, rel_height=rh)
+
+        #     # Extraction des valeurs utiles
+        #     left_ips = width_results[2] % len(counts)  # Positions des bords gauches en indices flottants
+        #     right_ips = width_results[3] % len(counts)  # Positions des bords droits en indices flottants
+        #     left_bases = properties["left_bases"]  # Vallée à gauche
+        #     right_bases = properties["right_bases"]  # Vallée à droite
+
+        #     # Conversion des indices flottants en entiers pour l'accès aux bins
+        #     left_indices = left_ips.astype(int)
+        #     right_indices = right_ips.astype(int)
+
+        #     # Calcul des bornes finales en prenant la vallée la plus lointaine
+        #     left_bounds = np.minimum(left_indices, left_bases)
+        #     right_bounds = np.maximum(right_indices, right_bases)
+
+        #     for i in range(len(peaks)):
+        #         left = max(0, left_bounds[i])
+        #         right = min(right_bounds[i], len(counts) - 1)
+    
+        #         # Calcul de la distribution cumulée des comptages
+        #         cumsum = np.cumsum(counts[left:right+1])  # Somme cumulée des valeurs de l'histogramme
+        #         total = cumsum[-1]  # Nombre total de comptages
+
+        #         # Niveaux de fraction de comptage à atteindre
+        #         Ic = self.IntConf/100  # Intervalle de confiance (90%)
+        #         seuil_median = 0.50 * total  # Médiane à 50% du total des comptages
+        #         seuil_inf = (0.50 - Ic / 2) * total  # Borne inférieure
+        #         seuil_sup = (0.50 + Ic / 2) * total  # Borne supérieure
+
+        #         # Trouver les valeurs correspondantes aux seuils
+        #         mediane = bin_centers[np.searchsorted(cumsum, seuil_median)+left]
+        #         lower_bound = bin_centers[np.searchsorted(cumsum, seuil_inf)+left]
+        #         upper_bound = bin_centers[np.searchsorted(cumsum, seuil_sup)+left]
+
+        #         SigmaMinus = np.abs(mediane-lower_bound)
+        #         SigmaPlus = np.abs(mediane-upper_bound)
+
+        #         self.Subplot.axvline(mediane, linestyle='-', color='black')
+        #         self.Subplot.text(mediane, 0.83*self.Subplot.get_ylim()[1], s='{}'.format(np.around(mediane,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 9, horizontalalignment='center', verticalalignment='bottom')
+
+        #         self.Subplot.axvline(lower_bound, linestyle='--', color='black')
+        #         self.Subplot.text(lower_bound, 0.8*self.Subplot.get_ylim()[1], s='-{}'.format(np.around(SigmaMinus,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 8, horizontalalignment='right', verticalalignment='top')
+
+        #         self.Subplot.axvline(upper_bound, linestyle='--', color='black')
+        #         self.Subplot.text(upper_bound, 0.8*self.Subplot.get_ylim()[1], s='+{}'.format(np.around(SigmaPlus,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 8, horizontalalignment='left', verticalalignment='top')
+
+
+
+
+
+            # data_case2 = np.concatenate([
+            #     np.random.normal(loc=180, scale=20, size=500),  # Pic à 180°
+            #     np.random.normal(loc=0, scale=20, size=500) % 360  # Pic réparti entre 0° et 360°
+            #                             ])
+
+            # # Création de l'histogramme
+            # counts, bin_edges = np.histogram(data_case2, self.NbBins)
+            # bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Centres des bins
+
+            # # Extension de l'histogramme pour une détection cyclique des pics
+            # extended_counts = np.concatenate([counts, counts])
+            # extended_bins = np.concatenate([bin_edges[:-1], bin_edges[:-1] + 360])
+
+            # # Détection des pics avec une contrainte sur la proéminence
+            # prominence_threshold = np.median(counts[counts > 0]) * 0.3
+            # peaks, properties = find_peaks(counts, prominence=prominence_threshold)
+
+            # # Ramener les pics dans [0, 360] et fusionner les pics proches
+            # peaks = np.sort(peaks % len(counts))
+            # merged_peaks = [p for i, p in enumerate(peaks) if i == 0 or p - peaks[i - 1] > len(counts) * 0.2]
+
+            # # Calcul des largeurs des pics à mi-hauteur
+            # rel_height = 0.5 if prominence_threshold > np.median(counts) * 0.3 else 0.3
+            # width_results = peak_widths(extended_counts, merged_peaks, rel_height=rel_height)
+
+            # # Extraction des bornes des pics
+            # left_bounds = width_results[2].astype(int) % len(counts)
+            # right_bounds = width_results[3].astype(int) % len(counts)
+
+            # # Intervalle de confiance
+            # Ic = self.IntConf / 100  
+
+            # for peak, left, right in zip(merged_peaks, left_bounds, right_bounds):
+            #     left = max(0, left)
+            #     right = min(right, len(counts) - 1)
+
+            #     # Calcul de la distribution cumulée
+            #     cumsum = np.cumsum(counts[left:right + 1])
+            #     total = cumsum[-1]
+
+            #     # Calcul des seuils
+            #     seuils = {
+            #         "median": 0.50 * total,
+            #         "inf": (0.50 - Ic / 2) * total,
+            #         "sup": (0.50 + Ic / 2) * total
+            #     }
+
+            #     # Détermination des valeurs associées
+            #     mediane = bin_centers[left + np.searchsorted(cumsum, seuils["median"])]
+            #     lower_bound = bin_centers[left + np.searchsorted(cumsum, seuils["inf"])]
+            #     upper_bound = bin_centers[left + np.searchsorted(cumsum, seuils["sup"])]
+
+            #     SigmaMinus = abs(mediane - lower_bound)
+            #     SigmaPlus = abs(mediane - upper_bound)
+
+            #     # Tracés des lignes et annotations sur le graphique
+            #     self.Subplot.axvline(mediane, linestyle='-', color='black')
+            #     self.Subplot.text(mediane, 0.83 * self.Subplot.get_ylim()[1], f'{mediane:.3f}', 
+            #                     bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'),
+            #                     fontsize=9, ha='center', va='bottom')
+
+            #     for bound, sigma, ha in [(lower_bound, SigmaMinus, 'right'), (upper_bound, SigmaPlus, 'left')]:
+            #         self.Subplot.axvline(bound, linestyle='--', color='black')
+            #         self.Subplot.text(bound, 0.8 * self.Subplot.get_ylim()[1], f'{"+" if ha == "left" else "-"}{sigma:.3f}', 
+            #                         bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'),
+            #                         fontsize=8, ha=ha, va='top')
+
         if self.CheckMedian.CheckParam.isChecked():
-            # self.Median = []
-            if self.ParamOrbit == 'w' or self.ParamOrbit == 'W':
 
-                Counts, Bins = np.histogram(self.EvalParamOrbit, self.NbBins, range=(0, 360))
+            # Calcul de l'histogramme
+            counts, bin_edges = np.histogram(self.EvalParamOrbit, self.NbBins)
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Centres des bins
 
-                # Position of pics
-                indexDelim = np.argmax(Counts)-self.NbBins//4
+            # Dupliquer et concaténer les données pour gérer la cyclicité
+            extended_counts = np.concatenate([counts, counts])
+            extended_bin_centers = np.concatenate([bin_centers, bin_centers + 360])
 
+            # Appliquer un filtre gaussien pour lisser les données
+            smoothed_counts = gaussian_filter1d(extended_counts, sigma=2)
 
-                if 0<=indexDelim<=self.NbBins//2:
-                    Counts = Counts[indexDelim:indexDelim+self.NbBins//2]
-                    Bins = Bins[indexDelim:indexDelim+self.NbBins//2]
+            # Détection des pics
+            prom = np.median(smoothed_counts[smoothed_counts > 0]) * 0.3
+            peaks, properties = find_peaks(smoothed_counts, prominence=prom)
 
-                elif indexDelim<0: 
-                    Counts = Counts[indexDelim+self.NbBins//2:indexDelim+self.NbBins]
-                    Bins = Bins[indexDelim+self.NbBins//2:indexDelim+self.NbBins]
+            if len(peaks) == 3:
+                unique_peaks = [peaks[1], peaks[2]]
+                unique_left_bases = [properties["left_bases"][1], properties["left_bases"][2]]
+                unique_right_bases = [properties["right_bases"][1], properties["right_bases"][2]]
+            elif len(peaks) == 2:
+                unique_peaks = peaks
+                unique_left_bases = properties["left_bases"]
+                unique_right_bases = properties["right_bases"]
 
-                elif indexDelim>self.NbBins//2:
-                    Counts = Counts[indexDelim-self.NbBins//2:indexDelim]
-                    Bins = Bins[indexDelim-self.NbBins//2:indexDelim]
+        
+            left_ips = unique_left_bases
+            right_ips = unique_right_bases
 
-                PicParam = []
-                for k in range(len(Bins)):
-                    PicParam += [Bins[k]]*Counts[k]
+            # Tracé des résultats
+            # self.Subplot.plot(bin_centers, smoothed_counts[:len(bin_centers)], label='Données lissées')
+
+            for i in range(len(unique_peaks)):
+                left = max(0, left_ips[i])
+                right = min(right_ips[i], len(extended_counts) - 1)
+
+                mediane, lower_bound, upper_bound = self.calculate_bounds(smoothed_counts, extended_bin_centers, left, right, Ic=self.IntConf)
                 
-                self.Median = np.median(PicParam)
-
-            else:
-                Counts, Bins = np.histogram(self.EvalParamOrbit, self.NbBins)
-                self.Median = np.median(self.EvalParamOrbit)
-
-            WidthBin = (np.max(Bins)-np.min(Bins))/len(Bins)
-            CenterBins = Bins[:-1]+WidthBin/2
-            NbCounts = np.sum(Counts)
-
-            MinIntConf = (50-self.IntConf/2)/100*NbCounts
-            MaxIntConf = (50+self.IntConf/2)/100*NbCounts
-
-            CountsPass = 0
-            for k in range(len(CenterBins)):
-                if CountsPass <= MinIntConf <= CountsPass+Counts[k]:
-                    BinMinus = CenterBins[k]
-                if CountsPass <= MaxIntConf <= CountsPass+Counts[k]:
-                    BinPlus = CenterBins[k]
-                CountsPass += Counts[k]
-
-            SigmaMinus = np.abs(self.Median-BinMinus)
-            SigmaPlus = np.abs(self.Median-BinPlus)
-
-            self.Subplot.axvline(BinMinus, linestyle='--', color='black')
-            self.Subplot.text(BinMinus, 0.8*self.Subplot.get_ylim()[1], s='-{}'.format(np.around(SigmaMinus,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 8, horizontalalignment='right', verticalalignment='top')
-
-            self.Subplot.axvline(self.Median, linestyle='-', color='black')
-            self.Subplot.text(self.Median, 0.83*self.Subplot.get_ylim()[1], s='{}'.format(np.around(self.Median,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 9, horizontalalignment='center', verticalalignment='bottom')
-
-            self.Subplot.axvline(BinPlus, linestyle='--', color='black')
-            self.Subplot.text(BinPlus, 0.8*self.Subplot.get_ylim()[1], s='+{}'.format(np.around(SigmaPlus,3)), bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize = 8, horizontalalignment='left', verticalalignment='top')
+                self.plot_bounds(self.Subplot, mediane, lower_bound, upper_bound)
+                
 
         # Plot features
         self.Subplot.set_xlabel(self.LabelOf(self.ParamOrbit))
         self.Subplot.set_ylabel('Count number')
         
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
+
+
+
+    def calculate_bounds(self, counts, bin_centers, left, right, Ic=0.68):
+
+        cumsum = np.cumsum(counts[left:right+1])
+
+        total = cumsum[-1]
+
+        seuil_median = 0.50 * total
+        seuil_inf = (0.50 - Ic / 2) * total
+        seuil_sup = (0.50 + Ic / 2) * total
+
+        mediane = bin_centers[np.searchsorted(cumsum, seuil_median) + left]
+        lower_bound = bin_centers[np.searchsorted(cumsum, seuil_inf) + left]
+        upper_bound = bin_centers[np.searchsorted(cumsum, seuil_sup) + left]
+
+        return mediane, lower_bound, upper_bound
+    
+
+    def plot_bounds(self, Subplot, mediane, lower_bound, upper_bound):
+
+        SigmaMinus = np.abs(mediane - lower_bound)
+        SigmaPlus = np.abs(mediane - upper_bound)
+
+        mediane = mediane % 360
+        lower_bound = lower_bound % 360
+        upper_bound = upper_bound % 360
+
+        Subplot.axvline(mediane, linestyle='-', color='black')
+        Subplot.text(mediane, 0.83 * Subplot.get_ylim()[1], s='{}'.format(np.around(mediane, 3)),
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize=9,
+                    horizontalalignment='center', verticalalignment='bottom')
+
+        Subplot.axvline(lower_bound, linestyle='--', color='black')
+        Subplot.text(lower_bound, 0.8 * Subplot.get_ylim()[1], s='-{}'.format(np.around(SigmaMinus, 3)),
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize=8,
+                    horizontalalignment='right', verticalalignment='top')
+
+        Subplot.axvline(upper_bound, linestyle='--', color='black')
+        Subplot.text(upper_bound, 0.8 * Subplot.get_ylim()[1], s='+{}'.format(np.around(SigmaPlus, 3)),
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='black'), fontsize=8,
+                    horizontalalignment='left', verticalalignment='top')
 
 
 class Hist2D(GeneralToolClass):
@@ -608,7 +782,7 @@ class Hist2D(GeneralToolClass):
         super().__init__('Histogram 2D', 'Histogram of an orbital parameter as fonction of another', None, OutputParams, None, None, BestOrbitsParams, None)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -618,26 +792,26 @@ class Hist2D(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Abscissa orbit parameters
         self.XParamOrbitWidget = ComboBox('X Orbital parameter', 'Abscissa orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp','m', 'Mdyn'])
-        self.WindowParam.Layout.addWidget(self.XParamOrbitWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
 
         # Ordinate orbit parameters
         self.YParamOrbitWidget = ComboBox('Y Orbital parameter', 'Ordinate orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp','m', 'Mdyn'])
-        self.WindowParam.Layout.addWidget(self.YParamOrbitWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
 
         # Histogram binning
         self.NbBins = 100
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
-        self.WindowParam.Layout.addWidget(self.NbBinsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
-        self.WindowParam.Layout.addWidget(self.CheckBestFit)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
 
     # Parameters update
@@ -651,18 +825,18 @@ class Hist2D(GeneralToolClass):
     def Plot(self):
         
         # Clear axis
-        for i in range(len(self.WindowPlot.Canvas.fig.axes)):
-            self.WindowPlot.Canvas.fig.delaxes(self.WindowPlot.Canvas.fig.axes[0])
+        for i in range(len(self.WindowPlot.WidgetPlot.Canvas.fig.axes)):
+            self.WindowPlot.WidgetPlot.Canvas.fig.delaxes(self.WindowPlot.WidgetPlot.Canvas.fig.axes[0])
 
         # Plot initialisation
-        self.Subplot = self.WindowPlot.Canvas.fig.add_subplot(111)
+        self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
         
         # Plot with current parameters
@@ -671,7 +845,7 @@ class Hist2D(GeneralToolClass):
 
         hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins))
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
-        self.WindowPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, label='Count number')
+        self.WindowPlot.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, label='Count number')
 
         # Best fit
         if self.CheckBestFit.CheckParam.isChecked():
@@ -685,7 +859,7 @@ class Hist2D(GeneralToolClass):
         self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit))
         
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
     
 
 class PosAtDate(GeneralToolClass):
@@ -693,7 +867,7 @@ class PosAtDate(GeneralToolClass):
         super().__init__('Position at date', 'Position of bodies at a given date', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -703,26 +877,26 @@ class PosAtDate(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
         # Date of wanted observation
         self.DateWidget = DateAndMJDEdit('Date', 'Date of wanted observation')
-        self.WindowParam.Layout.addWidget(self.DateWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.DateWidget)
 
         # Histogram binning
         self.NbBins = 100
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
-        self.WindowParam.Layout.addWidget(self.NbBinsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
-        self.WindowParam.Layout.addWidget(self.CheckBestFit)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
-        self.WindowParam.Layout.addWidget(self.CheckObs)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
 
     # Parameters update
     def UpdateParams(self):
@@ -734,18 +908,18 @@ class PosAtDate(GeneralToolClass):
     def Plot(self):
         
         # Clear axis
-        for i in range(len(self.WindowPlot.Canvas.fig.axes)):
-            self.WindowPlot.Canvas.fig.delaxes(self.WindowPlot.Canvas.fig.axes[0])
+        for i in range(len(self.WindowPlot.WidgetPlot.Canvas.fig.axes)):
+            self.WindowPlot.WidgetPlot.Canvas.fig.delaxes(self.WindowPlot.WidgetPlot.Canvas.fig.axes[0])
 
         # Plot initialisation
-        self.Subplot = self.WindowPlot.Canvas.fig.add_subplot(111)
+        self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
 
         # Compute date
@@ -769,7 +943,7 @@ class PosAtDate(GeneralToolClass):
         # Plot with current parameters
         hist = self.Subplot.hist2d(SelectXAtDate, SelectYAtDate, bins=(self.NbBins, self.NbBins), range=((np.min(self.SelectX), np.max(self.SelectX)),(np.min(self.SelectY), np.max(self.SelectY))))
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
-        self.WindowPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Probability')
+        self.WindowPlot.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Probability')
 
         self.Subplot.plot(0, 0, marker='*', color='orange', markersize=10)
 
@@ -798,7 +972,7 @@ class PosAtDate(GeneralToolClass):
 
         
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
     
 
 class Corner(GeneralToolClass):
@@ -806,7 +980,7 @@ class Corner(GeneralToolClass):
         super().__init__('Corner', 'Corner plot of parameters', None, None, SelectOrbitsParams, None, None, None)
 
         # Parameters initialisation
-        self.InitParams()
+        # self.InitParams()
 
     # Parameters initialisation
     def InitParams(self):
@@ -816,7 +990,7 @@ class Corner(GeneralToolClass):
         for k in range(self.NbBodies):
             self.ListBody.append(str(k+1))
         self.nBodyWidget = ComboBox("Orbit number",'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowParam.Layout.addWidget(self.nBodyWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         if self.NbBodies == 1:
             self.nBodyWidget.setEnabled(False)
 
@@ -838,12 +1012,12 @@ class Corner(GeneralToolClass):
 
         self.CheckWidget = QWidget() # Container
         self.CheckWidget.setLayout(self.CheckLayout)
-        self.WindowParam.Layout.addWidget(self.CheckWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckWidget)
 
         # Histogram binning
         self.NbBins = 20
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
-        self.WindowParam.Layout.addWidget(self.NbBinsWidget)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
     # Parameters update
     def UpdateParams(self):
@@ -854,18 +1028,18 @@ class Corner(GeneralToolClass):
     def Plot(self):
         
         # Clear axis
-        for i in range(len(self.WindowPlot.Canvas.fig.axes)):
-            self.WindowPlot.Canvas.fig.delaxes(self.WindowPlot.Canvas.fig.axes[0])
+        for i in range(len(self.WindowPlot.WidgetPlot.Canvas.fig.axes)):
+            self.WindowPlot.WidgetPlot.Canvas.fig.delaxes(self.WindowPlot.WidgetPlot.Canvas.fig.axes[0])
 
         # Plot initialisation
-        # self.Subplot = self.WindowPlot.Canvas.fig.add_subplot(111)
+        # self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
             self.UpdateParams()
         except:
             print('Wrong Parameters')
-            self.WindowPlot.Canvas.draw()
+            self.WindowPlot.WidgetPlot.Canvas.draw()
             return
         
 
@@ -880,14 +1054,14 @@ class Corner(GeneralToolClass):
 
         # Plot with current parameters
         try:
-            CornerFig = corner.corner(np.array(Data).T, labels=DataLabels, fig=self.WindowPlot.Canvas.fig, bins=self.NbBins)
+            CornerFig = corner.corner(np.array(Data).T, labels=DataLabels, fig=self.WindowPlot.WidgetPlot.Canvas.fig, bins=self.NbBins)
         except:
             print('There is a problem with the corner plot: make sure that the orbit parameters selected are variable in this adjustment.')
         
         # Plot features
         
         # Update canvas
-        self.WindowPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.draw()
 
 
 

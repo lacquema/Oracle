@@ -4,6 +4,7 @@
 
 # Transverse packages
 
+
 # PyQt packages
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QStatusBar, QWidget, QApplication, QProgressBar
 from PyQt6.QtCore import pyqtSignal
@@ -124,7 +125,7 @@ if __name__=="__main__":
     Simu = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2_Ab1_fit/ggtau_Ab2_Ab1_fit_1/'
     PathInputData = Simu+'ggtau_Ab12_hci.dat'
     PathOutputData = Simu+'solggtauAb12.dat'
-    SystDist = 240  
+    SystDist = 145
     SystName = 'ggtau'
 
     # LoadWin = LoadWindowClass() # Loading window showing

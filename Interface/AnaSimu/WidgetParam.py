@@ -1,4 +1,4 @@
-#! /Users/lacquema/ByeGildas/bin/python3
+#! /Users/lacquema/Oracle.env/bin/python3
 
 
 ### --- Packages --- ###
@@ -8,28 +8,24 @@ import sys
 import os
 
 # PyQt packages
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QStatusBar, QApplication
 from PyQt6.QtGui import QIcon
 
 
 ### --- Parameters Window Generating --- ###
 
-class WindowParamClass(QMainWindow):
+class WidgetParam(QWidget):
     
-    SignalCloseWindowParam = pyqtSignal() # initiation of the closeEvent signal
-    
-    def __init__(self, ToolName):
+    def __init__(self):
         super().__init__()
 
         # Directory path
         self.DirPath = os.path.dirname(__file__)
 
-        # Window characteristics
-        self.setWindowTitle(ToolName+': Parameters')
-
         # Layout
         self.Layout = QVBoxLayout()
+        self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Reset button
         self.BtnReset = QPushButton('Reset')
@@ -43,23 +39,16 @@ class WindowParamClass(QMainWindow):
         self.Layout.addWidget(self.BtnRefresh)
 
         # Widget container
-        self.Container = QWidget()
-        self.Container.setLayout(self.Layout)
-        self.setCentralWidget(self.Container)
+        self.setLayout(self.Layout)
 
-        # Status bar
-        self.setStatusBar(QStatusBar(self))
-
-    # Emition of the CloseEvent signal when the parameter window is closed
-    def closeEvent(self, e):
-        self.SignalCloseWindowParam.emit() 
-
-
-
+       
 # Check
 if __name__=="__main__":
-    app = QApplication(sys.argv) # Application creation
-    WindowParam = WindowParamClass('ToolName')
-    WindowParam.resize(250, 200)
-    WindowParam.show()
-    app.exec() # Application execution
+    app = QApplication(sys.argv)
+    Plot = WidgetParam()
+    Window = QMainWindow()
+    Window.setCentralWidget(Plot)
+    Window.setStatusBar(QStatusBar())
+    Window.show()
+    app.exec()
+    
