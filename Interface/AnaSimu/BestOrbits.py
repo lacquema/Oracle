@@ -3,30 +3,24 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWi
 import numpy as np
 import Utils as ut
 
-
 class BestOrbitsClass(QWidget):
     def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, map, NbPtsEllipse, StarDist, NbInputData, Corr):
         super().__init__()
 
-        # Best fit for each bodies
+        # Number of parameters
         self.NbParams = 10
-        self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = [np.zeros(NbBodies) for k in range(self.NbParams)]
+        # Initialize best fit parameters for each body
+        self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = [np.zeros(NbBodies) for _ in range(self.NbParams)]
 
-        self.NbParamsLib = 0
+        # Store input parameters
         self.Params = [P, a, e, i, w, W, tp, m, Mdyn]
 
+        # Find best fit parameters for each body
         for j in range(NbBodies):
             self.BestChi2[j] = np.min(Chi2[j])
-            IndexBestChi2 = list(Chi2[j]).index(self.BestChi2)
-            self.BestP[j] = P[j][IndexBestChi2]
-            self.Besta[j] = a[j][IndexBestChi2]
-            self.Beste[j] = e[j][IndexBestChi2]
-            self.Besti[j] = i[j][IndexBestChi2]
-            self.Bestw[j] = w[j][IndexBestChi2]
-            self.BestW[j] = W[j][IndexBestChi2]
-            self.Besttp[j] =  tp[j][IndexBestChi2]
-            self.Bestm[j] = m[j][IndexBestChi2]
-            self.BestMdyn[j] = Mdyn[j][IndexBestChi2]
+            IndexBestChi2 = list(Chi2[j]).index(self.BestChi2[j])  # Adjust index calculation
+            self.BestChi2[j] = self.BestChi2[j] / NbInputData # Reduced Chi2
+            self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.BestMdyn[j] = [param[j][IndexBestChi2] for param in self.Params]
 
         self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2]
 
@@ -49,6 +43,7 @@ class BestOrbitsClass(QWidget):
         TblBestFit.setHorizontalHeaderLabels(self.LabelParams)
         TblBestFit.setFixedSize(102*self.NbParams, 25*(NbBodies+1)+8)
 
+        # Fill table with best fit parameters
         for j in range(NbBodies):
             for k in range(self.NbParams):
                 TblBestFit.setItem(j, k, QTableWidgetItem('{}'.format(np.around(self.BestParams[k+1][j], 3))))
@@ -56,10 +51,19 @@ class BestOrbitsClass(QWidget):
         Layout.addWidget(TblBestFit)
         self.Widget.setLayout(Layout)
 
-        # Ellipse
-        self.Bestt, self.BestX, self.BestY, self.BestZ = [np.zeros((NbBodies, NbPtsEllipse)) for k in range(4)]
+        # Ellipse calculations
+        self.Bestt, self.BestX, self.BestY, self.BestZ, self.BestRa, self.BestDec, self.BestSep, self.BestPa = [np.zeros((NbBodies, NbPtsEllipse)) for _ in range(8)]
         for j in range(NbBodies):
             self.Bestt[j], self.BestX[j], self.BestY[j], self.BestZ[j] = ut.Ellipse(self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], NbPtsEllipse, Time=True)
+            
+            # Conversion to milliarcseconds
+            self.BestRa[j] = -self.BestX[j]/StarDist*1000
+            self.BestDec[j] = self.BestY[j]/StarDist*1000
+            self.BestZ[j] = self.BestZ[j]/StarDist*1000
 
-        self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, -self.BestX/StarDist*1000, self.BestY/StarDist*1000, self.BestZ/StarDist*1000]
+            # Separation and position angle
+            self.BestSep[j] = np.sqrt(self.BestRa[j]**2+self.BestDec[j]**2)
+            self.BestPa[j] = np.rad2deg(np.arctan2(self.BestRa[j], self.BestDec[j]))
+        
+        self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa]
 

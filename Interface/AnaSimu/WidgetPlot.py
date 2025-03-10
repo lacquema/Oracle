@@ -20,6 +20,8 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self):
         self.fig = Figure()
+        self.fig.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.15)
+
         super(MplCanvas, self).__init__(self.fig)
 
 

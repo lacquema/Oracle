@@ -28,7 +28,9 @@ class GeneralParam(QWidget):
             self.Layout.setSpacing(20)
             self.Layout.addWidget(self.LblParam)
 
-        self.Layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # self.Layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.setMinimumWidth(100)
 
         # Widget container
         self.setLayout(self.Layout) # GeneralParam is directly the widget container
@@ -148,6 +150,7 @@ class SpinBox(GeneralParam):
         if ParamDefault != None: self.SpinParam.setValue(ParamDefault)
         if ParamIncrement != None: self.SpinParam.setSingleStep(ParamIncrement)
         self.Layout.addWidget(self.SpinParam)
+        # self.SpinParam.setMinimumWidth(70)
 
 
 
@@ -166,6 +169,7 @@ class DoubleSpinBox(GeneralParam):
         if ParamIncrement != None: self.SpinParam.setSingleStep(ParamIncrement)
         if ParamPrecision != None: self.SpinParam.setDecimals(ParamPrecision)
         self.Layout.addWidget(self.SpinParam)
+        # self.SpinParam.setMinimumWidth(70)
 
 
 # Gerenal CheckBox

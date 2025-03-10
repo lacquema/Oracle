@@ -7,9 +7,6 @@ import numpy as np
 from Utils import *
 from PyQt6.QtWidgets import QWidget
 
-
-### --- Plot Window Generating --- ###
-
 # Open output data
 def TransfertSimu(PathOutputData):
 

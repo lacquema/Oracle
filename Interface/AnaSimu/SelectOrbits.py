@@ -1,39 +1,41 @@
-
 ### --- Packages --- ###
 from PyQt6.QtWidgets import QWidget
 import numpy as np
 import Utils as ut
 import random as rd
 
-
 class SelectOrbitsClass(QWidget):
     def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, map, NbSelectOrbits, NbPtsEllipse, StarDist):
         super().__init__()
 
-        # Random selection of orbits
+        # Number of parameters
         self.NbParams = 10
-        self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.SelectMdyn, self.SelectChi2 = [np.zeros((NbBodies, NbSelectOrbits)) for k in range(self.NbParams)]
+        # Initialize selected orbits parameters
+        self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.SelectMdyn, self.SelectChi2 = [np.zeros((NbBodies, NbSelectOrbits)) for _ in range(self.NbParams)]
 
+        # Randomly select orbits for each body
         for j in range(NbBodies):
             for k in range(NbSelectOrbits):
                 indexRd = rd.randint(0, NbOrbits-1)
-                self.SelectP[j][k] = P[j][indexRd]
-                self.Selecta[j][k] = a[j][indexRd]
-                self.Selecte[j][k] = e[j][indexRd]
-                self.Selecti[j][k] = i[j][indexRd]
-                self.Selectw[j][k] = w[j][indexRd]
-                self.SelectW[j][k] = W[j][indexRd]
-                self.Selecttp[j][k] =  tp[j][indexRd]
-                self.Selectm[j][k] = m[j][indexRd]
-                self.SelectMdyn[j][k] = Mdyn[j][indexRd]
-                self.SelectChi2[j][k] = Chi2[j][indexRd]
+                self.SelectP[j][k], self.Selecta[j][k], self.Selecte[j][k], self.Selecti[j][k], self.Selectw[j][k], self.SelectW[j][k], self.Selecttp[j][k], self.Selectm[j][k], self.SelectMdyn[j][k], self.SelectChi2[j][k] = [param[j][indexRd] for param in [P, a, e, i, w, W, tp, m, Mdyn, Chi2]]
 
         self.SelectParams = [NbBodies, NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.SelectMdyn, self.SelectChi2]
 
-        # Ellipse
-        self.Selectt, self.SelectX, self.SelectY, self.SelectZ = [np.zeros((NbBodies, NbSelectOrbits, NbPtsEllipse)) for k in range(4)]
+        # Ellipse calculations
+        self.Selectt, self.SelectX, self.SelectY, self.SelectZ, self.SelectRa, self.SelectDec, self.SelectSep, self.SectectPa = [np.zeros((NbBodies, NbSelectOrbits, NbPtsEllipse)) for _ in range(8)]
+        
         for j in range(NbBodies):
             for k in range(NbSelectOrbits):
                 self.Selectt[j][k], self.SelectX[j][k], self.SelectY[j][k], self.SelectZ[j][k] = ut.Ellipse(self.SelectP[j][k], self.Selecta[j][k], self.Selecte[j][k], self.Selecti[j][k], self.Selectw[j][k], self.SelectW[j][k], self.Selecttp[j][k], NbPtsEllipse, Time=True)
+                
+                # Conversion to milliarcseconds
+                self.SelectRa[j][k] = -self.SelectX[j][k]/StarDist*1000
+                self.SelectDec[j][k] = self.SelectY[j][k]/StarDist*1000
+                self.SelectZ[j][k] = self.SelectZ[j][k]/StarDist*1000
 
-        self.SelectEllipses = [NbBodies, NbSelectOrbits, NbPtsEllipse, self.SelectP, self.Selectt, -self.SelectX/StarDist*1000, self.SelectY/StarDist*1000, self.SelectZ/StarDist*1000]
+                # Separation and position angle
+                self.SelectSep[j][k] = np.sqrt(self.SelectRa[j][k]**2+self.SelectDec[j][k]**2)
+                self.SectectPa[j][k] = np.rad2deg(np.arctan2(self.SelectRa[j][k], self.SelectDec[j][k]))
+
+
+        self.SelectEllipses = [NbBodies, NbSelectOrbits, NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SectectPa]
