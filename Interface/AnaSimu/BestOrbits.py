@@ -1,10 +1,11 @@
 ### --- Packages --- ###
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt6.QtCore import Qt
 import numpy as np
 import Utils as ut
 
 class BestOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, map, NbPtsEllipse, StarDist, NbInputData, Corr):
+    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
         super().__init__()
 
         # Number of parameters
@@ -13,14 +14,14 @@ class BestOrbitsClass(QWidget):
         self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = [np.zeros(NbBodies) for _ in range(self.NbParams)]
 
         # Store input parameters
-        self.Params = [P, a, e, i, w, W, tp, m, Mdyn]
+        self.Params = [P, a, e, i, w, W, tp, m, Mdyn, Chi2]
 
         # Find best fit parameters for each body
         for j in range(NbBodies):
             self.BestChi2[j] = np.min(Chi2[j])
             IndexBestChi2 = list(Chi2[j]).index(self.BestChi2[j])  # Adjust index calculation
             self.BestChi2[j] = self.BestChi2[j] / NbInputData # Reduced Chi2
-            self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.BestMdyn[j] = [param[j][IndexBestChi2] for param in self.Params]
+            self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.BestMdyn[j] = [param[j][IndexBestChi2] for param in self.Params[:-1]]
 
         self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2]
 
@@ -29,24 +30,59 @@ class BestOrbitsClass(QWidget):
         Layout = QVBoxLayout()
     
         # Label
-        LblBestFit = QLabel('Best fit for each bodies:')
+        LblBestFit = QLabel('Best fit for each orbit :')
         LblBestFit.setStatusTip('Orbits parameters corresponding to the best Chi2 fit')
         Layout.addWidget(LblBestFit)
 
         # Table
         TblBestFit = QTableWidget()
-        TblBestFit.setEnabled(False)
-        TblBestFit.setStatusTip('The number of bodies is counting from the center of the system outwards')
+        TblBestFit.setStatusTip('Orbits parameters corresponding to the best Chi2 fit')
         TblBestFit.setRowCount(NbBodies)
         TblBestFit.setColumnCount(self.NbParams)
-        self.LabelParams = ['P (yr)', 'a (AU)', 'e', 'i (deg)', 'w (deg)', 'W (deg)', 'tp (MJD)', 'm (Mjup)', 'Mdyn (Msol)', 'Chi2']
+        self.LabelParams = ['P [yr]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]', 'm [Mjup]', 'Mdyn [Msun]', 'Chi2']
         TblBestFit.setHorizontalHeaderLabels(self.LabelParams)
-        TblBestFit.setFixedSize(102*self.NbParams, 25*(NbBodies+1)+8)
 
-        # Fill table with best fit parameters
+        # Disable selection
+        TblBestFit.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+
+        # Set column width to fit content
+        TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # Add a stylesheet for better aesthetics with extra padding
+        TblBestFit.setStyleSheet("""
+            QTableWidget {
+                border: none;
+                font-size: 12px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QHeaderView::section {
+                border: 1px solid;
+                font-weight: italic;
+                padding: 2px;
+            }
+        """)
+
+        # Center align row numbers (vertical header)
+        TblBestFit.verticalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Adjust table size dynamically based on content
+        TblBestFit.setSizeAdjustPolicy(QTableWidget.SizeAdjustPolicy.AdjustToContents)
+        TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        TblBestFit.horizontalHeader().setStretchLastSection(False)
+
+        # Fill table with best fit parameters and center align values
         for j in range(NbBodies):
             for k in range(self.NbParams):
-                TblBestFit.setItem(j, k, QTableWidgetItem('{}'.format(np.around(self.BestParams[k+1][j], 3))))
+                # Check if variance is zero for the parameter across all bodies
+                if np.var(self.Params[k][j]) == 0 or self.Params[k][j][0] == float('inf'):
+                    value = "/"
+                else:
+                    value = '{}'.format(np.around(self.BestParams[k+1][j], 3))
+                item = QTableWidgetItem(value)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Center align text
+                TblBestFit.setItem(j, k, item)
 
         Layout.addWidget(TblBestFit)
         self.Widget.setLayout(Layout)

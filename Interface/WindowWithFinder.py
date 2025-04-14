@@ -28,7 +28,7 @@ class WindowWithFinder(QMainWindow):
         self.Finder.setColumnHidden(3, True)
 
         # Finder's look
-        self.Finder.setFixedWidth(300)
+        self.Finder.setFixedWidth(400)
 
         # Set the path to home
         self.Finder.setRootIndex(self.Model.index(QDir.homePath()))

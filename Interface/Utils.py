@@ -231,8 +231,6 @@ def cartesian_to_polar_with_errors(x, y, sigma_x, sigma_y, rho_xy):
     theta = np.rad2deg(theta)
     sigma_theta = np.rad2deg(sigma_theta)
 
-    
-
     return r, theta, sigma_r, sigma_theta, rho_rt
 
 

@@ -83,14 +83,20 @@ class WindowSetAnaSimu(WindowWithFinder):
         self.SimuFileNameW = LineEdit('Simulation file', 'Name of the simulation file to analyse with extension', '')
         self.Layout.addWidget(self.SimuFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.DataFileNameW = LineEdit('Data file', 'Name of data file with extension', '')
-        self.Layout.addWidget(self.DataFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.CheckHeader = CheckBox('Header with data', 'Check if the simulation file has a header with data')
+        self.Layout.addWidget(self.CheckHeader, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.CheckHeader.CheckParam.setChecked(True)
+        
+        # self.DataFileNameW = LineEdit('Data file', 'Name of data file with extension', '')
+        # self.Layout.addWidget(self.DataFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.SystDistW = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None)
-        self.Layout.addWidget(self.SystDistW, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.SystDistW = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None)
+        # self.Layout.addWidget(self.SystDistW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
-        self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
+        # self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # self.HeaderCheck(self.CheckHeader.CheckParam.isChecked())
 
         # self.BtnAutoComp = QPushButton('Autocomplete by go file')
         # self.Layout.addWidget(self.BtnAutoComp)
@@ -110,17 +116,23 @@ class WindowSetAnaSimu(WindowWithFinder):
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.EnableBtnStartOrNot()
-        self.SimuFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
-        self.DataFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
-        self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
+        # self.EnableBtnStartOrNot()
+        # self.SimuFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
+        # self.DataFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
+        # self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
+
+    # def HeaderCheck(self, state):
+    #     self.Header = state
+    #     self.DataFileNameW.setVisible(not state)
+    #     self.SystDistW.setVisible(not state)
+    #     self.SystDistUnitW.setVisible(not state)
 
 
-    def EnableBtnStartOrNot(self):
-        self.BtnStart.setEnabled(False)
-        if self.SimuFileNameW.EditParam.text()!=0 and self.DataFileNameW.EditParam.text()!=0 and self.SystDistW.SpinParam.value()!=0:
-            # if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
-            self.BtnStart.setEnabled(True)
+    # def EnableBtnStartOrNot(self):
+    #     self.BtnStart.setEnabled(False)
+    #     if self.SimuFileNameW.EditParam.text()!=0 and self.DataFileNameW.EditParam.text()!=0 and self.SystDistW.SpinParam.value()!=0:
+    #         # if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
+    #         self.BtnStart.setEnabled(True)
 
 
     def FindSettings(self):
@@ -133,26 +145,26 @@ class WindowSetAnaSimu(WindowWithFinder):
                 self.SystDist = float(GoFileLines[11].split(' ')[0])
                 self.SystDistUnit = GoFileLines[11].split(' ')[1]
                 if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
-                    self.DataFileNameW.EditParam.setText(self.DataFileName)
+                    # self.DataFileNameW.EditParam.setText(self.DataFileName)
                     self.SimuFileNameW.EditParam.setText(self.SimuFileName)
-                    self.SystDistW.SpinParam.setValue(self.SystDist)
-                    self.SystDistUnitW.ComboParam.setCurrentText(self.SystDistUnit)
+                    # self.SystDistW.SpinParam.setValue(self.SystDist)
+                    # self.SystDistUnitW.ComboParam.setCurrentText(self.SystDistUnit)
                 else:
                     print('\nAutocomplete failed')
                     self.ClearEdits()
-                    self.EnableBtnStartOrNot()
+                    # self.EnableBtnStartOrNot()
                 # print(f'Do you want analyse {self.SimuPath.EditParam.text()} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
         except:
             print('\nAutocomplete failed')
-            self.EnableBtnStartOrNot()
+            # self.EnableBtnStartOrNot()
             self.ClearEdits()
 
 
     def ClearEdits(self):
-        self.DataFileNameW.EditParam.setText('')
+        # self.DataFileNameW.EditParam.setText('')
         self.SimuFileNameW.EditParam.setText('')
-        self.SystDistW.SpinParam.setValue(0)
-        self.SystDistUnitW.ComboParam.setCurrentIndex(0)
+        # self.SystDistW.SpinParam.setValue(0)
+        # self.SystDistUnitW.ComboParam.setCurrentIndex(0)
         
     # Reset all widgets of the parameters window
     def ResetParams(self):
@@ -171,17 +183,22 @@ class WindowSetAnaSimu(WindowWithFinder):
 
 
     def OpenWinMain(self):
-        if self.SystDistUnitW.ComboParam.currentText() == 'pc':
-            self.SystDistValue = self.SystDistW.SpinParam.value()
-        elif self.SystDistUnitW.ComboParam.currentText() == 'mas':
-            self.SystDistValue = 1000/self.SystDistW.SpinParam.value()
+        # if self.Header:
+        #     DataFile = None
+            # self.SystDistValue = None
+        # else:
+        #     DataFile = self.SimuPath.EditParam.text()+self.DataFileNameW.EditParam.text()
+            # if self.SystDistUnitW.ComboParam.currentText() == 'pc':
+            #     self.SystDistValue = self.SystDistW.SpinParam.value()
+            # elif self.SystDistUnitW.ComboParam.currentText() == 'mas':
+            #     self.SystDistValue = 1000/self.SystDistW.SpinParam.value() # mas to pc
     
         self.WinMain = WindowMainClass(self.SimuPath.EditParam.text().split('/')[-2], 
-                                       self.SimuPath.EditParam.text()+self.DataFileNameW.EditParam.text(), 
-                                       self.SimuPath.EditParam.text()+self.SimuFileNameW.EditParam.text(), 
-                                       self.SystDistValue, 
+                                       self.SimuPath.EditParam.text()+self.SimuFileNameW.EditParam.text(),
                                        self.NbSelectOrbits.SpinParam.value(), 
-                                       1000)
+                                       1000,
+                                       self.CheckHeader.CheckParam.isChecked())
+        
         self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
         self.WinMain.show()
         self.close()

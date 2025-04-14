@@ -34,22 +34,18 @@ class GeneralToolClass(QWidget):
     def __init__(self, ToolName, ToolStatus, InputData, OutputParams, SelectOrbitsParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses):
         super().__init__()
 
-        self.colorList = ['black', 'blue', 'red', 'green', 'orange', 'pink']
+        self.colorList = ['darkslategrey', 'darkolivegreen', 'indianred', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9']
 
         # Layout
         Layout = QHBoxLayout()
 
-        # Label
-        LblTool = QLabel("{} :".format(ToolName))
-        LblTool.setStatusTip(ToolStatus)
-        Layout.addWidget(LblTool)
-
         # Plot button
-        self.BtnPlot = QPushButton('Plot')
+        self.BtnPlot = QPushButton(ToolName)
         self.BtnPlot.clicked.connect(self.Toggle_WindowPlot)
+        self.BtnPlot.setStatusTip(ToolStatus)
         Layout.addWidget(self.BtnPlot)
 
-        # Initialisation of parameters windows
+        # Initialisation of plot windows
         self.WindowPlot = WindowPlot(ToolName)
         self.WindowPlot.SignalCloseWindowPlot.connect(lambda: self.BtnPlot.setEnabled(True))  # Enable button when window is closed
 
@@ -58,8 +54,7 @@ class GeneralToolClass(QWidget):
         self.WindowPlot.WidgetParam.BtnRefresh.clicked.connect(self.Refresh_ActivePlots)
 
         # Initialisation of Data
-        if InputData is not None:
-            (self.NbInputData_RA, self.I_RA, self.MJD_RA, self.JJ_RA, self.MM_RA, self.YY_RA, self.Ra, self.Dec, self.DRa, self.DDec, self.Corr_DecRa, self.Sep, self.Pa, self.DSep, self.DPa, self.Corr_SepPa, self.Source_RA) = InputData
+        self.InputData = InputData
 
         if OutputParams is not None:
             (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.Mdyn, self.Chi2, self.map) = OutputParams
@@ -114,7 +109,7 @@ class GeneralToolClass(QWidget):
             'e': 'Eccentricity',
             'i': 'Inclinaison',
             'w': 'Argument of periastron',
-            'W': 'Longitude of ascending node [°]',
+            'W': 'Longitude of ascending node',
             'tp': 'Periastron time passage',
             'm': 'Body mass',
             'Mdyn': 'Dynamical mass',
@@ -148,12 +143,12 @@ class GeneralToolClass(QWidget):
         """Replace parameters and functions in the formula with their corresponding values."""
         print(formula)
         for num in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
-            formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]')
+            formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]') # Replace [n] by [n-1]
         for param in ['Chi2', 'P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn']:
-            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbit}]', formula)
-            formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula)
+            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbit}]', formula) # Add [nOrbit] to the parameter
+            formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula) # Replace the parameter by its value
         for fonction in ['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'arctan2', 'hypot', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p', 'sqrt', 'square', 'cbrt', 'power', 'erf', 'erfc', 'gamma', 'lgamma', 'digamma', 'beta']:
-            formula = re.sub(r'\b' + fonction + r'\b', f'np.{fonction}', formula)
+            formula = re.sub(r'\b' + fonction + r'\b', f'np.{fonction}', formula) # Replace the function by its numpy equivalent
         print('Formula is: '+formula)
         return formula
     
@@ -181,11 +176,10 @@ class SpaceView(GeneralToolClass):
 
         # Number of studied body
         self.ListBody = [str(k+1) for k in range(self.NbBodies)]
-        self.ListBody.append('all')
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        if self.NbBodies > 1:
+            self.ListBody.append('all')
+        self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
 
         # Number of shown orbits
         self.NbShownOrbits = 500
@@ -205,6 +199,8 @@ class SpaceView(GeneralToolClass):
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
+        if self.InputData is None:
+            self.CheckObs.CheckParam.setEnabled(False)
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -234,8 +230,8 @@ class SpaceView(GeneralToolClass):
             self._plot_3d()
 
         # Update canvas
-        self.WindowPlot.WidgetPlot.Canvas.fig.tight_layout()
         self.WindowPlot.WidgetPlot.Canvas.draw()
+        self.WindowPlot.WidgetPlot.Canvas.fig.tight_layout()
 
     def _plot_2d(self, SelectRa, SelectDec, BestRa, BestDec, xlabel, ylabel):
         """Helper function to plot 2D views."""
@@ -244,18 +240,22 @@ class SpaceView(GeneralToolClass):
 
         if self.nBody == 'all':
             for k in range(self.NbBodies):
-                if self.CheckBestFit.CheckParam.isChecked():
-                    self.Subplot2D.plot(BestRa[k], BestDec[k], color='r')
                 for n in range(self.NbShownOrbits):
                     self.Subplot2D.plot(SelectRa[k][n], SelectDec[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                if self.CheckBestFit.CheckParam.isChecked():
+                    self.Subplot2D.plot(BestRa[k], BestDec[k], color='C3', linewidth=0.5)
         else:
-            if self.CheckBestFit.CheckParam.isChecked():
-                self.Subplot2D.plot(BestRa[self.nBody], BestDec[self.nBody], color='r', linewidth=0.8)
             for n in range(self.NbShownOrbits):
                 self.Subplot2D.plot(SelectRa[self.nBody][n], SelectDec[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+            if self.CheckBestFit.CheckParam.isChecked():
+                self.Subplot2D.plot(BestRa[self.nBody], BestDec[self.nBody], color='C3', linewidth=0.5)
 
         if self.CheckObs.CheckParam.isChecked():
-            self.Subplot2D.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='', color='b')  # Observed data
+            if self.nBody == 'all':
+                for k in range(self.InputData['Planets']['Nb']):
+                    self.Subplot2D.errorbar(self.InputData['Planets']['DataAstrom']['Ra'][k], self.InputData['Planets']['DataAstrom']['Dec'][k], self.InputData['Planets']['DataAstrom']['dRa'][k], self.InputData['Planets']['DataAstrom']['dDec'][k], linestyle='', color='black')  # Observed data
+            else:
+                self.Subplot2D.errorbar(self.InputData['Planets']['DataAstrom']['Ra'][self.nBody], self.InputData['Planets']['DataAstrom']['Dec'][self.nBody], self.InputData['Planets']['DataAstrom']['dRa'][self.nBody], self.InputData['Planets']['DataAstrom']['dDec'][self.nBody], linestyle='', color='black')
 
         self.Subplot2D.set_xlabel(xlabel)
         self.Subplot2D.set_ylabel(ylabel)
@@ -266,7 +266,7 @@ class SpaceView(GeneralToolClass):
     def _plot_3d(self):
         """Helper function to plot 3D views."""
         self.Subplot3D = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111, projection='3d', aspect='equal')
-        self.Subplot3D.plot(0, 0, 0, marker='*', color='orange', markersize=10)
+        self.Subplot3D.plot(0, 0, 0, marker='*', color='orange', markersize=5)
 
         if self.nBody == 'all':
             for k in range(self.NbBodies):
@@ -276,7 +276,7 @@ class SpaceView(GeneralToolClass):
                     self.Subplot3D.plot(self.SelectRa[k][n], self.SelectDec[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
         else:
             if self.CheckBestFit.CheckParam.isChecked():
-                self.Subplot3D.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r', linewidth=0.8)
+                self.Subplot3D.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r')
             for n in range(self.NbShownOrbits):
                 self.Subplot3D.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
@@ -301,10 +301,10 @@ class TempoView(GeneralToolClass):
 
         # Orbit number
         self.ListBody = [str(k+1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
+        # if self.NbBodies == 1:
+        #     self.nBodyWidget.setEnabled(False)
 
         # Number of shown orbits
         self.NbShownOrbits = 500
@@ -348,23 +348,27 @@ class TempoView(GeneralToolClass):
         if self.CoordinateIndex == 0:
             YplotOutput = self.SelectRa 
             BestYplotOutput = self.BestRa
-            YplotInput = self.Ra
-            YplotInputErr = self.DRa
+            if self.InputData is not None: 
+                YplotInput = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
+                YplotInputErr = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
         elif self.CoordinateIndex == 1:
             YplotOutput = self.SelectDec
             BestYplotOutput = self.BestDec
-            YplotInput = self.Dec
-            YplotInputErr = self.DDec
+            if self.InputData is not None: 
+                YplotInput = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
+                YplotInputErr = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
         elif self.CoordinateIndex == 2:
             YplotOutput = self.SelectSep
             BestYplotOutput = self.BestSep
-            YplotInput = self.Sep
-            YplotInputErr = self.DSep
+            if self.InputData is not None: 
+                YplotInput = self.InputData['Planets']['DataAstrom']['Sep'][self.nBody]
+                YplotInputErr = self.InputData['Planets']['DataAstrom']['dSep'][self.nBody]
         elif self.CoordinateIndex == 3:
             YplotOutput = self.SelectPa
             BestYplotOutput = self.BestPa
-            YplotInput = self.Pa
-            YplotInputErr = self.DPa
+            if self.InputData is not None: 
+                YplotInput = self.InputData['Planets']['DataAstrom']['Pa'][self.nBody]
+                YplotInputErr = self.InputData['Planets']['DataAstrom']['dPa'][self.nBody]
 
         # Plot output data
         for n in range(self.NbShownOrbits):
@@ -377,10 +381,10 @@ class TempoView(GeneralToolClass):
         self.Subplot1.plot(Bestt3P, BestYplotOutput3P, linestyle='-', linewidth=0.5, color='r')
 
         # Plot input data and residuals
-        for k in range(self.NbInputData_RA):
-            if self.I_RA[k] == self.nBody + 1:
-                self.Subplot1.errorbar(self.MJD_RA[k], YplotInput[k], YplotInputErr[k], linestyle='', color='b')
-                indext = np.argmin(np.abs(Bestt3P - self.MJD_RA[k]))  # index of time of output data closer than time of input data
+        if self.InputData is not None: 
+            for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
+                self.Subplot1.errorbar(self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k], YplotInput[k], YplotInputErr[k], linestyle='', color='b')
+                indext = np.argmin(np.abs(Bestt3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
                 Res = BestYplotOutput3P[indext] - YplotInput[k]  # Residual
                 self.Subplot2.errorbar(Bestt3P[indext], Res, YplotInputErr[k], color='b')
 
@@ -394,8 +398,9 @@ class TempoView(GeneralToolClass):
             self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
             self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')
-        L = np.max(self.MJD_RA) - np.min(self.MJD_RA)
-        self.Subplot1.set_xlim(np.min(self.MJD_RA) - 0.1 * L, np.max(self.MJD_RA) + 0.1 * L)
+        if self.InputData is not None: 
+            L = np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
+            self.Subplot1.set_xlim(np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - 0.1 * L, np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) + 0.1 * L)
         self.Subplot2.set_xlim(self.Subplot1.get_xlim())
         self.Subplot1.grid()
         self.Subplot2.grid()
@@ -418,13 +423,13 @@ class Conv(GeneralToolClass):
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
+        # if self.NbBodies == 1:
+        #     self.nBodyWidget.setEnabled(False)
 
         # Orbit parameters
-        self.ParamOrbitWidget = ComboBox('Orbital parameter', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2'])
+        self.ParamOrbitWidget = ComboBox('Variable', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
 
     def UpdateParams(self):
@@ -464,7 +469,7 @@ class Conv(GeneralToolClass):
 
 class Hist(GeneralToolClass):
     def __init__(self, OutputParams, BestOrbitsParams):
-        super().__init__('Histogram', "Histogram of an orbital parameter", None, OutputParams, None, None, BestOrbitsParams, None)
+        super().__init__('Histogram', "Histogram of orbital parameters", None, OutputParams, None, None, BestOrbitsParams, None)
 
         # Plot initialization
         self.Subplot = self.WindowPlot.WidgetPlot.Canvas.fig.add_subplot(111)
@@ -473,11 +478,11 @@ class Hist(GeneralToolClass):
         """Initialize parameters for the Histogram tool."""
 
         # Orbit parameters
-        self.ParamOrbitWidget = ComboBox('Variable studied', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'formula'])
+        self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
 
         # TextEdit for general formula
-        self.FormulaTextEdit = LineEdit(None, 'Only variables Chi2, P, a, e, i, w, W, tp, m, Mdyn with [n] for orbit number and usual mathematical functions', None)
+        self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
         self.FormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.FormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.FormulaTextEdit)
@@ -487,10 +492,10 @@ class Hist(GeneralToolClass):
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox(None, 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        self.nBodyWidget = ComboBox(None, 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.ParamOrbitWidget.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
+        # if self.NbBodies == 1:
+        #     self.nBodyWidget.setEnabled(False)
 
         # Histogram binning
         self.NbBins = 100
@@ -502,7 +507,7 @@ class Hist(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
         # Show confidence interval
-        self.CheckMedian = CheckBox('Median:', 'Show the median and the 1 sigma confidence interval')
+        self.CheckMedian = CheckBox('Median :', 'Show the median and the 1 sigma confidence interval')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMedian)
 
         # Confidence interval bounds
@@ -518,7 +523,7 @@ class Hist(GeneralToolClass):
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.Llbl.setEnabled(state))
 
         self.IntConf = 68
-        self.IntConfWidget = SpinBox(None, 'Acceptable level of confidence', self.IntConf, 0, 100, 1)
+        self.IntConfWidget = SpinBox(None, 'Acceptable level of confidence [%]', self.IntConf, 0, 100, 1)
         self.CheckMedian.Layout.addWidget(self.IntConfWidget)
         self.IntConfWidget.setEnabled(self.CheckMedian.CheckParam.isChecked())
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.IntConfWidget.setEnabled(state))
@@ -540,25 +545,28 @@ class Hist(GeneralToolClass):
         """Toggle the visibility of the formula text edit based on the ComboBox selection."""
         if self.ParamOrbitWidget.ComboParam.currentIndex() == self.ParamOrbitWidget.ComboParam.count() - 1:
             self.FormulaTextEdit.setVisible(True)
-            self.WindowPlot.WidgetParam.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            # self.nBodyWidget.setVisible(False)
         else:
             self.FormulaTextEdit.setVisible(False)
-            self.WindowPlot.WidgetParam.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            # self.nBodyWidget.setVisible(True)
 
     def ChangeRightandLeftBound(self):
         """Update the bounds of the histogram when the orbital parameter changes."""
-        self.EvalParamOrbit = self.evaluate_ParamOrbit('self.')
-        if self.EvalParamOrbit is not None:
-            min_val, max_val = np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit)
-            self.leftWidget.SpinParam.setRange(min_val, max_val)
-            self.leftWidget.SpinParam.setValue(min_val)
-            self.rightWidget.SpinParam.setRange(min_val, max_val)
-            self.rightWidget.SpinParam.setValue(max_val)
-        else:
-            self.leftWidget.SpinParam.setRange(0, 0)
-            self.leftWidget.SpinParam.setValue(0)
-            self.rightWidget.SpinParam.setRange(0, 0)
-            self.rightWidget.SpinParam.setValue(0)
+        try:
+            self.EvalParamOrbit = self.evaluate_ParamOrbit('self.')
+            if self.EvalParamOrbit is not None:
+                min_val, max_val = np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit)
+                self.leftWidget.SpinParam.setRange(min_val, max_val)
+                self.leftWidget.SpinParam.setValue(min_val)
+                self.rightWidget.SpinParam.setRange(min_val, max_val)
+                self.rightWidget.SpinParam.setValue(max_val)
+            else:
+                self.leftWidget.SpinParam.setRange(0, 0)
+                self.leftWidget.SpinParam.setValue(0)
+                self.rightWidget.SpinParam.setRange(0, 0)
+                self.rightWidget.SpinParam.setValue(0)
+        except Exception as e:
+            print(f"Error updating bounds: {e}")
             
     def evaluate_ParamOrbit(self, prefixe):
         """Evaluate the parameter orbit based on the current widget values."""
@@ -659,20 +667,42 @@ class Hist2D(GeneralToolClass):
     def InitParams(self):
         """Initialize parameters for the 2D Histogram tool."""
 
-        # Orbit number
-        self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
-        self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
-
         # Abscissa orbit parameters
-        self.XParamOrbitWidget = ComboBox('X Orbital parameter', 'Abscissa orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn'])
+        self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
 
+        # Orbit number for X parameter
+        self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
+        self.XnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
+        self.XParamOrbitWidget.Layout.addWidget(self.XnBodyWidget)
+        # if self.NbBodies == 1:
+        #     self.XnBodyWidget.setEnabled(False)
+
+        # TextEdit for general x formula
+        self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
+        self.XFormulaTextEdit.setVisible(False)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.XFormulaTextEdit)
+
         # Ordinate orbit parameters
-        self.YParamOrbitWidget = ComboBox('Y Orbital parameter', 'Ordinate orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn'])
+        self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
+
+        # Orbit number for Y parameter
+        self.YnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
+        self.YParamOrbitWidget.Layout.addWidget(self.YnBodyWidget)
+        # if self.NbBodies == 1:
+        #     self.YnBodyWidget.setEnabled(False)
+
+        # TextEdit for general y formula
+        self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.YFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
+        self.YFormulaTextEdit.setVisible(False)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.YFormulaTextEdit)
+
+        # Connect ComboBox change event
+        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleXFormulaTextEdit)
+        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleYFormulaTextEdit)
 
         # Histogram binning
         self.NbBins = 100
@@ -683,11 +713,39 @@ class Hist2D(GeneralToolClass):
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
+    def ToggleXFormulaTextEdit(self):
+        """Toggle the visibility of the X formula text edit and orbit number ComboBox based on the ComboBox selection."""
+        if self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 1:
+            self.XFormulaTextEdit.setVisible(True)
+            # self.XnBodyWidget.setVisible(False)
+        else:
+            self.XFormulaTextEdit.setVisible(False)
+            # self.XnBodyWidget.setVisible(True)
+
+    def ToggleYFormulaTextEdit(self):
+        """Toggle the visibility of the Y formula text edit and orbit number ComboBox based on the ComboBox selection."""
+        if self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 1:
+            self.YFormulaTextEdit.setVisible(True)
+            # self.YnBodyWidget.setVisible(False)
+        else:
+            self.YFormulaTextEdit.setVisible(False)
+            # self.YnBodyWidget.setVisible(True)
+
+    def evaluate_ParamOrbit(self, prefixe, param_widget, formula_text_edit, nBodyWidget):
+        """Evaluate the parameter orbit based on the current widget values."""
+        nBody = int(nBodyWidget.ComboParam.currentText()) - 1
+        param_orbit = param_widget.ComboParam.currentText()
+        if param_widget.ComboParam.currentIndex() == param_widget.ComboParam.count() - 1:
+            formula = formula_text_edit.EditParam.text()
+            return self.evaluate_formula(formula, prefixe, nBody)
+        return eval(f'{prefixe}{param_orbit}')[nBody]
+
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
-        self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.XParamOrbit = self.XParamOrbitWidget.ComboParam.currentText()
         self.YParamOrbit = self.YParamOrbitWidget.ComboParam.currentText()
+        self.EvalXParamOrbit = self.evaluate_ParamOrbit('self.', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBodyWidget)
+        self.EvalYParamOrbit = self.evaluate_ParamOrbit('self.', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
         self.NbBins = self.NbBinsWidget.SpinParam.value()
 
     def Plot(self):
@@ -708,8 +766,9 @@ class Hist2D(GeneralToolClass):
             return
 
         # Plot with current parameters
-        self.EvalXParamOrbit = eval(f'self.{self.XParamOrbit}')[self.nBody]
-        self.EvalYParamOrbit = eval(f'self.{self.YParamOrbit}')[self.nBody]
+        if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None:
+            self.WindowPlot.WidgetPlot.Canvas.draw()
+            return
 
         hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins))
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
@@ -717,14 +776,20 @@ class Hist2D(GeneralToolClass):
 
         # Best fit
         if self.CheckBestFit.CheckParam.isChecked():
-            BestXParam = eval(f'self.Best{self.XParamOrbit}')[self.nBody]
-            BestYParam = eval(f'self.Best{self.YParamOrbit}')[self.nBody]
+            BestXParam = self.evaluate_ParamOrbit('self.Best', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBodyWidget)
+            BestYParam = self.evaluate_ParamOrbit('self.Best', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
             self.Subplot.plot(BestXParam, BestYParam, color='red', marker='x')
 
         # Plot features
-        self.Subplot.set_xlabel(self.LabelOf(self.XParamOrbit)+' '+self.UnitOf(self.XParamOrbit))
-        self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' '+self.UnitOf(self.YParamOrbit))
-
+        if self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 1:
+            self.Subplot.set_xlabel(self.XFormulaTextEdit.EditParam.text())
+        else:
+            self.Subplot.set_xlabel(self.LabelOf(self.XParamOrbit)+' '+self.UnitOf(self.XParamOrbit))
+        if self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 1:
+            self.Subplot.set_ylabel(self.YFormulaTextEdit.EditParam.text())
+        else:
+            self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' '+self.UnitOf(self.YParamOrbit))
+        
         # Update canvas
         self.Subplot.set_title(' ')
         self.WindowPlot.WidgetPlot.Canvas.fig.tight_layout()
@@ -740,16 +805,16 @@ class Corner(GeneralToolClass):
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
+        # if self.NbBodies == 1:
+        #     self.nBodyWidget.setEnabled(False)
 
         # Parameters to include in the corner plot
         self.ParamContainer = QWidget()
         self.ParamLayoutV = QVBoxLayout()
 
-        self.ParamLayoutV.addWidget(QLabel('Orbit parameters:'))
+        self.ParamLayoutV.addWidget(QLabel('Variables :'))
 
         self.ParamCheckGroupBox = QGroupBox()
         self.ParamCheckLayout = QGridLayout()
@@ -887,10 +952,10 @@ class PosAtDate(GeneralToolClass):
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
-        self.nBodyWidget = ComboBox("Orbit number", 'Number of the orbit which is studied (counting from the center of the system outwards)', self.ListBody)
+        self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        if self.NbBodies == 1:
-            self.nBodyWidget.setEnabled(False)
+        # if self.NbBodies == 1:
+        #     self.nBodyWidget.setEnabled(False)
 
         # Date of wanted observation
         self.DateWidget = DateAndMJDEdit('Date', 'Date of wanted observation')
@@ -908,6 +973,8 @@ class PosAtDate(GeneralToolClass):
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
+        if self.InputData is None:
+            self.CheckObs.CheckParam.setEnabled(False)
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -972,7 +1039,7 @@ class PosAtDate(GeneralToolClass):
             self.Subplot.plot(self.BestRa[self.nBody][indexBestDate], self.BestDec[self.nBody][indexBestDate], marker='x', color='red')
 
         if self.CheckObs.CheckParam.isChecked():
-            self.Subplot.errorbar(self.Ra, self.Dec, self.DRa, self.DDec, linestyle='')  # Observed data
+            self.Subplot.errorbar(self.InputData['Planets']['DataAstrom']['Ra'], self.InputData['Planets']['DataAstrom']['Dec'], self.InputData['Planets']['DataAstrom']['dRa'], self.InputData['Planets']['DataAstrom']['dDec'], linestyle='')  # Observed data
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$ Ra [mas]')
