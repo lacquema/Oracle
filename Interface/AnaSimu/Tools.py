@@ -144,11 +144,17 @@ class GeneralToolClass(QWidget):
         print(formula)
         for num in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
             formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]') # Replace [n] by [n-1]
-        for param in ['Chi2', 'P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn']:
+        for param in ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'Mdyn']:
             formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbit}]', formula) # Add [nOrbit] to the parameter
             formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula) # Replace the parameter by its value
+        for param in ['i', 'w', 'W']:
+            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'np.radians({param}[{nOrbit}])', formula) # Convert to radians and add [nOrbit]
+            formula = re.sub(r'\b' + param + r'\b', f'np.radians({prefixe}{param})', formula) # Convert to radians and replace the parameter by its value
         for fonction in ['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'arctan2', 'hypot', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p', 'sqrt', 'square', 'cbrt', 'power', 'erf', 'erfc', 'gamma', 'lgamma', 'digamma', 'beta']:
             formula = re.sub(r'\b' + fonction + r'\b', f'np.{fonction}', formula) # Replace the function by its numpy equivalent
+        # Convert the result to degrees if it is an angle in radians
+        if any(f'np.{angle_func}' in formula for angle_func in ['arcsin', 'arccos', 'arctan', 'arctan2']):
+            formula = f'np.degrees({formula})'
         print('Formula is: '+formula)
         return formula
     
@@ -477,9 +483,29 @@ class Hist(GeneralToolClass):
     def InitParams(self):
         """Initialize parameters for the Histogram tool."""
 
+        self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
+
         # Orbit parameters
-        self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
+        self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'irel', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
+
+        # i relatif between 2 bodies
+        self.IrelWidget = QWidget()
+        self.IrelLayout = QHBoxLayout()
+        # self.IrelLabel = QLabel('Bodies :')
+        # self.IrelLayout.addWidget(self.IrelLabel)
+
+        self.Bodie1 = ComboBox('Second body', 'Second body to compare with the reference', self.ListBody)
+        self.IrelLayout.addWidget(self.Bodie1)
+
+        # self.Bodie2 = ComboBox(None, 'Second body', self.ListBody)
+        # self.IrelLayout.addWidget(self.Bodie2)
+
+        self.IrelWidget.setLayout(self.IrelLayout)
+        
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.IrelWidget)
+        self.IrelWidget.setVisible(False)
+
 
         # TextEdit for general formula
         self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
@@ -488,10 +514,10 @@ class Hist(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.FormulaTextEdit)
 
         # Connect ComboBox change event
-        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleFormulaTextEdit)
+        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(lambda: self.FormulaTextEdit.setVisible(self.ParamOrbitWidget.ComboParam.currentText() == 'other'))
+        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(lambda: self.IrelWidget.setVisible(self.ParamOrbitWidget.ComboParam.currentText() == 'irel'))
 
         # Orbit number
-        self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
         self.nBodyWidget = ComboBox(None, 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.ParamOrbitWidget.Layout.addWidget(self.nBodyWidget)
         # if self.NbBodies == 1:

@@ -11,34 +11,29 @@ from PyQt6.QtCore import pyqtSignal
 
 # My packages
 from Tools import Delimiter, SpaceView, TempoView, Conv, Hist, Hist2D, Corner, PosAtDate
-from TransferData import TransfertSimu
 from BestOrbits import BestOrbitsClass
 from SelectOrbits import SelectOrbitsClass
+from TransferData import TransfertSimu
 
 ### --- Main Window Generating --- ###
 
 class WindowMainClass(QMainWindow):
     SignalCloseWindowMain = pyqtSignal()
 
-    def __init__(self, SystName, PathSimu, NbSelectOrbits, NbPtsEllipse=1000, SystDist=None):
+    def __init__(self, SimuName, InputData, OutputParams, NbSelectOrbits, SystDist, NbPtsEllipse=1000):
         super().__init__()
 
         # Window settings
-        self.setWindowTitle(f'Oracle analysis of {SystName}')
+        self.setWindowTitle(f'Oracle analysis of {SimuName}')
 
         # Layout initialization
         Layout = QVBoxLayout()
 
         # Data
-        InputData, OutputParams = TransfertSimu(PathSimu)
-        if InputData:
+        if InputData != None:
             NbInputData = InputData['NbData']
-            SystDist = InputData['SystDist']['pc']
         else:
             NbInputData = 1
-            if SystDist is None:
-                print('No distance provided, please provide a distance in parsec')
-                return
 
         # Best orbits
         BestOrbits = BestOrbitsClass(*OutputParams, NbPtsEllipse, SystDist, NbInputData)
@@ -99,14 +94,15 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)  # Application creation
 
     # Simu = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2_Ab1_fit/ggtau_Ab2_Ab1_fit_1/solggtauAb12.dat'
-    Simu = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2Aa_Ab1_fit/ggtau_Ab2Aa_Ab1_fit_Herve_3f/solggtaua_3f.dat'
+    SimuPath = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2Aa_Ab1_fit/ggtau_Ab2Aa_Ab1_fit_Herve_3f/solggtaua_3f.dat'
+    SimuName = SimuPath.split('/')[-1]
     # PathInputData = Simu + 'ggtau_Ab12_hci.dat'
     # PathOutputData = Simu + 'solggtauAb12.dat'
     # PathInputData = Simu + 'ggtau_data.txt'
     # PathOutputData = Simu + 'solggtaua_3f.dat'
+    InputData, OutputParams = TransfertSimu(SimuPath)
     SystDist = 145
-    SystName = 'ggtau'
 
-    WindowMain = WindowMainClass(SystName=SystName, PathSimu=Simu, NbSelectOrbits=10000, NbPtsEllipse=500, SystDist=None)  # Main window showing
+    WindowMain = WindowMainClass(SimuName, InputData, OutputParams, NbSelectOrbits=10000, SystDist=SystDist)  # Main window showing
     sys.exit(app.exec())  # Application execution
 

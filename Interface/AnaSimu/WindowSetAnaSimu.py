@@ -18,6 +18,7 @@ from Utils import DelAllWidgetsBtw
 from WindowMain import WindowMainClass
 # from WindowMenu import LoadWindowClass
 from WindowWithFinder import WindowWithFinder
+from TransferData import HeaderDataIn, TransfertSimu
 
 
 ### --- Parameters Window Generating --- ###
@@ -33,6 +34,7 @@ class WindowSetAnaSimu(WindowWithFinder):
         # Window characteristics
         self.setWindowTitle('Settings of the analysis')
         self.setMinimumWidth(1000)
+        self.setMinimumHeight(500)
 
         # Layout initialisation
         self.Layout = QVBoxLayout()
@@ -65,36 +67,45 @@ class WindowSetAnaSimu(WindowWithFinder):
     def ChangePath(self):
         index = self.Finder.selectedIndexes()[0]
         info = self.Model.fileInfo(index)
-        self.SimuPath.EditParam.setText(info.absoluteFilePath()+'/')
+        if info.isDir():
+            print('\nSelected file is a directory')
+            self.ClearEdits()
+        else:
+            file_path = info.absoluteFilePath()
+            if self.is_valid_file(file_path):  # Check if the file is valid
+                self.SimuFilePathW.EditParam.setText(file_path)
+            else:
+                print('\nSelected file is not valid')
+                self.ClearEdits()
 
-
-
+    def is_valid_file(self, file_path):
+        # Add logic to validate the file (e.g., check extension, content, etc.)
+        return file_path.endswith('.dat')  # Example: only allow .dat files
 
     def InitWidgets(self):
         
-        self.SimuPath = LineEdit('Directory path', 'Path to the adjustment to analyse', '')
-        self.Layout.addWidget(self.SimuPath)
-        self.SimuPath.EditParam.textChanged.connect(self.FindSettings)
+        # self.SimuPath = LineEdit('Directory path', 'Path to the adjustment to analyse', '')
+        # self.Layout.addWidget(self.SimuPath)
+        # self.SimuPath.EditParam.textChanged.connect(self.FindSettings)
 
-        # self.InputFileNameW = LineEdit('Start file', 'Name of the input simulation file with extension', 'start.sh')
-        # self.Layout.addWidget(self.InputFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
-        # self.InputFileNameW.EditParam.textChanged.connect(self.FindSettings)
+        self.SimuFilePathW = LineEdit('Simulation file', 'Path to the simulation file to analyse', '')
+        self.Layout.addWidget(self.SimuFilePathW)
 
-        self.SimuFileNameW = LineEdit('Simulation file', 'Name of the simulation file to analyse with extension', '')
-        self.Layout.addWidget(self.SimuFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.CheckHeader = CheckBox('Header with data', 'Check if the simulation file has a header with data')
-        self.Layout.addWidget(self.CheckHeader, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.CheckHeader.CheckParam.setChecked(True)
+        # self.CheckHeader = CheckBox('Header with data', 'Check if the simulation file has a header with data')
+        # self.Layout.addWidget(self.CheckHeader, alignment=Qt.AlignmentFlag.AlignLeft)
+        # self.CheckHeader.CheckParam.setChecked(True)
         
         # self.DataFileNameW = LineEdit('Data file', 'Name of data file with extension', '')
         # self.Layout.addWidget(self.DataFileNameW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        # self.SystDistW = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None)
-        # self.Layout.addWidget(self.SystDistW, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SystDistW = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None)
+        self.Layout.addWidget(self.SystDistW, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SystDistW.setVisible(False)
 
-        # self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
-        # self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
+        self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.SimuFilePathW.EditParam.textChanged.connect(self.SystDistVisible)
 
         # self.HeaderCheck(self.CheckHeader.CheckParam.isChecked())
 
@@ -121,6 +132,15 @@ class WindowSetAnaSimu(WindowWithFinder):
         # self.DataFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
         # self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
 
+    def SystDistVisible(self):
+        try:
+            if HeaderDataIn(self.SimuFilePathW.EditParam.text()):
+                self.SystDistW.setVisible(False)
+            else:
+                self.SystDistW.setVisible(True)
+        except:
+            self.SystDistW.setVisible(False)
+
     # def HeaderCheck(self, state):
     #     self.Header = state
     #     self.DataFileNameW.setVisible(not state)
@@ -135,34 +155,31 @@ class WindowSetAnaSimu(WindowWithFinder):
     #         self.BtnStart.setEnabled(True)
 
 
-    def FindSettings(self):
-        try:  
-            with open(self.SimuPath.EditParam.text()+'start.sh', 'r') as file:
-                self.SimuName = self.SimuPath.EditParam.text().split('/')[-2]
-                GoFileLines = file.readlines()
-                self.DataFileName = GoFileLines[8].split('/')[-1][:-1]
-                self.SimuFileName = GoFileLines[13].split('/')[-1][:-1]
-                self.SystDist = float(GoFileLines[11].split(' ')[0])
-                self.SystDistUnit = GoFileLines[11].split(' ')[1]
-                if self.DataFileName[-4:]=='.dat' and self.SimuFileName[-4:]=='.dat' and type(self.SystDist)==float:
-                    # self.DataFileNameW.EditParam.setText(self.DataFileName)
-                    self.SimuFileNameW.EditParam.setText(self.SimuFileName)
-                    # self.SystDistW.SpinParam.setValue(self.SystDist)
-                    # self.SystDistUnitW.ComboParam.setCurrentText(self.SystDistUnit)
-                else:
-                    print('\nAutocomplete failed')
-                    self.ClearEdits()
-                    # self.EnableBtnStartOrNot()
-                # print(f'Do you want analyse {self.SimuPath.EditParam.text()} simulation with {self.SimuFileName} solution file, {self.DataFileName} data file and a system distance of {self.SystDist} {self.SystDistUnit} ?')
-        except:
-            print('\nAutocomplete failed')
-            # self.EnableBtnStartOrNot()
-            self.ClearEdits()
+    # def FindSettings(self):
+    #     directory = self.SimuPath.EditParam.text()
+    #     largest_file = None
+    #     largest_size = 0
+
+    #     # Find the largest .dat file in the directory
+    #     for file_name in os.listdir(directory):
+    #         if file_name.endswith('.dat'):
+    #             file_path = os.path.join(directory, file_name)
+    #             file_size = os.path.getsize(file_path)
+    #             if file_size > largest_size:
+    #                 largest_size = file_size
+    #                 largest_file = file_name
+
+    #     if largest_file:
+    #         self.DataFileName = largest_file
+    #         self.SimuFilePathW.EditParam.setText(self.DataFileName)
+    #     else:
+    #         print('\nNo .dat files found in the directory')
+    #         self.ClearEdits()
 
 
     def ClearEdits(self):
         # self.DataFileNameW.EditParam.setText('')
-        self.SimuFileNameW.EditParam.setText('')
+        self.SimuFilePathW.EditParam.setText('')
         # self.SystDistW.SpinParam.setValue(0)
         # self.SystDistUnitW.ComboParam.setCurrentIndex(0)
         
@@ -173,31 +190,30 @@ class WindowSetAnaSimu(WindowWithFinder):
 
 
     def AnalyseSimu(self):
-        if len(self.SimuPath.EditParam.text()) == 0:
-            print('\nSimulation directory path not given')
+        if len(self.SimuFilePathW.EditParam.text()) == 0:
+            print('\nSimulation path not given')
         else:
             try:
                 self.OpenWinMain()
-            except:
-                print('\nThere is a problem with inputs')
+            except Exception as e:
+                print(f'\nThere is a problem with inputs: {e}')
 
 
     def OpenWinMain(self):
-        # if self.Header:
-        #     DataFile = None
-            # self.SystDistValue = None
-        # else:
-        #     DataFile = self.SimuPath.EditParam.text()+self.DataFileNameW.EditParam.text()
-            # if self.SystDistUnitW.ComboParam.currentText() == 'pc':
-            #     self.SystDistValue = self.SystDistW.SpinParam.value()
-            # elif self.SystDistUnitW.ComboParam.currentText() == 'mas':
-            #     self.SystDistValue = 1000/self.SystDistW.SpinParam.value() # mas to pc
-    
-        self.WinMain = WindowMainClass(self.SimuPath.EditParam.text().split('/')[-2], 
-                                       self.SimuPath.EditParam.text()+self.SimuFileNameW.EditParam.text(),
+        PathSimu = self.SimuFilePathW.EditParam.text()
+        SimuName = PathSimu.split('/')[-1]
+        InputData, OutputParams = TransfertSimu(PathSimu)
+        if InputData != None:
+            self.SystDistValue = InputData['SystDist']['pc']
+        else:
+            if self.SystDistUnitW.ComboParam.currentText() == 'pc':
+                self.SystDistValue = self.SystDistW.SpinParam.value()
+            elif self.SystDistUnitW.ComboParam.currentText() == 'mas':
+                self.SystDistValue = 1000/self.SystDistW.SpinParam.value() # mas to pc
+
+        self.WinMain = WindowMainClass(SimuName, InputData, OutputParams,
                                        self.NbSelectOrbits.SpinParam.value(), 
-                                       1000,
-                                       self.CheckHeader.CheckParam.isChecked())
+                                       self.SystDistValue)
         
         self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
         self.WinMain.show()

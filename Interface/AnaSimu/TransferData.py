@@ -7,13 +7,21 @@ import numpy as np
 from Utils import *
 from PyQt6.QtWidgets import QWidget
 
+
+# Check if the file has a header
+def HeaderDataIn(PathOutputData):
+    with open(PathOutputData, 'r') as file:
+        lines = file.readlines()
+        return len(lines) > 2
+    
+
 # Open output data
 def TransfertSimu(PathOutputData, UnivYN=1):
 
     with open(PathOutputData, 'r') as file:
         lines = file.readlines()
 
-        if len(lines)>2:
+        if HeaderDataIn(PathOutputData):
 
             # Lecture du header
             UnivYN, DateFormat, NbPlanets, Multiplanet, RVYN, JitterYN, NbPriors, NbRanges = map(int, lines[0].split())
@@ -204,9 +212,8 @@ def TransfertSimu(PathOutputData, UnivYN=1):
             current_line += 1
             Data = np.loadtxt(PathOutputData, skiprows = current_line, max_rows = current_line).reshape(NbBodies, NbParams, NbOrbits)
 
-        elif len(lines) == 2:
+        else:
 
-            # Header
             InputData = None
 
             # Data
@@ -225,8 +232,6 @@ def TransfertSimu(PathOutputData, UnivYN=1):
         w = np.rad2deg(w+np.pi)
         W = np.rad2deg(W+np.pi)
         # tp = jd_to_mjd(tp)
-
-        print(UnivYN)
 
         if UnivYN == 1:
             tp = jd_to_mjd(tp)
