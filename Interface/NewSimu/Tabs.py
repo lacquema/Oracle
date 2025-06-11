@@ -257,27 +257,38 @@ class TabPriorSet(GeneralTab):
 
         self.LayoutV1.addWidget(Delimiter(Title='Range of parameters :'))
 
+        # self.LayoutV1.setFixedWidth(300)
+
         self.PMin = DoubleSpinBox('Period', 'Mimimum of orbits period [day]', None, 0, None, 1, 2)
+        self.PMin.LblParam.setMinimumWidth(500)
         self.LayoutV1.addWidget(self.PMin)
-        self.PMin.Layout.addWidget(QLabel('   <->'))
+        self.PMin.Layout.addSpacing(15)
+        self.PMin.Layout.addWidget(QLabel('<->'))
+        self.PMin.Layout.addSpacing(10)
         self.PMax = DoubleSpinBox(None, 'Maximum of orbits period [day]', None, 0, None, 1, 2)
         self.PMin.Layout.addWidget(self.PMax)
 
         self.aMin = DoubleSpinBox('Semi-major axis', 'Mimimum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
         self.LayoutV1.addWidget(self.aMin)
-        self.aMin.Layout.addWidget(QLabel('   <->'))
+        self.aMin.Layout.addSpacing(15)
+        self.aMin.Layout.addWidget(QLabel('<->'))
+        self.aMin.Layout.addSpacing(10)
         self.aMax = DoubleSpinBox(None, 'Maximum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
         self.aMin.Layout.addWidget(self.aMax)
 
         self.PeriMin = DoubleSpinBox('Periastron', 'Mimimum of orbits periastron [AU]', None, 0, None, 1, 2)
         self.LayoutV1.addWidget(self.PeriMin)
-        self.PeriMin.Layout.addWidget(QLabel('   <->'))
+        self.PeriMin.Layout.addSpacing(15)
+        self.PeriMin.Layout.addWidget(QLabel('<->'))
+        self.PeriMin.Layout.addSpacing(10)
         self.PeriMax = DoubleSpinBox(None, 'Maximum of orbits periastron [AU]', None, 0, None, 1, 2)
         self.PeriMin.Layout.addWidget(self.PeriMax)
 
         self.eMin = DoubleSpinBox('Eccentricity', 'Mimimum of orbits eccentricity', None, 0, 10, 0.1, 2)
         self.LayoutV1.addWidget(self.eMin)
-        self.eMin.Layout.addWidget(QLabel('   <->'))
+        self.eMin.Layout.addSpacing(15)
+        self.eMin.Layout.addWidget(QLabel('<->'))
+        self.eMin.Layout.addSpacing(10)
         self.eMax = DoubleSpinBox(None, 'Maximum of orbits eccentricity', None, 0, 10, 0.1, 2)
         self.eMin.Layout.addWidget(self.eMax)
 

@@ -8,10 +8,7 @@ import numpy as np
 from random import random, randint
 import corner
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import seaborn as sns
-import matplotlib.pyplot as plt
 import re
-import math
 
 # PyQt packages
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QDateEdit, QGroupBox, QGridLayout
@@ -207,6 +204,7 @@ class SpaceView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
         if self.InputData is None:
             self.CheckObs.CheckParam.setEnabled(False)
+        self.ViewWidget.ComboParam.currentIndexChanged.connect(lambda: self.CheckObs.CheckParam.setEnabled(self.ViewWidget.ComboParam.currentIndex() == 0))  # Enable observations only for 2D view
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -256,12 +254,56 @@ class SpaceView(GeneralToolClass):
             if self.CheckBestFit.CheckParam.isChecked():
                 self.Subplot2D.plot(BestRa[self.nBody], BestDec[self.nBody], color='C3', linewidth=0.5)
 
-        if self.CheckObs.CheckParam.isChecked():
+        if self.CheckObs.CheckParam.isChecked() and self.indexView == 0:
             if self.nBody == 'all':
                 for k in range(self.InputData['Planets']['Nb']):
-                    self.Subplot2D.errorbar(self.InputData['Planets']['DataAstrom']['Ra'][k], self.InputData['Planets']['DataAstrom']['Dec'][k], self.InputData['Planets']['DataAstrom']['dRa'][k], self.InputData['Planets']['DataAstrom']['dDec'][k], linestyle='', color='black')  # Observed data
+                    ra = self.InputData['Planets']['DataAstrom']['Ra'][k]
+                    dec = self.InputData['Planets']['DataAstrom']['Dec'][k]
+                    dra = self.InputData['Planets']['DataAstrom']['dRa'][k]
+                    ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
+                    dates = self.InputData['Planets']['DataAstrom']['Date'][k]
+                    
+                    self.Subplot2D.errorbar(ra, dec, dra, ddec, linestyle='', color='black')
+
+                    # min_idx = np.argmin(dates)
+                    # max_idx = np.argmax(dates)
+                    ra_range = abs(max(BestRa[k]) - min(BestRa[k]))
+                    dec_range = abs(max(BestDec[k]) - min(BestDec[k]))
+                    # self.Subplot2D.annotate(f"{dates[min_idx]:.1f}", (ra[min_idx], dec[min_idx]), xytext=(ra[min_idx], dec[min_idx]), textcoords='offset points', color='black', fontsize=8)
+                    # self.Subplot2D.annotate(f"{dates[max_idx]:.1f}", (ra[max_idx], dec[max_idx]), xy=(ra[max_idx], dec[max_idx]), textcoords='offset points', color='black', fontsize=8)
+                    for idx in range(len(dates)):
+                        self.Subplot2D.annotate(f"{dates[idx]:.0f}", (ra[idx] - 0.01 * ra_range, dec[idx] + 0.01 * dec_range), color='black', fontsize=8)
+
             else:
-                self.Subplot2D.errorbar(self.InputData['Planets']['DataAstrom']['Ra'][self.nBody], self.InputData['Planets']['DataAstrom']['Dec'][self.nBody], self.InputData['Planets']['DataAstrom']['dRa'][self.nBody], self.InputData['Planets']['DataAstrom']['dDec'][self.nBody], linestyle='', color='black')
+                ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
+                dec = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
+                dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
+                ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
+                dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
+
+                self.Subplot2D.errorbar(ra, dec, dra, ddec, linestyle='', color='black')
+
+                # min_idx = np.argmin(dates)
+                # max_idx = np.argmax(dates)
+                ra_range = abs(max(BestRa[self.nBody]) - min(BestRa[self.nBody]))
+                dec_range = abs(max(BestDec[self.nBody]) - min(BestDec[self.nBody]))
+                min_dist_x = 0.05 * ra_range
+                min_dist_y = 0.10 * dec_range
+                min_dist = np.hypot(min_dist_x, min_dist_y)
+                annotated_points = []
+                for idx in range(len(dates)):
+                    x_right = ra[idx] - 0.01 * ra_range 
+                    y = dec[idx] + 0.01 * dec_range
+                    x_left = ra[idx] + 0.10 * ra_range  # Position to the left
+
+                    # Prefer right, but if too close to previous, try left
+                    if all(np.hypot(x_right - px, y - py) > min_dist for px, py in annotated_points):
+                        self.Subplot2D.annotate(f"{dates[idx]:.0f}", (x_right, y), color='black', fontsize=8)
+                        annotated_points.append((x_right, y))
+                    elif all(np.hypot(x_left - px, y - py) > min_dist for px, py in annotated_points):
+                        self.Subplot2D.annotate(f"{dates[idx]:.0f}", (x_left, y), color='black', fontsize=8)
+                        annotated_points.append((x_left, y))
+                    # else: skip annotation if both positions overlap
 
         self.Subplot2D.set_xlabel(xlabel)
         self.Subplot2D.set_ylabel(ylabel)
