@@ -9,7 +9,7 @@ from WidgetPlot import WidgetPlot
 
 class WindowPlot(QMainWindow):
 
-    SignalCloseWindowPlot = pyqtSignal()  # initiation of the closeEvent signal
+    SignalCloseWindowPlot = pyqtSignal() # initiation of the closeEvent signal
 
     def __init__(self, ToolName):
         super().__init__()
@@ -24,8 +24,9 @@ class WindowPlot(QMainWindow):
         self.WidgetParam = WidgetParam()
         self.Splitter.addWidget(self.WidgetParam)
 
-        # Plotting widgets
-        self.WidgetPlots = []
+        # Plotting widget
+        self.WidgetPlot = WidgetPlot()
+        self.Splitter.addWidget(self.WidgetPlot)
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
@@ -34,22 +35,9 @@ class WindowPlot(QMainWindow):
         self.setCentralWidget(self.Splitter)
 
 
-    def add_WidgetPlot(self, plot, layout=None):
-        """
-        Creates a new WidgetPlot connected to the WidgetParam.
-        """
-        widget_plot = WidgetPlot(plot)
-        self.WidgetPlots.append(widget_plot)
-        if layout is None:
-            self.Splitter.addWidget(widget_plot)
-        else:
-            layout.addWidget(widget_plot)
-        return widget_plot
-    
-    
-    # Emission of the CloseEvent signal when the parameter window is closed
+    # Emition of the CloseEvent signal when the parameter window is closed
     def closeEvent(self, e):
-        self.SignalCloseWindowPlot.emit()
+        self.SignalCloseWindowPlot.emit() 
 
 
 if __name__=="__main__":

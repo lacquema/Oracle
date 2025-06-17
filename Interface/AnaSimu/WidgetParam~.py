@@ -34,7 +34,7 @@ class WidgetParam(QWidget):
 
         # Refresh button
         self.BtnRefresh = QPushButton()
-        self.BtnRefresh.setIcon(QIcon(f'{self.DirPath}/../Items/arrowCircle.png'))
+        self.BtnRefresh.setIcon(QIcon(f'{self.DirPath}/Items/arrowCircle.png'))
         self.BtnRefresh.setStatusTip('Refresh')
         self.Layout.addWidget(self.BtnRefresh)
 
