@@ -839,6 +839,7 @@ class Hist(GeneralToolClass):
         """Reset the history of the plot when the parameters are reset."""
         self.WidgetPlot.reset_history()
         self.WidgetPlot.plotting()
+        # self.Refresh_active_plots()
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -853,8 +854,6 @@ class Hist(GeneralToolClass):
     def Plot(self):
         """Plot the histogram based on the selected parameters."""
 
-        print(type(self.m[0][0]))
-
         # Update parameters
         try:
             self.UpdateParams()
@@ -864,7 +863,6 @@ class Hist(GeneralToolClass):
             return
         if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
             self.WindowPlot.WidgetPlots[0].Canvas.draw()
-            print('wrong params')
             return
         
         # Subplot initialization
@@ -959,6 +957,7 @@ class Hist2D(GeneralToolClass):
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
         self.XnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.XParamOrbitWidget.Layout.addWidget(self.XnBodyWidget)
+        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
         # if self.NbBodies == 1:
         #     self.XnBodyWidget.setEnabled(False)
 
@@ -967,14 +966,17 @@ class Hist2D(GeneralToolClass):
         self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.XFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XFormulaTextEdit)
+        self.XFormulaTextEdit.EditParam.textChanged.connect(self.reset_WidgetPlots_history)
 
         # Ordinate orbit parameters
         self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
+        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
 
         # Orbit number for Y parameter
         self.YnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.YParamOrbitWidget.Layout.addWidget(self.YnBodyWidget)
+        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
         # if self.NbBodies == 1:
         #     self.YnBodyWidget.setEnabled(False)
 
@@ -983,6 +985,7 @@ class Hist2D(GeneralToolClass):
         self.YFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.YFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YFormulaTextEdit)
+        self.YFormulaTextEdit.EditParam.textChanged.connect(self.reset_WidgetPlots_history)
 
         # Connect ComboBox change event
         self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleXFormulaTextEdit)
@@ -1032,11 +1035,15 @@ class Hist2D(GeneralToolClass):
         self.EvalYParamOrbit = self.evaluate_ParamOrbit('self.', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
         self.NbBins = self.NbBinsWidget.SpinParam.value()
 
+    def reset_WidgetPlots_history(self):
+        """Reset the history of the plot when the parameters are reset."""
+        self.WidgetPlot.reset_history()
+        # self.WidgetPlot.plotting()
+        self.Refresh_active_plots()
+
+
     def Plot(self):
         """Plot the 2D histogram based on the selected parameters."""
-
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
@@ -1045,13 +1052,23 @@ class Hist2D(GeneralToolClass):
             print('Wrong Parameters: ', e)
             self.WindowPlot.WidgetPlots[0].Canvas.draw()
             return
+        
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+        
+        # X, Y limits
+        xlim_init=(np.min(self.EvalXParamOrbit), np.max(self.EvalXParamOrbit))
+        ylim_init=(np.min(self.EvalYParamOrbit), np.max(self.EvalYParamOrbit))
+        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlot, xlim_init, ylim_init)
+
+        range = ((Xmin, Xmax), (Ymin, Ymax))
 
         # Plot with current parameters
         if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None:
             self.WindowPlot.WidgetPlots[0].Canvas.draw()
             return
 
-        hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins))
+        hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins), range)
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
         self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, label='Count number')
 
@@ -1073,6 +1090,8 @@ class Hist2D(GeneralToolClass):
         
         # Update canvas
         self.Subplot.set_title(' ')
+        self.Subplot.set_xlim(Xmin, Xmax)
+        self.Subplot.set_ylim(Ymin, Ymax)
 
 
 class Corner(GeneralToolClass):

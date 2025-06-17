@@ -64,6 +64,9 @@ class WidgetPlot(QWidget):
         self.Toolbar._actions['back'].triggered.connect(self.undo_plot_state)
         self.Toolbar._actions['forward'].triggered.connect(self.redo_plot_state)
 
+        self.Toolbar._actions['pan'].triggered.connect(self.plotting)
+        self.Toolbar._actions['zoom'].triggered.connect(self.plotting)
+
         # Flags to track events
         self.draw_event_triggered = False
         self.button_release_event_triggered = False
@@ -71,8 +74,6 @@ class WidgetPlot(QWidget):
         # Connect events
         self.Canvas.mpl_connect('draw_event', self.on_draw_event)
         self.Canvas.mpl_connect('button_release_event', self.on_button_release_event)
-
-        
 
     def plotting(self):
         self.clear_figure()
@@ -211,6 +212,7 @@ class WidgetPlot(QWidget):
             self.history_index -= 1
             # print('undo ', self.history_index, len(self.history))
             self.restore_plot_state(index=self.history_index)
+            self.plotting()
             self.update_toolbar_buttons()
             # self.adapt_tight()
 
@@ -220,6 +222,7 @@ class WidgetPlot(QWidget):
             self.history_index += 1
             # print('redo ', self.history_index, len(self.history))
             self.restore_plot_state(index=self.history_index)
+            self.plotting()
             self.update_toolbar_buttons()
             # self.adapt_tight()
 
@@ -231,6 +234,7 @@ class WidgetPlot(QWidget):
         self.history_index = len(self.history)-1
         # print('home ', self.history_index, len(self.history))
         self.restore_plot_state(index=0)
+        self.plotting()
         self.update_toolbar_buttons()
         # self.adapt_tight()
 
