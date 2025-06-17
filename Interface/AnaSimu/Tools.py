@@ -952,12 +952,13 @@ class Hist2D(GeneralToolClass):
         # Abscissa orbit parameters
         self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
+        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
 
         # Orbit number for X parameter
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
         self.XnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.XParamOrbitWidget.Layout.addWidget(self.XnBodyWidget)
-        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.XnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
         # if self.NbBodies == 1:
         #     self.XnBodyWidget.setEnabled(False)
 
@@ -976,7 +977,7 @@ class Hist2D(GeneralToolClass):
         # Orbit number for Y parameter
         self.YnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.YParamOrbitWidget.Layout.addWidget(self.YnBodyWidget)
-        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.YnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
         # if self.NbBodies == 1:
         #     self.YnBodyWidget.setEnabled(False)
 
