@@ -64,8 +64,8 @@ class WidgetPlot(QWidget):
         self.Toolbar._actions['back'].triggered.connect(self.undo_plot_state)
         self.Toolbar._actions['forward'].triggered.connect(self.redo_plot_state)
 
-        self.Toolbar._actions['pan'].triggered.connect(self.plotting)
-        self.Toolbar._actions['zoom'].triggered.connect(self.plotting)
+        # self.Toolbar._actions['pan'].triggered.connect(self.plotting)
+        # self.Toolbar._actions['zoom'].triggered.connect(self.plotting)
 
         # Flags to track events
         self.draw_event_triggered = False
