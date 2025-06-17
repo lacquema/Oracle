@@ -838,8 +838,8 @@ class Hist(GeneralToolClass):
     def reset_WidgetPlots_history(self):
         """Reset the history of the plot when the parameters are reset."""
         self.WidgetPlot.reset_history()
-        self.Refresh_active_plots()
-        
+        self.WidgetPlot.plotting()
+
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
@@ -862,9 +862,9 @@ class Hist(GeneralToolClass):
             print('Wrong Parameters: ', e)
             self.WindowPlot.WidgetPlots[0].Canvas.draw()
             return
-        
-        if self.EvalParamOrbit is None or self.EvalParamOrbit[0][0] == 'inf': 
+        if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
             self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            print('wrong params')
             return
         
         # Subplot initialization
