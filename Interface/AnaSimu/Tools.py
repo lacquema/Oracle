@@ -144,7 +144,7 @@ class GeneralToolClass(QWidget):
         
     def replace_params_in_formula(self, formula, prefixe, nOrbitDefault):
         """Replace parameters and functions in the formula with their corresponding values."""
-        print(formula)
+        # print(formula)
         for num in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
             formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]') # Replace [n] by [n-1]
         for param in ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'Mdyn']:
@@ -158,16 +158,16 @@ class GeneralToolClass(QWidget):
         # Convert the result to degrees if it is an angle in radians
         if any(f'np.{angle_func}' in formula for angle_func in ['arcsin', 'arccos', 'arctan', 'arctan2']):
             formula = f'np.degrees({formula})'
-        print('Formula is: '+formula)
+        # print('Formula is: '+formula)
         return formula
     
     def evaluate_formula(self, formula, prefix, nOrbitDefault):
         """Evaluate a formula."""
-        print(formula)
+        # print(formula)
         if not formula:
             return None
         formula = self.replace_params_in_formula(formula, prefix, nOrbitDefault)
-        print(formula)
+        # print(formula)
         try:
             return eval(formula)
         except Exception as e:
