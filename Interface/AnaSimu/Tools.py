@@ -186,6 +186,19 @@ class GeneralToolClass(QWidget):
         Subplot.set_ylim(0, 1)
         Subplot.set_aspect('equal', adjustable='box')
         Subplot.figure.canvas.draw()
+
+    def UpdateParams(self):
+        """Update parameters based on the current widget values."""
+        # This method should be overridden by subclasses to update specific parameters
+        pass
+
+    def try_UpdateParams(self, WidgetPlot):
+        """Try to update parameters and handle exceptions."""
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            WidgetPlot.Canvas.fig.draw()
     
 
 class SpaceView(GeneralToolClass):
@@ -267,15 +280,11 @@ class SpaceView(GeneralToolClass):
     def PlotXY(self):
         """Plot the 2D view of the orbits in the XY plane."""
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlotXY)
+
         # Add subplot
         self.SubplotXY = self.WidgetPlotXY.Canvas.fig.add_subplot(111, aspect='equal')
-
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.SubplotXY.figure.canvas.draw()
-            return
 
         # Central star
         self.SubplotXY.plot(0, 0, marker='*', color='orange', markersize=10)
@@ -333,15 +342,11 @@ class SpaceView(GeneralToolClass):
     def PlotXZ(self):
         """Plot the 2D view of the orbits in the XZ plane."""
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlotXZ)
+
         # Add subplot
         self.SubplotXZ = self.WidgetPlotXZ.Canvas.fig.add_subplot(111, aspect='equal')
-
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.SubplotXZ.figure.canvas.draw()
-            return
 
         # Central star
         self.SubplotXZ.plot(0, 0, marker='*', color='orange', markersize=10)
@@ -367,15 +372,11 @@ class SpaceView(GeneralToolClass):
     def PlotXYZ(self):
         """Helper function to plot 3D views."""
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlotXYZ)
+
         # Add subplot
         self.SubplotXYZ = self.WidgetPlotXYZ.Canvas.fig.add_subplot(111, aspect='equal', projection='3d')
-
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.SubplotXYZ.figure.canvas.draw()
-            return
 
         # Central star
         self.SubplotXYZ.plot(0, 0, 0, marker='*', color='orange', markersize=10)
@@ -422,8 +423,6 @@ class SpaceView(GeneralToolClass):
                     self.SubplotXY.annotate(f"{dates[idx]:.0f}", (x_left, y), color='black', fontsize=8, ha='right')
                     annotated_points.append((x_left, y))
             
-
-
 
 class TempoView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
@@ -511,16 +510,11 @@ class TempoView(GeneralToolClass):
 
     def Plot1(self):
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlot1)
+
         # Add subplot
         self.Subplot1 = self.WidgetPlot1.Canvas.fig.add_subplot(111, label='Main plot')
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot1.figure.canvas.draw()
-            return
 
         # General plot
         self.general_plot()
@@ -555,16 +549,11 @@ class TempoView(GeneralToolClass):
 
     def Plot2(self):
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlot2)
+
         # Add subplot
         self.Subplot2 = self.WidgetPlot2.Canvas.fig.add_subplot(111, label='Main plot')
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot2.figure.canvas.draw()
-            return
 
         # General plot
         self.general_plot()
@@ -584,11 +573,8 @@ class TempoView(GeneralToolClass):
         else:
             self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')
-        print(self.Subplot1.get_xlim())
         self.Subplot2.set_xlim(self.Subplot1.get_xlim())
         self.Subplot2.grid()
-
-
 
 
 class Conv(GeneralToolClass):
@@ -626,16 +612,11 @@ class Conv(GeneralToolClass):
     def Plot(self):
         """Plot the convergence of the fit orbit parameters."""
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlot)
+
         # Subplot initialization
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot.figure.canvas.draw()
-            return
 
         # Plot with current parameters
         self.Steps = range(self.NbOrbits)
@@ -757,18 +738,17 @@ class Hist(GeneralToolClass):
     def Plot(self):
         """Plot the histogram based on the selected parameters."""
 
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-
         # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot.figure.canvas.draw()
-            return
+        self.try_UpdateParams(self.WidgetPlot)
+
+        # Check if the parameters are valid for plotting
         if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
-            self.Subplot.figure.canvas.draw()
+            print('No data to plot or variance is zero.')
+            self.WidgetPlot.Canvas.draw()
             return
+
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
     
         # Actual X limits on the plot or initial limits
         # Overwritten if modified by the user
@@ -837,7 +817,7 @@ class Hist2D(GeneralToolClass):
         self.InitParams()
 
         # Plot initialization
-        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
+        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True, ylim=True)
 
     def InitParams(self):
         """Initialize parameters for the 2D Histogram tool."""
@@ -932,19 +912,16 @@ class Hist2D(GeneralToolClass):
     def Plot(self):
         """Plot the 2D histogram based on the selected parameters."""
 
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-
         # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot.figure.canvas.draw()
-            return
+        self.try_UpdateParams(self.WidgetPlot)
+
+        # Check if the parameters are valid for plotting
         if self.EvalXParamOrbit is None or self.EvalXParamOrbit is None or np.var(self.EvalXParamOrbit) == 0 or np.var(self.EvalYParamOrbit) == 0 or self.EvalXParamOrbit[0] == float('inf') or self.EvalYParamOrbit[0] == float('inf'):
             self.Subplot.figure.canvas.draw()
             return
+        
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
         
         # X, Y limits
         xlim_init=(np.min(self.EvalXParamOrbit), np.max(self.EvalXParamOrbit))
@@ -961,7 +938,7 @@ class Hist2D(GeneralToolClass):
 
         hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins), range)
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
-        self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, label='Count number')
+        self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Count number')
 
         # Best fit
         if self.CheckBestFit.CheckParam.isChecked():
@@ -1070,17 +1047,12 @@ class Corner(GeneralToolClass):
     def Plot(self):
         """Plot the corner plot based on the selected parameters."""
 
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-
         # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
-            return
+        self.try_UpdateParams(self.WidgetPlot)
 
+        # No subplot because corner plots are standalone
+
+        # Collect data for the corner plot
         Data = []
         DataNames = []
         DataLabels = []
@@ -1092,12 +1064,15 @@ class Corner(GeneralToolClass):
                     DataLabels.append(x.CheckParam.text()+' '+self.UnitOf(x.CheckParam.text()))
                 else:
                     DataLabels.append(self.LabelOf(x.CheckParam.text())+' '+self.UnitOf(x.CheckParam.text()))
-
         Data = np.array(Data).T
+
+        # Check if there is data to plot
         if len(Data) == 0:
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            print('No parameters selected or all parameters have no variance.')
+            self.WidgetPlot.Canvas.fig.canvas.draw()
             return
 
+        # Create corner plot
         grid = corner.corner(Data, labels=DataLabels, bins=self.NbBins, fig=self.WidgetPlot.Canvas.fig)
 
         # Adjust the labels to not be slanted
@@ -1120,12 +1095,6 @@ class Corner(GeneralToolClass):
                         BestXParam = eval(f'self.Best{DataNames[col]}')[self.nBody]
                         BestYParam = eval(f'self.Best{DataNames[row]}')[self.nBody]
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
-
-
-            # if k in (1,3,6,)
-
-            # BestParam = eval('self.Best' + DataLabels[k])[self.nBody]
-            # ax.axvline(BestParam, color='red')
 
 
 class PosAtDate(GeneralToolClass):
@@ -1178,16 +1147,11 @@ class PosAtDate(GeneralToolClass):
     def Plot(self):
         """Plot the position at the given date based on the selected parameters."""
 
+        # Update parameters
+        self.try_UpdateParams(self.WidgetPlot)
+
         # Subplot initialization
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.Subplot.figure.canvas.draw()
-            return
 
         # Compute date
         SelectRaAtDate, SelectDecAtDate = [np.zeros(self.NbSelectOrbits) for _ in range(2)]
@@ -1217,7 +1181,7 @@ class PosAtDate(GeneralToolClass):
         # Plot with current parameters
         hist = self.Subplot.hist2d(SelectRaAtDate, SelectDecAtDate, bins=(self.NbBins, self.NbBins), range=self.range)
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
-        self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Probability')
+        self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Count number')
 
         self.Subplot.plot(0, 0, marker='*', color='orange', markersize=10)
 

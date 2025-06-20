@@ -44,6 +44,10 @@ class BestOrbitsClass(QWidget):
 
         # Disable selection
         TblBestFit.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        # Disable editing
+        TblBestFit.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        # Disable focus (no keyboard/mouse interaction)
+        TblBestFit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         # Set column width to fit content
         TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)

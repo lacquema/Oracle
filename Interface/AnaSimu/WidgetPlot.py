@@ -94,15 +94,6 @@ class WidgetPlot(QWidget):
         # Connect events
         self.draw_event = self.Canvas.mpl_connect('draw_event', self.on_draw_event)
         self.Canvas.mpl_connect('button_release_event', self.on_button_release_event)
-        # self.define_closeEvent_figure_options()
-        # Ajout de l'event filter pour détecter l'ouverture de nouvelles fenêtres
-    #     QApplication.instance().installEventFilter(self)
-
-    # def eventFilter(self, obj, event):
-    #     if event.type() == QEvent.Type.Show:
-    #         if isinstance(obj, QWidget) and obj.isWindow() and obj.windowTitle() == 'Figure options':
-    #             obj.destroyed.connect(lambda: print('figure options closed'))
-    #     return super().eventFilter(obj, event)
 
     def auto_refresh_after_pan_or_zoom(self):
         """
@@ -120,8 +111,7 @@ class WidgetPlot(QWidget):
         """
         self.clear_figure()
         self.plot_function()
-        # if draw: self.Canvas.draw()
-        # if len(self.history)==0: self.save_plot_state()
+        self.Canvas.fig.subplots_adjust(left=0.15, right=0.93, top=0.9, bottom=0.12)
 
     def refresh_plot(self):
         """
@@ -177,27 +167,11 @@ class WidgetPlot(QWidget):
             self.save_plot_state()
             self.update_toolbar_buttons()
 
-
-    # def detect_3d_angle_change(self):
-    #     """
-    #     Detects if the 3D axes view angles (azim/elev) have changed and calls the callback if so.
-    #     """
-    #     ax = self.Canvas.fig.axes[0] if self.Canvas.fig.axes else None
-    #     if ax and hasattr(ax, 'azim') and hasattr(ax, 'elev'):
-    #         new_azim = ax.azim
-    #         new_elev = ax.elev
-    #         if new_azim != self.last_azim or new_elev != self.last_elev:
-    #             self.last_azim = new_azim
-    #             self.last_elev = new_elev
-    #             return True
-    #     return False
-
     def look_plot_labels(self):
         ax = self.Canvas.fig.axes[0]
         self.current_labels = {}
         if self.title:
             self.current_labels['title'] = ax.get_title()
-            # print('save title:', self.current_labels['title'])
         if self.xlabel:
             self.current_labels['xlabel'] = ax.get_xlabel()
         if self.ylabel:
@@ -212,8 +186,6 @@ class WidgetPlot(QWidget):
 
         self.current_labels = self.look_plot_labels()
 
-        # print(self.current_labels)
-
         if len(self.history) == 0 or self.dicos_differs(self.current_labels, self.labels):
             return True
         else:
@@ -222,7 +194,7 @@ class WidgetPlot(QWidget):
     def save_plot_labels(self):
 
         self.labels = self.current_labels
-        print('save labels')
+        # print('save labels')
         self.update_toolbar_buttons()
 
     def dicos_differs(self, dico1, dico2):
@@ -243,10 +215,8 @@ class WidgetPlot(QWidget):
             self.current_state['zlim'] = ax.get_zlim()
         if self.azim and hasattr(ax, 'azim'):
             self.current_state['azim'] = ax.azim
-            # print('look azim:', self.current_state['azim'])
         if self.elev and hasattr(ax, 'elev'):
             self.current_state['elev'] = ax.elev
-            # print('look elev:', self.current_state['elev'])
         return self.current_state
 
     def detect_plot_state_change(self):
@@ -254,7 +224,6 @@ class WidgetPlot(QWidget):
         Check if the necessary events have been triggered and save the plot state if appropriate.
         Resets event flags after saving.
         """
-        # state update
         self.current_state = self.look_plot_state()
     
         if len(self.history) == 0 or (self.dicos_differs(self.current_state, self.history[self.history_index]) and self.dicos_differs(self.current_state, self.history[0])):
@@ -270,28 +239,8 @@ class WidgetPlot(QWidget):
             self.Toolbar._actions['pan'].trigger()
         if self.Toolbar._actions['zoom'].isChecked():
             self.Toolbar._actions['zoom'].trigger()
-        print('save state', self.history_index, len(self.history))
+        # print('save state', self.history_index, len(self.history))
         self.update_toolbar_buttons()
-
-    # def save_plot_labels(self):
-    #     """
-    #     Save the current plot labels (title, xlabel, ylabel, zlabel, legend) from the axes.
-    #     """
-    #     ax = self.Canvas.fig.axes[0]
-    #     self.labels = {}
-    #     if self.title:
-    #         print('save title:', ax.get_title())
-    #         self.labels['title'] = ax.get_title()
-    #         # print('save title:', self.labels['title'])
-    #     if self.xlabel:
-    #         self.labels['xlabel'] = ax.get_xlabel()
-    #     if self.ylabel:
-    #         self.labels['ylabel'] = ax.get_ylabel()
-    #     if self.zlabel and hasattr(ax, 'get_zlabel'):
-    #         self.labels['zlabel'] = ax.get_zlabel()
-    #     if self.legend and ax.get_legend():
-    #         self.labels['legend'] = [text.get_text() for text in ax.get_legend().get_texts()]
-
 
     def remove_undone_states(self):
         """
@@ -319,10 +268,8 @@ class WidgetPlot(QWidget):
             ax.set_zlim(self.current_state['zlim'])
         if 'azim' in self.current_state and hasattr(ax, 'azim'):
             ax.azim = self.current_state['azim']
-            # print('restore azim:', self.current_state['azim'])
         if 'elev' in self.current_state and hasattr(ax, 'elev'):
             ax.elev = self.current_state['elev']
-            # print('restore elev:', self.current_state['elev'])
         # Restore labels and legend
         if 'xlabel' in self.labels:
             ax.set_xlabel(self.labels['xlabel'])
@@ -336,8 +283,6 @@ class WidgetPlot(QWidget):
             handles, _ = ax.get_legend_handles_labels()
             if handles:
                 ax.legend(handles, self.labels['legend'])
-        # self.Canvas.draw()
-        # self.adapt_tight()
 
     def undo_plot_state(self):
         """
@@ -350,7 +295,6 @@ class WidgetPlot(QWidget):
             self.restore_plot(index=self.history_index)
             self.Canvas.draw()
             self.update_toolbar_buttons()
-            # self.adapt_tight()
 
     def redo_plot_state(self):
         """
@@ -363,7 +307,6 @@ class WidgetPlot(QWidget):
             self.restore_plot(index=self.history_index)
             self.Canvas.draw()
             self.update_toolbar_buttons()
-            # self.adapt_tight()
 
     def restore_plot_to_initial_state(self):
         """
@@ -378,7 +321,6 @@ class WidgetPlot(QWidget):
         self.restore_plot(index=0)
         self.Canvas.draw()
         self.update_toolbar_buttons()
-        # self.adapt_tight()
 
     def update_toolbar_buttons(self):
         """
@@ -393,7 +335,7 @@ class WidgetPlot(QWidget):
         """
         Apply tight layout to the figure multiple times to optimize spacing.
         """
-        for i in range(15):
+        for i in range(10):
             self.Canvas.fig.tight_layout()
 
     def define_closeEvent_figure_options(self, event):

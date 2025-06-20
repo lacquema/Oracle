@@ -63,8 +63,8 @@ class WindowMainClass(QMainWindow):
         # Histogram 2D of orbit parameters
         GridLayout.addWidget(Hist2D(OutputParams, BestOrbits.BestParams), 2, 0)
 
-        # # Corner plot
-        # GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbits.BestParams), 2, 1)
+        # Corner plot
+        GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbits.BestParams), 2, 1)
 
         # Position at date
         GridLayout.addWidget(PosAtDate(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 2, 2)
