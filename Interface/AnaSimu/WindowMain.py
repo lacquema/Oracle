@@ -8,6 +8,7 @@ import sys
 # PyQt packages
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QStatusBar, QWidget, QApplication, QLabel, QGridLayout
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QGuiApplication, QCursor
 
 # My packages
 from Tools import Delimiter, SpaceView, TempoView, Conv, Hist, Hist2D, Corner, PosAtDate
@@ -25,6 +26,13 @@ class WindowMainClass(QMainWindow):
 
         # Window settings
         self.setWindowTitle(f'Oracle analysis of {SimuName}')
+
+        # Move the window to the top-left of the active screen (where the mouse is)
+        mouse_pos = QCursor.pos()
+        for screen in QGuiApplication.screens():
+            if screen.geometry().contains(mouse_pos):
+                geo = screen.geometry()
+                self.move(geo.x(), geo.y())
 
         # Layout initialization
         Layout = QVBoxLayout()
