@@ -173,19 +173,7 @@ class GeneralToolClass(QWidget):
         except Exception as e:
             print(f'Error evaluating formula: {e}')
             return None
-        
-    def plot_empty(self, Subplot):
-        """Clear the plot."""
-        Subplot.clear()
-        Subplot.set_xlabel('')
-        Subplot.set_ylabel('')
-        Subplot.set_title('')
-        Subplot.legend().remove()
-        Subplot.grid(False)
-        Subplot.set_xlim(0, 1)
-        Subplot.set_ylim(0, 1)
-        Subplot.set_aspect('equal', adjustable='box')
-        Subplot.figure.canvas.draw()
+
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -544,7 +532,7 @@ class TempoView(GeneralToolClass):
         else:
             self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
         self.Subplot1.grid()
-        self.Subplot1.set_xlim(xlim)
+        self.Subplot1.set_xlim(xlim_init)
 
 
     def Plot2(self):
@@ -738,17 +726,17 @@ class Hist(GeneralToolClass):
     def Plot(self):
         """Plot the histogram based on the selected parameters."""
 
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+
         # Update parameters
         self.try_UpdateParams(self.WidgetPlot)
 
         # Check if the parameters are valid for plotting
         if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
             print('No data to plot or variance is zero.')
-            self.WidgetPlot.Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
-
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
     
         # Actual X limits on the plot or initial limits
         # Overwritten if modified by the user
@@ -915,13 +903,13 @@ class Hist2D(GeneralToolClass):
         # Update parameters
         self.try_UpdateParams(self.WidgetPlot)
 
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+
         # Check if the parameters are valid for plotting
         if self.EvalXParamOrbit is None or self.EvalXParamOrbit is None or np.var(self.EvalXParamOrbit) == 0 or np.var(self.EvalYParamOrbit) == 0 or self.EvalXParamOrbit[0] == float('inf') or self.EvalYParamOrbit[0] == float('inf'):
             self.Subplot.figure.canvas.draw()
             return
-        
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
         
         # X, Y limits
         xlim_init=(np.min(self.EvalXParamOrbit), np.max(self.EvalXParamOrbit))
