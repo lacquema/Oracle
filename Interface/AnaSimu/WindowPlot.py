@@ -2,7 +2,7 @@
 import sys
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QApplication, QSplitter, QMainWindow, QStatusBar
+from PyQt6.QtWidgets import QApplication, QSplitter, QMainWindow, QStatusBar, QSizePolicy
 
 from WidgetParam import WidgetParam
 from WidgetPlot import WidgetPlot
@@ -34,11 +34,15 @@ class WindowPlot(QMainWindow):
         self.setCentralWidget(self.Splitter)
 
 
-    def add_WidgetPlot(self, plot, layout=None):
+    def add_WidgetPlot(self, plot, layout=None, xlim=False, ylim=False, zlim=False, azim=False, elev=False, xlabel=True, ylabel=True, zlabel=True, title=True, legend=True):
         """
         Creates a new WidgetPlot connected to the WidgetParam.
+
+        The parameters will be save if True.
+        Initial values provided during plot creation are overwritten if modified.
         """
-        widget_plot = WidgetPlot(plot)
+        # print(title, 'on add_WidgetPlot')
+        widget_plot = WidgetPlot(plot, xlim, ylim, zlim, azim, elev, xlabel, ylabel, zlabel, title, legend)
         self.WidgetPlots.append(widget_plot)
         if layout is None:
             self.Splitter.addWidget(widget_plot)

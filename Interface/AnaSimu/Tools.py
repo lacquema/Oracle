@@ -48,7 +48,7 @@ class GeneralToolClass(QWidget):
 
         # Connections between parameters and plot
         self.WindowPlot.WidgetParam.BtnReset.clicked.connect(self.ResetParams)
-        self.WindowPlot.WidgetParam.BtnRefresh.clicked.connect(self.Refresh_active_plots)
+        self.WindowPlot.WidgetParam.BtnRefresh.clicked.connect(self.refresh_plots)
 
         # Initialisation of Data
         self.InputData = InputData
@@ -79,18 +79,24 @@ class GeneralToolClass(QWidget):
         """Initialize parameters. This method should be overridden by subclasses."""
         return
 
-    def Refresh_active_plots(self):
+    def refresh_plots(self):
         """Refresh all active plots when the refresh button is clicked."""
         for WidgetPlot in self.WindowPlot.WidgetPlots:
             if WidgetPlot.isVisible():
                 WidgetPlot.refresh_plot()
 
+    def reset_plots(self):
+        """Reset all active plots when the reset button is clicked."""
+        for WidgetPlot in self.WindowPlot.WidgetPlots:
+            WidgetPlot.reset_plot()
+        self.refresh_plots()
+    
     def Toggle_WindowPlot(self):
         """Open the plot window when the Plot button is clicked."""
         self.WindowPlot.show()
         self.BtnPlot.setEnabled(False)
-        self.Refresh_active_plots()
-
+        self.refresh_plots()
+        
     def closeEvent(self, e):
         """Close program when the main window is closed."""
         app.closeAllWindows()
@@ -102,12 +108,7 @@ class GeneralToolClass(QWidget):
             self.WindowPlot.WidgetParam.Layout.removeWidget(WidgetToRemove)
             WidgetToRemove.setParent(None)
         self.InitParams()
-        for widget_plot in self.WindowPlot.WidgetPlots:
-            widget_plot.reset_history()
-            # widget_plot.connect_events_to_reset_history()  # Reconnect events to reset history
-            # print(widget_plot.events_to_reset_history)
-            # self.WindowPlot.connect_events_to_reset_history(widget_plot, widget_plot.events_to_reset_history)
-        self.Refresh_active_plots()
+        self.reset_plots()
 
     def LabelOf(self, var=str):
         """Return the label for a given variable."""
@@ -141,40 +142,6 @@ class GeneralToolClass(QWidget):
         }
         return units.get(var, 'Unknown variable')
         
-    # Compute of the limits of subplot 2d
-    def subplot_lim_2d(self, widget_plot, xlim_init=None, ylim_init=None):
-        """
-        Determine the axis limits for a subplot 2d based on the widget's history.
-        """
-        if not widget_plot.history:  # If history is empty
-            if xlim_init is None: xlim_init = (None, None)
-            if ylim_init is None: ylim_init = (None, None)
-            return xlim_init, ylim_init
-        else:
-            # Retrieve limits from history
-            index = widget_plot.history_index
-            xlim = widget_plot.history[index].get('xlim', xlim_init)
-            ylim = widget_plot.history[index].get('ylim', ylim_init)
-            return xlim, ylim
-        
-    # Compute of the limits of subplot 2d
-    def subplot_lim_3d(self, widget_plot, xlim_init=None, ylim_init=None, zlim_init=None):
-        """
-        Determine the axis limits for a subplot 3d based on the widget's history.
-        """
-        if not widget_plot.history:  # If history is empty
-            if xlim_init is None: xlim_init = (None, None)
-            if ylim_init is None: ylim_init = (None, None)
-            if zlim_init is None: zlim_init = (None, None)
-            return xlim_init, ylim_init, zlim_init
-        else:
-            # Retrieve limits from history
-            index = widget_plot.history_index
-            xlim = widget_plot.history[index].get('xlim', xlim_init)
-            ylim = widget_plot.history[index].get('ylim', ylim_init)
-            zlim = widget_plot.history[index].get('zlim', zlim_init)
-            return xlim, ylim, zlim
-        
     def replace_params_in_formula(self, formula, prefixe, nOrbitDefault):
         """Replace parameters and functions in the formula with their corresponding values."""
         print(formula)
@@ -206,22 +173,32 @@ class GeneralToolClass(QWidget):
         except Exception as e:
             print(f'Error evaluating formula: {e}')
             return None
-
-
+        
+    def plot_empty(self, Subplot):
+        """Clear the plot."""
+        Subplot.clear()
+        Subplot.set_xlabel('')
+        Subplot.set_ylabel('')
+        Subplot.set_title('')
+        Subplot.legend().remove()
+        Subplot.grid(False)
+        Subplot.set_xlim(0, 1)
+        Subplot.set_ylim(0, 1)
+        Subplot.set_aspect('equal', adjustable='box')
+        Subplot.figure.canvas.draw()
+    
 
 class SpaceView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
         super().__init__('Space view', 'Space view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
+        # Window plots initialisation
+        self.WidgetPlotXY = self.WindowPlot.add_WidgetPlot(self.PlotXY, xlim=True, ylim=True)
+        self.WidgetPlotXZ = self.WindowPlot.add_WidgetPlot(self.PlotXZ, xlim=True, ylim=True)
+        self.WidgetPlotXYZ = self.WindowPlot.add_WidgetPlot(self.PlotXYZ, xlim=True, ylim=True, zlim=True, azim=True, elev=True)
+
         # Parameters initialisation
         self.InitParams()
-
-        # Window plots initialisation
-        self.WidgetPlotXY = self.WindowPlot.add_WidgetPlot(self.PlotXY)
-        self.WidgetPlotXZ = self.WindowPlot.add_WidgetPlot(self.PlotXZ)
-        self.WidgetPlotXYZ = self.WindowPlot.add_WidgetPlot(self.PlotXYZ)
-
-        self.indexViewChanged(self.indexView)
     
     def InitParams(self):
         """Initialize parameters for the SpaceView tool."""
@@ -232,7 +209,7 @@ class SpaceView(GeneralToolClass):
             self.ListBody.append('all')
         self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history) 
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots) 
 
         # Number of shown orbits
         self.NbShownOrbits = 500
@@ -244,6 +221,7 @@ class SpaceView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ViewWidget)
         self.indexView = self.ViewWidget.ComboParam.currentIndex()
         self.ViewWidget.ComboParam.currentIndexChanged.connect(self.indexViewChanged)
+        self.indexViewChanged(self.indexView)
 
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
@@ -263,13 +241,6 @@ class SpaceView(GeneralToolClass):
         self.ViewWidget.ComboParam.currentIndexChanged.connect(lambda: self.CheckDateObs.CheckParam.setEnabled(self.ViewWidget.ComboParam.currentIndex() == 0 and self.CheckObs.CheckParam.isChecked()))
         self.CheckObs.CheckParam.stateChanged.connect(lambda bool: self.CheckDateObs.CheckParam.setEnabled(bool))
 
-    def reset_WidgetPlots_history(self):
-        """Reset the history of the plot when the parameters are reset."""
-        self.WidgetPlotXY.reset_history()
-        self.WidgetPlotXZ.reset_history()
-        self.WidgetPlotXYZ.reset_history()
-        self.Refresh_active_plots()
-
     def indexViewChanged(self, value):
         self.indexView = value
         if self.indexView == 0:
@@ -284,7 +255,7 @@ class SpaceView(GeneralToolClass):
             self.WidgetPlotXY.setVisible(False)
             self.WidgetPlotXZ.setVisible(False)
             self.WidgetPlotXYZ.setVisible(True)
-        self.Refresh_active_plots()
+        self.refresh_plots()
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -292,31 +263,28 @@ class SpaceView(GeneralToolClass):
         # self.indexView = self.ViewWidget.ComboParam.currentIndex()
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
 
-    def general_plot(self):
-        """Plot the orbits based on the selected parameters."""
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
-            return
 
     def PlotXY(self):
         """Plot the 2D view of the orbits in the XY plane."""
 
-        # General plot
-        self.general_plot()
-
         # Add subplot
-        self.SubplotXY = self.WidgetPlotXY.Canvas.fig.add_subplot(111, aspect='equal', label='Main plot')
+        self.SubplotXY = self.WidgetPlotXY.Canvas.fig.add_subplot(111, aspect='equal')
 
-        # X, Y limits
-        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlotXY)
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            self.SubplotXY.figure.canvas.draw()
+            return
 
         # Central star
         self.SubplotXY.plot(0, 0, marker='*', color='orange', markersize=10)
+
+        # X, Y current limits
+        xlim_init = (None, None)
+        ylim_init = (None, None)
+        (Xmin, Xmax) = self.WidgetPlotXY.history[self.WidgetPlotXY.history_index]['xlim'] if len(self.WidgetPlotXY.history)!=0 else xlim_init
+        (Ymin, Ymax) = self.WidgetPlotXY.history[self.WidgetPlotXY.history_index]['ylim'] if len(self.WidgetPlotXY.history)!=0 else ylim_init
 
         if self.nBody == 'all':
             for k in range(self.NbBodies):
@@ -339,9 +307,10 @@ class SpaceView(GeneralToolClass):
                     dra = self.InputData['Planets']['DataAstrom']['dRa'][k]
                     ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
                     dates = self.InputData['Planets']['DataAstrom']['Date'][k]
-                    self.SubplotXY.errorbar(ra, dec, dra, ddec, linestyle='', color='black')
+                    self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='black')
                     if self.CheckDateObs.CheckParam.isChecked():
-                        if Xmin!=None: self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
+                        if Xmin!=None and Ymin!=None: 
+                            self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
 
             else:
                 ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
@@ -349,29 +318,30 @@ class SpaceView(GeneralToolClass):
                 dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
                 ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
                 dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-                self.SubplotXY.errorbar(ra, dec, dra, ddec, linestyle='', color='black')
+                self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='black')
                 if self.CheckDateObs.CheckParam.isChecked():
-                    if Xmin!=None: self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
-
+                    if Xmin!=None and Ymin!=None: 
+                        self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
+        
         # Set axis
         self.SubplotXY.set_xlabel(r'$\delta Ra$ [mas]')
         self.SubplotXY.set_ylabel(r'$\delta Dec$ [mas]')
         self.SubplotXY.invert_xaxis()
         self.SubplotXY.set_aspect('equal', adjustable='box')
-        self.SubplotXY.set_title(' ')
 
 
     def PlotXZ(self):
         """Plot the 2D view of the orbits in the XZ plane."""
 
-        # General plot
-        self.general_plot()
-
         # Add subplot
-        self.SubplotXZ = self.WidgetPlotXZ.Canvas.fig.add_subplot(111, aspect='equal', label='Main plot')
+        self.SubplotXZ = self.WidgetPlotXZ.Canvas.fig.add_subplot(111, aspect='equal')
 
-        # # X, Y limits
-        # (Xmin, Xmax), (Zmin, Zmax) = self.subplot_lim_2d(self.WidgetPlotXZ)
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            self.SubplotXZ.figure.canvas.draw()
+            return
 
         # Central star
         self.SubplotXZ.plot(0, 0, marker='*', color='orange', markersize=10)
@@ -393,19 +363,19 @@ class SpaceView(GeneralToolClass):
         self.SubplotXZ.set_ylabel('Depth [mas]')
         self.SubplotXZ.invert_xaxis()
         self.SubplotXZ.set_aspect('equal', adjustable='box')
-        self.SubplotXZ.set_title(' ')
 
     def PlotXYZ(self):
         """Helper function to plot 3D views."""
 
-        # General plot
-        self.general_plot()
-
         # Add subplot
-        self.SubplotXYZ = self.WidgetPlotXYZ.Canvas.fig.add_subplot(111, aspect='equal', projection='3d', label='Main plot')
+        self.SubplotXYZ = self.WidgetPlotXYZ.Canvas.fig.add_subplot(111, aspect='equal', projection='3d')
 
-        # # X, Y, Z limits
-        # (Xmin, Xmax), (Ymin, Ymax), (Zmin, Zmax) = self.subplot_lim_3d(self.WidgetPlotXYZ)
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            self.SubplotXYZ.figure.canvas.draw()
+            return
 
         # Central star
         self.SubplotXYZ.plot(0, 0, 0, marker='*', color='orange', markersize=10)
@@ -413,12 +383,12 @@ class SpaceView(GeneralToolClass):
         if self.nBody == 'all':
             for k in range(self.NbBodies):
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXYZ.plot(self.BestRa[k], self.BestDec[k], self.BestZ[k], color='r')
+                    self.SubplotXYZ.plot(self.BestRa[k], self.BestDec[k], self.BestZ[k], color='r', linewidth=0.5)
                 for n in range(self.NbShownOrbits):
                     self.SubplotXYZ.plot(self.SelectRa[k][n], self.SelectDec[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
         else:
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXYZ.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r')
+                self.SubplotXYZ.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r', linewidth=0.5)
             for n in range(self.NbShownOrbits):
                 self.SubplotXYZ.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
@@ -427,31 +397,30 @@ class SpaceView(GeneralToolClass):
         self.SubplotXYZ.set_zlabel('Depth [mas]')
         self.SubplotXYZ.invert_xaxis()
         self.SubplotXYZ.set_aspect('equal', adjustable='box')
-        self.SubplotXYZ.set_title(' ')
 
 
     def annotate_dates(self, dates, ra, dec, Xmin, Xmax, Ymin, Ymax):
         """Annotate dates on the plot."""
         ra_range = abs(Xmax - Xmin)
         dec_range = abs(Ymax - Ymin)
-        min_dist_x = 0.05 * ra_range
-        min_dist_y = 0.1 * dec_range
+        min_dist_x = 0.1 * ra_range
+        min_dist_y = 0.05 * dec_range
         min_dist = np.hypot(min_dist_x, min_dist_y)
         annotated_points = []
         for idx in range(len(dates)):
-            x_right = ra[idx] - 0.01 * ra_range 
             y = dec[idx] + 0.01 * dec_range
-            x_left = ra[idx] + 0.01 * ra_range
-
             # Try right, if too close to previous, try left
+            x_right = ra[idx] - 0.01 * ra_range 
             overlap = any(np.hypot(x_right - px, y - py) < min_dist for px, py in annotated_points)
             if not overlap:
                 self.SubplotXY.annotate(f"{dates[idx]:.0f}", (x_right, y), color='black', fontsize=8, ha='left')
                 annotated_points.append((x_right, y))
             else:
-                annotated_points.append((x_left, y))
+                x_left = ra[idx] + 0.01 * ra_range
+                overlap = any(np.hypot(x_left - px, y - py) < min_dist for px, py in annotated_points)
                 if not overlap:
                     self.SubplotXY.annotate(f"{dates[idx]:.0f}", (x_left, y), color='black', fontsize=8, ha='right')
+                    annotated_points.append((x_left, y))
             
 
 
@@ -460,12 +429,12 @@ class TempoView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
         super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
+        # Window plots initialisation
+        self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1, xlim=True, ylim=True)
+        self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=self.WidgetPlot1.Layout)
+
         # Parameters initialisation
         self.InitParams()
-
-        # Window plots initialisation
-        self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1)
-        self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=self.WidgetPlot1.Layout)
 
     def InitParams(self):
         """Initialize parameters for the TempoView tool."""
@@ -474,7 +443,7 @@ class TempoView(GeneralToolClass):
         self.ListBody = [str(k+1) for k in range(self.NbBodies)]
         self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
-        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.nBodyWidget.setEnabled(False)
 
@@ -486,14 +455,8 @@ class TempoView(GeneralToolClass):
         # Choice of coordinate
         self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRa', 'dDec', 'Sep', 'Pa'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
-        self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
-    
-    def reset_WidgetPlots_history(self):
-        """Reset the history of the plot when the parameters are reset."""
-        self.WidgetPlot1.reset_history()
-        self.WidgetPlot2.reset_history()
-        self.Refresh_active_plots()
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -511,14 +474,6 @@ class TempoView(GeneralToolClass):
 
     def general_plot(self):
         """Plot the temporal view based on the selected parameters."""
-
-        # Update parameters
-        try:
-            self.UpdateParams()
-        except Exception as e:
-            print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
-            return
 
         # Determine the coordinate to plot
         if self.CoordinateIndex == 0:
@@ -554,21 +509,28 @@ class TempoView(GeneralToolClass):
         if self.InputData is not None: 
             self.DateRange = np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
 
-
     def Plot1(self):
-
-        # General plot
-        self.general_plot()
 
         # Add subplot
         self.Subplot1 = self.WidgetPlot1.Canvas.fig.add_subplot(111, label='Main plot')
 
-        # X, Y limits
+        # Update parameters
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            self.Subplot1.figure.canvas.draw()
+            return
+
+        # General plot
+        self.general_plot()
+
+        # X current limits
         if self.InputData is not None: 
             xlim_init = (np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) + 0.1 * self.DateRange)
         else:
-            xlim_init = None
-        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlot1, xlim_init)
+            xlim_init = (None, None)
+        xlim = self.WidgetPlot1.history[self.WidgetPlot1.history_index]['xlim'] if len(self.WidgetPlot1.history)!=0 else xlim_init
 
         # Plot output data
         for n in range(self.NbShownOrbits):
@@ -587,22 +549,25 @@ class TempoView(GeneralToolClass):
             self.Subplot1.set_ylabel(self.Coordinate + ' [°]')
         else:
             self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
-        self.Subplot1.set_xlim(Xmin, Xmax)
-        self.Subplot1.set_ylim(Ymin, Ymax)
         self.Subplot1.grid()
-        self.Subplot1.set_title(' ')
+        self.Subplot1.set_xlim(xlim)
 
 
     def Plot2(self):
 
-        # General plot
-        self.general_plot()
-
         # Add subplot
         self.Subplot2 = self.WidgetPlot2.Canvas.fig.add_subplot(111, label='Main plot')
 
-        # X, Y limits
-        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlot2)
+        # Update parameters
+        try:
+            self.UpdateParams()
+        except Exception as e:
+            print('Wrong Parameters: ', e)
+            self.Subplot2.figure.canvas.draw()
+            return
+
+        # General plot
+        self.general_plot()
 
         # Plot input data and residuals
         if self.InputData is not None: 
@@ -619,6 +584,7 @@ class TempoView(GeneralToolClass):
         else:
             self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')
+        print(self.Subplot1.get_xlim())
         self.Subplot2.set_xlim(self.Subplot1.get_xlim())
         self.Subplot2.grid()
 
@@ -633,7 +599,7 @@ class Conv(GeneralToolClass):
         self.InitParams()
 
         # Plot initialization
-        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
+        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True, ylim=True)
 
     def InitParams(self):
         """Initialize parameters for the Convergence tool."""
@@ -644,16 +610,13 @@ class Conv(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         # if self.NbBodies == 1:
         #     self.nBodyWidget.setEnabled(False)
-        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # Orbit parameters
         self.ParamOrbitWidget = ComboBox('Variable', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
+        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
-    def reset_WidgetPlots_history(self):
-        """Reset the history of the plot when the parameters are reset."""
-        self.WidgetPlot.reset_history()
-        self.Refresh_active_plots()
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -671,7 +634,7 @@ class Conv(GeneralToolClass):
             self.UpdateParams()
         except Exception as e:
             print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
 
         # Plot with current parameters
@@ -684,9 +647,6 @@ class Conv(GeneralToolClass):
         self.Subplot.set_xlabel('Step')
         self.Subplot.set_ylabel(self.LabelOf(self.ParamOrbit)+' '+self.UnitOf(self.ParamOrbit))
 
-        # Update canvas
-        self.Subplot.set_title(' ')
-
 
 class Hist(GeneralToolClass):
     def __init__(self, OutputParams, BestOrbitsParams):
@@ -696,7 +656,7 @@ class Hist(GeneralToolClass):
         self.InitParams()
 
         # Plot initialization
-        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
+        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True)
 
     def InitParams(self):
         """Initialize parameters for the Histogram tool."""
@@ -706,14 +666,14 @@ class Hist(GeneralToolClass):
         # Orbit parameters
         self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'irel', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
-        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # i relatif between 2 bodies
         self.IrelWidget = QWidget()
         self.IrelLayout = QHBoxLayout()
-        self.nBodyRel = ComboBox('Relative body', 'Relative body to compare with the reference', self.ListBody)
-        self.IrelLayout.addWidget(self.nBodyRel)
-        self.nBodyRel.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.nBodyRelWidget = ComboBox('Relative body', 'Relative body to compare with the reference', self.ListBody)
+        self.IrelLayout.addWidget(self.nBodyRelWidget)
+        self.nBodyRelWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         self.IrelWidget.setLayout(self.IrelLayout)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.IrelWidget)
         self.IrelWidget.setVisible(False)
@@ -723,7 +683,7 @@ class Hist(GeneralToolClass):
         self.FormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.FormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.FormulaTextEdit)
-        self.FormulaTextEdit.EditParam.textChanged.connect(self.reset_WidgetPlots_history)
+        self.FormulaTextEdit.EditParam.textChanged.connect(self.reset_plots)
 
         # Connect ComboBox change event
         self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(lambda: self.FormulaTextEdit.setVisible(self.ParamOrbitWidget.ComboParam.currentText() == 'other'))
@@ -732,7 +692,7 @@ class Hist(GeneralToolClass):
         # Orbit number
         self.nBodyWidget = ComboBox(None, 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.ParamOrbitWidget.Layout.addWidget(self.nBodyWidget)
-        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.nBodyWidget.setEnabled(False)
 
@@ -749,19 +709,6 @@ class Hist(GeneralToolClass):
         self.CheckMedian = CheckBox('Median :', 'Show the median and the 1 sigma confidence interval')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMedian)
 
-        # Confidence interval bounds
-        # self.EvalParamOrbit = self.evaluate_ParamOrbit('self.')
-        
-        # self.leftWidget = DoubleSpinBox(None, 'Left bound of the selected histogram', np.min(self.EvalParamOrbit), np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit))
-        # self.CheckMedian.Layout.addWidget(self.leftWidget)
-        # self.leftWidget.setEnabled(self.CheckMedian.CheckParam.isChecked())
-        # self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.leftWidget.setEnabled(state))
-
-        # self.Llbl = QLabel(' < ')
-        # self.CheckMedian.Layout.addWidget(self.Llbl)
-        # self.Llbl.setEnabled(False)
-        # self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.Llbl.setEnabled(state))
-
         # Confidence interval
         self.IntConf = 68
         self.IntConfWidget = SpinBox('Confidence', 'Acceptable level of confidence [%]', self.IntConf, 0, 100, 1)
@@ -773,113 +720,63 @@ class Hist(GeneralToolClass):
         self.PercentLbl.setEnabled(self.CheckMedian.CheckParam.isChecked())
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.PercentLbl.setEnabled(state))
 
-        # self.Rlbl = QLabel(' > ')
-        # self.CheckMedian.Layout.addWidget(self.Rlbl)
-        # self.Rlbl.setEnabled(False)
-        # self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.Rlbl.setEnabled(state))
-
-        # self.rightWidget = DoubleSpinBox(None, 'Right bound of the selected histogram', np.max(self.EvalParamOrbit), np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit))
-        # self.CheckMedian.Layout.addWidget(self.rightWidget)
-        # self.rightWidget.setEnabled(self.CheckMedian.CheckParam.isChecked())
-        # self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.rightWidget.setEnabled(state))
-
-        # self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ChangeRightandLeftBound)
-        # self.FormulaTextEdit.EditParam.textChanged.connect(self.ChangeRightandLeftBound)
-
     def ToggleFormulaTextEdit(self):
         """Toggle the visibility of the formula text edit based on the ComboBox selection."""
         if self.ParamOrbitWidget.ComboParam.currentIndex() == self.ParamOrbitWidget.ComboParam.count() - 1:
             self.FormulaTextEdit.setVisible(True)
-            # self.nBodyWidget.setVisible(False)
         else:
             self.FormulaTextEdit.setVisible(False)
-            # self.nBodyWidget.setVisible(True)
-
-    # def ChangeRightandLeftBound(self):
-    #     """Update the bounds of the histogram when the orbital parameter changes."""
-    #     try:
-    #         self.EvalParamOrbit = self.evaluate_ParamOrbit('self.')
-    #         if self.EvalParamOrbit is not None:
-    #             min_val, max_val = np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit)
-    #             self.leftWidget.SpinParam.setRange(min_val, max_val)
-    #             self.leftWidget.SpinParam.setValue(min_val)
-    #             self.rightWidget.SpinParam.setRange(min_val, max_val)
-    #             self.rightWidget.SpinParam.setValue(max_val)
-    #         else:
-    #             self.leftWidget.SpinParam.setRange(0, 0)
-    #             self.leftWidget.SpinParam.setValue(0)
-    #             self.rightWidget.SpinParam.setRange(0, 0)
-    #             self.rightWidget.SpinParam.setValue(0)
-    #     except Exception as e:
-    #         print(f"Error updating bounds: {e}")
             
     def evaluate_ParamOrbit(self, prefixe):
         """Evaluate the parameter orbit based on the current widget values."""
-        self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.ParamOrbit = self.ParamOrbitWidget.ComboParam.currentText()
-        print(self.ParamOrbitWidget.ComboParam.currentText())
         if self.ParamOrbit == 'irel' or self.ParamOrbit == 'other':
             if self.ParamOrbitWidget.ComboParam.currentText() == 'irel':
-                nBodyRel = int(self.nBodyRel.ComboParam.currentText()) - 1
-                if nBodyRel == self.nBody:
+                if self.nBodyRel == self.nBody:
                     print('nBodyRel can not be the same as nBody')
                     return None
                 else:
-                    formula = f'arccos(cos(i[{self.nBody}])*cos(i[{nBodyRel}])+cos(W[{self.nBody}]-W[{nBodyRel}])*sin(i[{self.nBody}])*sin(i[{nBodyRel}]))'
-                # return np.arccos(np.cos(self.i[self.nBody])*np.cos(self.i[nBodyRel])+np.cos(self.W[self.nBody]-self.W[nBodyRel])*np.sin(self.i[self.nBody])*np.sin(self.i[nBodyRel]))
+                    formula = f'arccos(cos(i[{self.nBody+1}])*cos(i[{self.nBodyRel+1}])+cos(W[{self.nBody+1}]-W[{self.nBodyRel+1}])*sin(i[{self.nBody+1}])*sin(i[{self.nBodyRel+1}]))'
             elif self.ParamOrbitWidget.ComboParam.currentText() == 'other':
                 formula = self.FormulaTextEdit.EditParam.text()
             return self.evaluate_formula(formula, prefixe, self.nBody)
         else:
             self.ParamOrbit = self.ParamOrbitWidget.ComboParam.currentText()
-            print('not irel or other')
+            # print('not irel or other')
             return eval(f'{prefixe}{self.ParamOrbit}')[self.nBody]
-    
-    def reset_WidgetPlots_history(self):
-        """Reset the history of the plot when the parameters are reset."""
-        self.WidgetPlot.reset_history()
-        self.WidgetPlot.plotting()
-        # self.Refresh_active_plots()
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
+        self.nBodyRel = int(self.nBodyRelWidget.ComboParam.currentText()) - 1
         self.ParamOrbit = self.ParamOrbitWidget.ComboParam.currentText()
         self.EvalParamOrbit = self.evaluate_ParamOrbit('self.')
         self.NbBins = self.NbBinsWidget.SpinParam.value()
         self.IntConf = self.IntConfWidget.SpinParam.value()
-        # self.rightBound = self.rightWidget.SpinParam.value()
-        # self.leftBound = self.leftWidget.SpinParam.value()
 
     def Plot(self):
         """Plot the histogram based on the selected parameters."""
+
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
             self.UpdateParams()
         except Exception as e:
             print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
         if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
-        
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
-        
-        # X, Y limits
-        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlot, xlim_init=(np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit)))
-        
-        # Range for histogram
-        # if Xmin is None and Xmax is None: # I want keep None value at the beggining
-        #     range = (np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit))
-        # else:
-
-        range = (Xmin, Xmax)
+    
+        # Actual X limits on the plot or initial limits
+        # Overwritten if modified by the user
+        xlim_init = (np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit))
+        xlim = self.WidgetPlot.history[self.WidgetPlot.history_index]['xlim'] if self.WidgetPlot.history else xlim_init
         
         # Plot histogram
-        self.Subplot.hist(self.EvalParamOrbit, self.NbBins, range)
+        self.Subplot.hist(self.EvalParamOrbit, self.NbBins, xlim)
 
         # Plot best fit
         if self.CheckBestFit.CheckParam.isChecked():
@@ -889,9 +786,8 @@ class Hist(GeneralToolClass):
 
         # Plot median and confidence interval
         if self.CheckMedian.CheckParam.isChecked():
-            print(Xmin, Xmax)
-            self.leftBound = Xmin
-            self.rightBound = Xmax
+            self.leftBound = xlim[0]
+            self.rightBound = xlim[1]
             counts, bin_edges = np.histogram([p for p in self.EvalParamOrbit if self.leftBound <= p <= self.rightBound], self.NbBins)
             bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
@@ -921,21 +817,18 @@ class Hist(GeneralToolClass):
             # self.Subplot.axvspan(np.min(self.EvalParamOrbit), self.leftBound, facecolor='grey', alpha=0.5)
             # self.Subplot.axvspan(self.rightBound, np.max(self.EvalParamOrbit), facecolor='grey', alpha=0.5)
 
-        # Plot features
+        # Initial X and Y labels
+        # Overwritten if modified by the user
         if self.ParamOrbitWidget.ComboParam.currentText() == 'irel':
-            self.Subplot.set_xlabel('i_rel [°]')
-        if self.ParamOrbitWidget.ComboParam.currentText() == 'other':
-            self.Subplot.set_xlabel(self.FormulaTextEdit.EditParam.text())
+            xlabel_init = r'i$_{rel}$ [°]'
+        elif self.ParamOrbitWidget.ComboParam.currentText() == 'other':
+            xlabel_init = self.FormulaTextEdit.EditParam.text()
         else:
-            self.Subplot.set_xlabel(self.LabelOf(self.ParamOrbit)+' '+self.UnitOf(self.ParamOrbit))
+            xlabel_init = self.LabelOf(self.ParamOrbit)+' '+self.UnitOf(self.ParamOrbit)
+        self.Subplot.set_xlabel(xlabel_init)
         self.Subplot.set_ylabel('Count number')
-        self.Subplot.set_xlim(Xmin, Xmax)
-        # self.Subplot.set_xlim(np.min(self.EvalParamOrbit), np.max(self.EvalParamOrbit))
 
-        # Update canvas
-        self.Subplot.set_title(' ')
         
-    
 class Hist2D(GeneralToolClass):
     def __init__(self, OutputParams, BestOrbitsParams):
         super().__init__('Histogram 2D', 'Histogram of an orbital parameter as function of another', None, OutputParams, None, None, BestOrbitsParams, None)
@@ -952,13 +845,13 @@ class Hist2D(GeneralToolClass):
         # Abscissa orbit parameters
         self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
-        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # Orbit number for X parameter
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
         self.XnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.XParamOrbitWidget.Layout.addWidget(self.XnBodyWidget)
-        self.XnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.XnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.XnBodyWidget.setEnabled(False)
 
@@ -967,17 +860,17 @@ class Hist2D(GeneralToolClass):
         self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.XFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XFormulaTextEdit)
-        self.XFormulaTextEdit.EditParam.textChanged.connect(self.reset_WidgetPlots_history)
+        self.XFormulaTextEdit.EditParam.textChanged.connect(self.reset_plots)
 
         # Ordinate orbit parameters
         self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
-        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # Orbit number for Y parameter
         self.YnBodyWidget = ComboBox(None, 'Number of the orbit counting from the center of the system outwards', self.ListBody)
         self.YParamOrbitWidget.Layout.addWidget(self.YnBodyWidget)
-        self.YnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_WidgetPlots_history)
+        self.YnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.YnBodyWidget.setEnabled(False)
 
@@ -986,7 +879,7 @@ class Hist2D(GeneralToolClass):
         self.YFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.YFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YFormulaTextEdit)
-        self.YFormulaTextEdit.EditParam.textChanged.connect(self.reset_WidgetPlots_history)
+        self.YFormulaTextEdit.EditParam.textChanged.connect(self.reset_plots)
 
         # Connect ComboBox change event
         self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleXFormulaTextEdit)
@@ -1036,33 +929,30 @@ class Hist2D(GeneralToolClass):
         self.EvalYParamOrbit = self.evaluate_ParamOrbit('self.', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
         self.NbBins = self.NbBinsWidget.SpinParam.value()
 
-    def reset_WidgetPlots_history(self):
-        """Reset the history of the plot when the parameters are reset."""
-        self.WidgetPlot.reset_history()
-        # self.WidgetPlot.plotting()
-        self.Refresh_active_plots()
-
-
     def Plot(self):
         """Plot the 2D histogram based on the selected parameters."""
+
+        # Subplot initialization
+        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Update parameters
         try:
             self.UpdateParams()
         except Exception as e:
             print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
-        
-        # Subplot initialization
-        self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+        if self.EvalXParamOrbit is None or self.EvalXParamOrbit is None or np.var(self.EvalXParamOrbit) == 0 or np.var(self.EvalYParamOrbit) == 0 or self.EvalXParamOrbit[0] == float('inf') or self.EvalYParamOrbit[0] == float('inf'):
+            self.Subplot.figure.canvas.draw()
+            return
         
         # X, Y limits
         xlim_init=(np.min(self.EvalXParamOrbit), np.max(self.EvalXParamOrbit))
         ylim_init=(np.min(self.EvalYParamOrbit), np.max(self.EvalYParamOrbit))
-        (Xmin, Xmax), (Ymin, Ymax) = self.subplot_lim_2d(self.WidgetPlot, xlim_init, ylim_init)
+        xlim = self.WidgetPlot.history[self.WidgetPlot.history_index]['xlim'] if len(self.WidgetPlot.history) != 0 else xlim_init
+        ylim = self.WidgetPlot.history[self.WidgetPlot.history_index]['ylim'] if len(self.WidgetPlot.history) != 0 else ylim_init
 
-        range = ((Xmin, Xmax), (Ymin, Ymax))
+        range = (xlim, ylim)
 
         # Plot with current parameters
         if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None:
@@ -1088,11 +978,6 @@ class Hist2D(GeneralToolClass):
             self.Subplot.set_ylabel(self.YFormulaTextEdit.EditParam.text())
         else:
             self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' '+self.UnitOf(self.YParamOrbit))
-        
-        # Update canvas
-        self.Subplot.set_title(' ')
-        self.Subplot.set_xlim(Xmin, Xmax)
-        self.Subplot.set_ylim(Ymin, Ymax)
 
 
 class Corner(GeneralToolClass):
@@ -1251,7 +1136,7 @@ class PosAtDate(GeneralToolClass):
         self.InitParams()
 
         # Plot initialization
-        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
+        self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True, ylim=True)
 
     def InitParams(self):
         """Initialize parameters for the Position at Date tool."""
@@ -1260,12 +1145,14 @@ class PosAtDate(GeneralToolClass):
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
         self.nBodyWidget = ComboBox("Orbit number", 'Number of the studied orbit counting from the center of the system outwards', self.ListBody)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.nBodyWidget.setEnabled(False)
 
         # Date of wanted observation
         self.DateWidget = DateAndMJDEdit('Date', 'Date of wanted observation')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.DateWidget)
+        self.DateWidget.MJDWidget.SpinParam.valueChanged.connect(self.refresh_plots)
 
         # Histogram binning
         self.NbBins = 100
@@ -1299,11 +1186,11 @@ class PosAtDate(GeneralToolClass):
             self.UpdateParams()
         except Exception as e:
             print('Wrong Parameters: ', e)
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
+            self.Subplot.figure.canvas.draw()
             return
 
         # Compute date
-        SelectRaAtDate, SelectYAtDate = [np.zeros(self.NbSelectOrbits) for _ in range(2)]
+        SelectRaAtDate, SelectDecAtDate = [np.zeros(self.NbSelectOrbits) for _ in range(2)]
 
         for k in range(self.NbSelectOrbits):
             SelectPeriod = np.max(self.Selectt[self.nBody][k]) - np.min(self.Selectt[self.nBody][k])
@@ -1317,10 +1204,18 @@ class PosAtDate(GeneralToolClass):
 
             indexBestDate = np.argmin(np.abs(self.Selectt[self.nBody][k] - SelectDate))
             SelectRaAtDate[k] = self.SelectRa[self.nBody][k][indexBestDate]
-            SelectYAtDate[k] = self.SelectDec[self.nBody][k][indexBestDate]
+            SelectDecAtDate[k] = self.SelectDec[self.nBody][k][indexBestDate]
+
+        # X and Y limits
+        xlim_init = (np.max(self.SelectRa[self.nBody]), np.min(self.SelectRa[self.nBody])) # Inverted X axis for Ra
+        ylim_init = (np.min(self.SelectDec[self.nBody]), np.max(self.SelectDec[self.nBody]))
+        (Xmin, Xmax) = self.WidgetPlot.history[self.WidgetPlot.history_index]['xlim'] if len(self.WidgetPlot.history) != 0 else xlim_init
+        ylim = self.WidgetPlot.history[self.WidgetPlot.history_index]['ylim'] if len(self.WidgetPlot.history) != 0 else ylim_init
+
+        self.range = ((Xmax, Xmin), ylim) # Inverted X axis for Ra
 
         # Plot with current parameters
-        hist = self.Subplot.hist2d(SelectRaAtDate, SelectYAtDate, bins=(self.NbBins, self.NbBins), range=((np.min(self.SelectRa), np.max(self.SelectRa)), (np.min(self.SelectDec), np.max(self.SelectDec))))
+        hist = self.Subplot.hist2d(SelectRaAtDate, SelectDecAtDate, bins=(self.NbBins, self.NbBins), range=self.range)
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
         self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Probability')
 
@@ -1342,14 +1237,18 @@ class PosAtDate(GeneralToolClass):
             self.Subplot.plot(self.BestRa[self.nBody][indexBestDate], self.BestDec[self.nBody][indexBestDate], marker='x', color='red')
 
         if self.CheckObs.CheckParam.isChecked():
-            self.Subplot.errorbar(self.InputData['Planets']['DataAstrom']['Ra'], self.InputData['Planets']['DataAstrom']['Dec'], self.InputData['Planets']['DataAstrom']['dRa'], self.InputData['Planets']['DataAstrom']['dDec'], linestyle='')  # Observed data
+            ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
+            dec = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
+            dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
+            ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
+            dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
+            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='white')
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$ Ra [mas]')
         self.Subplot.set_ylabel(r'$\delta$ Dec [mas]')
         self.Subplot.invert_xaxis()
         self.Subplot.set_aspect('equal', adjustable='box')
-
-        # Update canvas
-        self.Subplot.set_title(' ')
+        self.Subplot.set_xlim(xlim_init)
+        self.Subplot.set_ylim(ylim_init)
 
