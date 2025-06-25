@@ -16,7 +16,7 @@ def HeaderDataIn(PathOutputData):
     
 
 # Open output data
-def TransfertSimu(PathOutputData, UnivYN=1):
+def TransfertSimu(PathOutputData, UnivYN):
 
     with open(PathOutputData, 'r') as file:
         lines = file.readlines()
@@ -221,10 +221,10 @@ def TransfertSimu(PathOutputData, UnivYN=1):
             Data = np.array(list(map(float, lines[1].split()))).reshape(NbBodies, NbParams, NbOrbits)
 
 
-        a, P, e, w, i, W, tp, m, Mdyn, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(11)]
+        a, P, e, w, i, W, tp, m, m0, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(11)]
 
         for j in range(NbBodies):
-            a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], Mdyn[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
+            a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
 
         # Conversions
         P = P/365.25
@@ -240,7 +240,7 @@ def TransfertSimu(PathOutputData, UnivYN=1):
             a = a/(1-e)
             P = P/((1-e)**(3/2))
 
-        OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, Map]
+        OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, Chi2, Map]
 
     return InputData, OutputParams
 

@@ -5,25 +5,25 @@ import numpy as np
 import Utils as ut
 
 class BestOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, Mdyn, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
+    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
         super().__init__()
 
         # Number of parameters
         self.NbParams = 10
         # Initialize best fit parameters for each body
-        self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2 = [np.zeros(NbBodies) for _ in range(self.NbParams)]
+        self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2 = [np.zeros(NbBodies) for _ in range(self.NbParams)]
 
         # Store input parameters
-        self.Params = [P, a, e, i, w, W, tp, m, Mdyn, Chi2]
+        self.Params = [P, a, e, i, w, W, tp, m, m0, Chi2]
 
         # Find best fit parameters for each body
         for j in range(NbBodies):
             self.BestChi2[j] = np.min(Chi2[j])
             IndexBestChi2 = list(Chi2[j]).index(self.BestChi2[j])  # Adjust index calculation
             self.BestChi2[j] = self.BestChi2[j] / NbInputData # Reduced Chi2
-            self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.BestMdyn[j] = [param[j][IndexBestChi2] for param in self.Params[:-1]]
+            self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.Bestm0[j] = [param[j][IndexBestChi2] for param in self.Params[:-1]]
 
-        self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2]
+        self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2]
 
         # Widget container
         self.Widget = QWidget()
@@ -39,7 +39,7 @@ class BestOrbitsClass(QWidget):
         TblBestFit.setStatusTip('Orbits parameters corresponding to the best Chi2 fit')
         TblBestFit.setRowCount(NbBodies)
         TblBestFit.setColumnCount(self.NbParams)
-        self.LabelParams = ['P [yr]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]', 'm [Mjup]', 'Mdyn [Msun]', 'Chi2']
+        self.LabelParams = ['P [yr]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]', 'm [Mjup]', 'm0 [Msun]', 'Chi2']
         TblBestFit.setHorizontalHeaderLabels(self.LabelParams)
 
         # Disable selection

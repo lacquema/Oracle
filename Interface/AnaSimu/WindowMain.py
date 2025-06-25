@@ -102,13 +102,13 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)  # Application creation
 
     # Simu = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2_Ab1_fit/ggtau_Ab2_Ab1_fit_1/solggtauAb12.dat'
-    SimuPath = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2Aa_Ab1_fit/ggtau_Ab2Aa_Ab1_fit_Herve_3f/solggtaua_3f.dat'
+    SimuPath = '/Users/lacquema/Simulations/ggtau/ggtau_Ab2Aa_Ab1_fit/ggtau_Ab2Aa_Ab1_fit_Herve_3e/solggtaua_3e.dat'
     SimuName = SimuPath.split('/')[-1]
     # PathInputData = Simu + 'ggtau_Ab12_hci.dat'
     # PathOutputData = Simu + 'solggtauAb12.dat'
     # PathInputData = Simu + 'ggtau_data.txt'
     # PathOutputData = Simu + 'solggtaua_3f.dat'
-    InputData, OutputParams = TransfertSimu(SimuPath)
+    InputData, OutputParams = TransfertSimu(SimuPath, 2)
     SystDist = 145
 
     WindowMain = WindowMainClass(SimuName, InputData, OutputParams, NbSelectOrbits=10000, SystDist=SystDist)  # Main window showing

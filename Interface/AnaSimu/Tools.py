@@ -54,16 +54,16 @@ class GeneralToolClass(QWidget):
         self.InputData = InputData
 
         if OutputParams is not None:
-            (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.Mdyn, self.Chi2, self.map) = OutputParams
+            (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m_ctr, self.Chi2, self.map) = OutputParams
 
         if SelectOrbitsParams is not None:
-            (self.NbBodies, self.NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.SelectMdyn, self.SelectChi2) = SelectOrbitsParams
+            (self.NbBodies, self.NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
 
         if SelectOrbitsEllipses is not None:
             (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa) = SelectOrbitsEllipses
 
         if BestOrbitsParams is not None:
-            (self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.BestMdyn, self.BestChi2) = BestOrbitsParams
+            (self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitsParams
 
         if BestOrbitsEllipses is not None:
             (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa) = BestOrbitsEllipses
@@ -121,7 +121,7 @@ class GeneralToolClass(QWidget):
             'W': 'Longitude of ascending node',
             'tp': 'Periastron time passage',
             'm': 'Body mass',
-            'Mdyn': 'Dynamical mass',
+            'm0': 'Central body mass',
             'Chi2': 'Chi square'
         }
         return labels.get(var, 'Unknown variable')
@@ -137,7 +137,7 @@ class GeneralToolClass(QWidget):
             'W': '[°]',
             'tp': '[MJD]',
             'm': '[Mjup]',
-            'Mdyn': '[Mjup]',
+            'm0': '[Mjup]',
             'Chi2': ''
         }
         return units.get(var, 'Unknown variable')
@@ -147,7 +147,7 @@ class GeneralToolClass(QWidget):
         # print(formula)
         for num in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
             formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]') # Replace [n] by [n-1]
-        for param in ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'Mdyn']:
+        for param in ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'm0']:
             formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbitDefault}]', formula) # Add [nOrbitDefault] to the parameter
             formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula) # Replace the parameter by its value
         for param in ['i', 'w', 'W']:
@@ -587,7 +587,7 @@ class Conv(GeneralToolClass):
         self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # Orbit parameters
-        self.ParamOrbitWidget = ComboBox('Variable', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2'])
+        self.ParamOrbitWidget = ComboBox('Variable', 'Orbit Parameter', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
         self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -633,7 +633,7 @@ class Hist(GeneralToolClass):
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
 
         # Orbit parameters
-        self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'irel', 'other'])
+        self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'irel', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
         self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -648,7 +648,7 @@ class Hist(GeneralToolClass):
         self.IrelWidget.setVisible(False)
 
         # TextEdit for general formula
-        self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
         self.FormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.FormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.FormulaTextEdit)
@@ -811,7 +811,7 @@ class Hist2D(GeneralToolClass):
         """Initialize parameters for the 2D Histogram tool."""
 
         # Abscissa orbit parameters
-        self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
+        self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
         self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -824,14 +824,14 @@ class Hist2D(GeneralToolClass):
         #     self.XnBodyWidget.setEnabled(False)
 
         # TextEdit for general x formula
-        self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
         self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.XFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XFormulaTextEdit)
         self.XFormulaTextEdit.EditParam.textChanged.connect(self.reset_plots)
 
         # Ordinate orbit parameters
-        self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn', 'Chi2', 'other'])
+        self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'other'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
         self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -843,7 +843,7 @@ class Hist2D(GeneralToolClass):
         #     self.YnBodyWidget.setEnabled(False)
 
         # TextEdit for general y formula
-        self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, Mdyn, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
         self.YFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.YFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YFormulaTextEdit)
@@ -975,8 +975,8 @@ class Corner(GeneralToolClass):
         self.ParamCheckLayout = QGridLayout()
 
         self.OrbitParams = [
-            ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'Mdyn'],
-            ['Period', 'Semi-major axis', 'Eccentricity', 'Inclination', 'Argument of periastron', 'Longitude of ascending node', 'Periastron time passage', 'Body mass', 'Dynamical mass']
+            ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0'],
+            ['Period', 'Semi-major axis', 'Eccentricity', 'Inclination', 'Argument of periastron', 'Longitude of ascending node', 'Periastron time passage', 'Body mass', 'Central body mass']
         ]
         self.WidgetOrbitParams = []
 

@@ -105,7 +105,13 @@ class WindowSetAnaSimu(WindowWithFinder):
         self.SystDistUnitW = ComboBox(None, 'Unit', ['pc', 'mas'])
         self.SystDistW.Layout.addWidget(self.SystDistUnitW, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.SimuFilePathW.EditParam.textChanged.connect(self.SystDistVisible)
+        self.UnivYNW = CheckBox('Universal variable', 'Check if the simulation is in the universal variable')
+        self.Layout.addWidget(self.UnivYNW)
+        self.UnivYNW.setVisible(False)
+
+        self.SimuFilePathW.EditParam.textChanged.connect(self.HeaderOptionsVisible)
+
+
 
         # self.HeaderCheck(self.CheckHeader.CheckParam.isChecked())
 
@@ -132,14 +138,17 @@ class WindowSetAnaSimu(WindowWithFinder):
         # self.DataFileNameW.EditParam.textChanged.connect(self.EnableBtnStartOrNot)
         # self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
 
-    def SystDistVisible(self):
+    def HeaderOptionsVisible(self):
         try:
             if HeaderDataIn(self.SimuFilePathW.EditParam.text()):
                 self.SystDistW.setVisible(False)
+                self.UnivYNW.setVisible(False)
             else:
                 self.SystDistW.setVisible(True)
+                self.UnivYNW.setVisible(True)
         except:
             self.SystDistW.setVisible(False)
+            self.UnivYNW.setVisible(False)
 
     # def HeaderCheck(self, state):
     #     self.Header = state
@@ -200,9 +209,13 @@ class WindowSetAnaSimu(WindowWithFinder):
 
 
     def OpenWinMain(self):
+        if self.UnivYNW.CheckParam.isChecked():
+            self.UnivYN = 2
+        else:
+            self.UnivYN = 1
         PathSimu = self.SimuFilePathW.EditParam.text()
         SimuName = PathSimu.split('/')[-1]
-        InputData, OutputParams = TransfertSimu(PathSimu)
+        InputData, OutputParams = TransfertSimu(PathSimu, self.UnivYN)
         if InputData != None:
             self.SystDistValue = InputData['SystDist']['pc']
         else:
