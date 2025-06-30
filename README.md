@@ -9,18 +9,8 @@
 - [Installation on computing server](#install_on_server)
 
 - [Simulation](#simulation)
-    - [Choice of integrator](#integrator)
-    - [Generation of sub-simulations](#generation)
-    - [Launch](#launch)
-    - [Continuation](#continuation)
-    - [Extraction](#extraction)
 
 - [Analyse](#analyse)
-    - [Space view](#space_view)
-    - [Radial profile](#radial_profile)
-    - [Diagram a=f(e)](#diagram_ae)
-    - [Diagram y=f(t)](#diagram_yt)
-    - [Diagram y=f(x)](#diagram_yx)
     
 
 <br><br>
