@@ -69,7 +69,7 @@ class WindowMenuClass(QMainWindow):
     def init_status_bar(self):
         """Initialise la barre de statut avec les crédits."""
         status_bar = QStatusBar(self)
-        status_bar.addWidget(QLabel(" Version 1.0, 2024, IPAG, Hervé Beust, Antoine Lacquement"))
+        status_bar.addWidget(QLabel(" Version 1.0, 2025, IPAG, Hervé Beust, Antoine Lacquement"))
         self.setStatusBar(status_bar)
 
 

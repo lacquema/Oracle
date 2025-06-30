@@ -127,7 +127,7 @@ class WindowSetAnaSimu(WindowWithFinder):
         # self.NbPtsEllipse = SpinBox('Points by ellipse', 'Number of points by computed ellipse', 500, 1, None, 1)
         # self.Layout.addWidget(self.NbPtsEllipse, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.BtnStart = QPushButton('Analyse')
+        self.BtnStart = QPushButton('Analyse the simulation')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
         self.BtnStart.clicked.connect(self.AnalyseSimu)
 

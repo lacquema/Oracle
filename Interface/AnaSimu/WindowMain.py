@@ -26,6 +26,7 @@ class WindowMainClass(QMainWindow):
 
         # Window settings
         self.setWindowTitle(f'Oracle analysis of {SimuName}')
+        # self.setWindowTitle(f'Oracle analysis of ...')
 
         # Move the window to the top-left of the active screen (where the mouse is)
         mouse_pos = QCursor.pos()

@@ -84,6 +84,7 @@ class BestOrbitsClass(QWidget):
                     value = "/"
                 else:
                     value = '{}'.format(np.around(self.BestParams[k+1][j], 3))
+                # value = '...'
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Center align text
                 TblBestFit.setItem(j, k, item)
