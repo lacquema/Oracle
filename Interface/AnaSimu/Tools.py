@@ -151,8 +151,8 @@ class GeneralToolClass(QWidget):
             formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbitDefault}]', formula) # Add [nOrbitDefault] to the parameter
             formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula) # Replace the parameter by its value
         for param in ['i', 'w', 'W']:
-            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'np.radians({param}[{nOrbitDefault}])', formula) # Convert to radians and add [nOrbitDefault]
-            formula = re.sub(r'\b' + param + r'\b', f'np.radians({prefixe}{param})', formula) # Convert to radians and replace the parameter by its value
+            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbitDefault}]', formula) # add [nOrbitDefault]
+            formula = re.sub(rf'\b{param}\[(\d+)\]', rf'np.radians({prefixe}{param}[\1])', formula)
         for fonction in ['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'arctan2', 'hypot', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p', 'sqrt', 'square', 'cbrt', 'power', 'erf', 'erfc', 'gamma', 'lgamma', 'digamma', 'beta']:
             formula = re.sub(r'\b' + fonction + r'\b', f'np.{fonction}', formula) # Replace the function by its numpy equivalent
         # Convert the result to degrees if it is an angle in radians
@@ -163,11 +163,11 @@ class GeneralToolClass(QWidget):
     
     def evaluate_formula(self, formula, prefix, nOrbitDefault):
         """Evaluate a formula."""
-        # print(formula)
+        print(formula)
         if not formula:
             return None
         formula = self.replace_params_in_formula(formula, prefix, nOrbitDefault)
-        # print(formula)
+        print(formula)
         try:
             return eval(formula)
         except Exception as e:
