@@ -689,12 +689,12 @@ class Hist(GeneralToolClass):
         self.PercentLbl.setEnabled(self.CheckMedian.CheckParam.isChecked())
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.PercentLbl.setEnabled(state))
 
-    def ToggleFormulaTextEdit(self):
-        """Toggle the visibility of the formula text edit based on the ComboBox selection."""
-        if self.ParamOrbitWidget.ComboParam.currentIndex() == self.ParamOrbitWidget.ComboParam.count() - 1:
-            self.FormulaTextEdit.setVisible(True)
-        else:
-            self.FormulaTextEdit.setVisible(False)
+    # def ToggleFormulaTextEdit(self):
+    #     """Toggle the visibility of the formula text edit based on the ComboBox selection."""
+    #     if self.ParamOrbitWidget.ComboParam.currentIndex() == self.ParamOrbitWidget.ComboParam.count() - 1:
+    #         self.FormulaTextEdit.setVisible(True)
+    #     else:
+    #         self.FormulaTextEdit.setVisible(False)
             
     def evaluate_ParamOrbit(self, prefixe):
         """Evaluate the parameter orbit based on the current widget values."""
@@ -907,7 +907,10 @@ class Hist2D(GeneralToolClass):
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
 
         # Check if the parameters are valid for plotting
-        if self.EvalXParamOrbit is None or self.EvalXParamOrbit is None or np.var(self.EvalXParamOrbit) == 0 or np.var(self.EvalYParamOrbit) == 0 or self.EvalXParamOrbit[0] == float('inf') or self.EvalYParamOrbit[0] == float('inf'):
+        if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None: 
+            self.Subplot.figure.canvas.draw()
+            return
+        if np.var(self.EvalXParamOrbit) == 0 or np.var(self.EvalYParamOrbit) == 0 or self.EvalXParamOrbit[0] == float('inf') or self.EvalYParamOrbit[0] == float('inf'):
             self.Subplot.figure.canvas.draw()
             return
         
@@ -918,11 +921,6 @@ class Hist2D(GeneralToolClass):
         ylim = self.WidgetPlot.history[self.WidgetPlot.history_index]['ylim'] if len(self.WidgetPlot.history) != 0 else ylim_init
 
         range = (xlim, ylim)
-
-        # Plot with current parameters
-        if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None:
-            self.WindowPlot.WidgetPlots[0].Canvas.draw()
-            return
 
         hist = self.Subplot.hist2d(self.EvalXParamOrbit, self.EvalYParamOrbit, (self.NbBins, self.NbBins), range)
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
