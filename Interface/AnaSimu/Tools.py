@@ -733,7 +733,10 @@ class Hist(GeneralToolClass):
         self.try_UpdateParams(self.WidgetPlot)
 
         # Check if the parameters are valid for plotting
-        if self.EvalParamOrbit is None or np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
+        if self.EvalParamOrbit is None:
+            self.Subplot.figure.canvas.draw()
+            return
+        if np.var(self.EvalParamOrbit) == 0 or self.EvalParamOrbit[0] == float('inf'):
             print('No data to plot or variance is zero.')
             self.Subplot.figure.canvas.draw()
             return
