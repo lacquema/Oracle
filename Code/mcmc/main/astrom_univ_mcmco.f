@@ -37,6 +37,9 @@ c                                                #3 = data
         INTEGER*4 ::         CNEW
         LOGICAL ::          OK,NEW
 
+      !   write(*,*)FILES(1)
+
+
         CALL INIT_SIMU(CNEW,NMOD,FILES,NEW)
         
         IF (CNEW.EQ.5) THEN
@@ -127,7 +130,8 @@ c...  Store CHi2 and MAP in additional variables
              CALL WRITE_DISTRIB(NMOD,FILES(1))
           ELSE
              CALL WRITE_DISTRIB_DOUBLING(NMOD,FILES(1))
-          END IF          
+          END IF  
+
         ELSE
           CALL DISPLAY_SOLUTION(METHOD)
         END IF

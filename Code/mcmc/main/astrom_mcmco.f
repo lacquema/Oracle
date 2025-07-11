@@ -45,6 +45,8 @@ c                                                #3 = data
         ALLOCATE(COV(NPAR,NPAR))  
        
         CALL INIT_DATA(NPAR,P,COV,FILES,NEW)
+
+      !   write(*,*)'output file',FILES(1)
         
         IF (NEW) THEN           
            COV = 0.d0
