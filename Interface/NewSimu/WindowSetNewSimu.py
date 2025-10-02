@@ -87,7 +87,7 @@ class WindowSetNewSimu(WindowWithFinder):
             self.TabSimuSet.CheckMCMC.stateChanged.connect(self.StartBtnAvailableOrNot)
         elif IdTab=='TabSimuSets':
             self.TabDataSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabDataSet'))
-            self.TabDataSet.RelRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
+            # self.TabDataSet.RelRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
             self.TabDataSet.AbsRV.CheckParam.stateChanged.connect(self.EnableOrNotPriorJitter)
         elif IdTab=='TabPriorSet':
             self.TabPriorSet.BtnReset.clicked.connect(lambda: self.InitInterTabConnect('TabPriorSet'))
@@ -224,7 +224,7 @@ class WindowSetNewSimu(WindowWithFinder):
             else: file.write(' 0')
             file.write(' # Format data (1=DDMMYYYY/2=JD 1=(DEC,RA)/2=(SEP,PA) CorrCoeff?')
             file.write('\n')
-            if self.TabDataSet.RelRV.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked():
+            if self.TabDataSet.AbsRV.CheckParam.isChecked():
                 if self.TabPriorSet.CheckJitter.CheckParam.isChecked(): 
                     file.write('1')
                 else: 
@@ -301,9 +301,9 @@ class WindowSetNewSimu(WindowWithFinder):
                             file.write(' ms')
                     file.write(' ')
                 if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): 
-                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                
+                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] a[AU] e i[deg] om[deg] Om[deg] tp[MJD])')                
                 else: 
-                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] q[AU] e i[deg] Om[deg] om[deg] tp[MJD])')
+                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] q[AU] e i[deg] om[deg] Om[deg] tp[MJD])')
                 file.write('\n')
             if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked():
                 file.write(self.TabPriorSet.PMin.SpinParam.text()+' '+self.TabPriorSet.PMax.SpinParam.text())
