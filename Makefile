@@ -20,42 +20,49 @@ LIB_DIR = $(CODE_DIR)/lib
 BIN_DIR = $(CODE_DIR)/bin
 MCMC_DIR = $(CODE_DIR)/mcmc
 
-ALG_DIR = $(MCMC_DIR)/main
+MAIN_DIR = $(MCMC_DIR)/main
 SUB_DIR = $(MCMC_DIR)/sub
 
 # Parallelization option 
 ifeq ($(PARALLEL),NO)
-LIB = $(LIB_DIR)/lib_mcmc.a
+LIB = mcmc
 else
 LIB_FLAGS += -fopenmp
 ALG_FLAGS += -fopenmp
-LIB = $(LIB_DIR)/lib_mcmc_par.a
+LIB = mcmc_par
 endif
 
 # Utilities
 library_for:
-	test ! -f $(LIB) || rm $(LIB)
+	test ! -f $(LIB_DIR)/lib$(LIB).a || rm $(LIB_DIR)/lib$(LIB).a
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/utils.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mcmc.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mrqfit.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/io.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/kepellip.f
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/kepu.f
-	ar -rv $(LIB) *.o
+	ar -rcsv $(LIB_DIR)/lib$(LIB).a *.o
 	rm *.o
 
 library_py:
 	$(PYTHON3) -m pip install -r $(DIR)/requirements.txt
 
-
 # Algorithms
+# astrom_mcmco:
+# 	test ! -f $(BIN_DIR)/$@ || rm $(BIN_DIR)/$@
+# 	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(MAIN_DIR)/$@.f -L$(LIB_DIR) -l$(LIB) -o $(BIN_DIR)/$@
+
+# astrom_mcmco_par:
+# 	test ! -f $(BIN_DIR)/$@ || rm $(BIN_DIR)/$@
+# 	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(MAIN_DIR)/$@.f -L$(LIB_DIR) -l$(LIB) -o $(BIN_DIR)/$@
+
 astrom_%:
 ifeq ($(PARALLEL),NO)
 	test ! -f $(BIN_DIR)/$@ || rm $(BIN_DIR)/$@
-	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(ALG_DIR)/$@.f $(LIB) -o $(BIN_DIR)/$@
+	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(MAIN_DIR)/$@.f -L$(LIB_DIR) -l$(LIB) -o $(BIN_DIR)/$@
 else
 	test ! -f $(BIN_DIR)/$@_par || rm $(BIN_DIR)/$@_par
-	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(ALG_DIR)/$@.f $(LIB) -o $(BIN_DIR)/$@_par
+	$(COMPILF) $(ALG_FLAGS) $(ADD_FLAGS) $(MAIN_DIR)/$@.f -L$(LIB_DIR) -l$(LIB) -o $(BIN_DIR)/$@_par
 endif
 
 compile:

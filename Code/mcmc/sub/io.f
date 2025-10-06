@@ -317,7 +317,8 @@ c... Central mass
            IF (CNEW.LT.5) THEN
               WRITE(SD,*)'Name of output file ?'
               READ(5,'(a)')FILES(1)
-              FILES(1) = TRIM(FILES(1))//'.dat'
+            !   FILES(1) = TRIM(FILES(1))//'.dat'
+              FILES(1) = TRIM(FILES(1))
               WRITE(SD,*)'Name of dump file ?'
               READ(5,'(a)')FILES(2)
               WRITE(SD,*)'Dump frequency ?'
