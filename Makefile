@@ -43,9 +43,9 @@ library_for:
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/mrqfit.f 
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/io.f 
 ifeq ($(UNIV),YES)
-	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/kepellip.f
-else
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/kepu.f
+else
+	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/kepellip.f
 endif	
 	ar -rcsv $(LIB_DIR)/lib$(LIB).a *.o
 	rm *.o
