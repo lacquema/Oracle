@@ -9,7 +9,7 @@ C...  To be included into the module 'DATA' in every version
         INTEGER*8, PARAMETER :: NDIAG = 500000_8
         INTEGER*8, PARAMETER :: SD0 = 6
         INTEGER*8, PARAMETER :: SDL = 35
-        INTEGER*4, PARAMETER :: SD = SDL   ! ou SD0
+        INTEGER*4, PARAMETER :: SD = SD0   ! ou SD0
         INTEGER*8, PARAMETER :: VERBFREQ = 100000_8  ! ou 1000_8
         INTEGER*8, PARAMETER :: WRITFREQ = 10000000_8
         REAL*8, PARAMETER :: BETAMAX = 1.d10

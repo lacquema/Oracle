@@ -36,6 +36,14 @@ ifeq ($(PAR),YES)
 endif
 
 # Utilities
+mod: 
+	test ! -f $(SUB_DIR)/data.mod || rm $(SUB_DIR)/data.mod
+	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(SUB_DIR)
+	test ! -f $(MAIN_DIR)/data.mod || rm $(MAIN_DIR)/data.mod
+	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(MAIN_DIR)
+	test ! -f $(MAIN_DIR)/data.mod || rm $(DIR)/data.mod
+	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(DIR)
+
 library_for:
 	test ! -f $(LIB_DIR)/lib$(LIB).a || rm $(LIB_DIR)/lib$(LIB).a
 	$(COMPILF) $(LIB_FLAGS) $(ADD_FLAGS) $(SUB_DIR)/utils.f 
@@ -72,6 +80,7 @@ else
 endif
 
 compile:
+	make mod
 	make library_for
 	make library_for UNIV=YES
 	make library_for PAR=YES
