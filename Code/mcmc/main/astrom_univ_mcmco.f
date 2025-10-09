@@ -16,7 +16,6 @@ c-------------------------------------------------------------------------
         IMPLICIT NONE
 
         INTEGER*4        I,DKAL,mm,yy,
-     &       METHOD / 2 / ,     ! Identification of the code 
      &       NMOD               ! Nombre de modeles
         REAL*8, DIMENSION(:), ALLOCATABLE :: P ! Parameters
         REAL*8, DIMENSION(:,:), ALLOCATABLE :: COV ! Covariance matrix
@@ -37,9 +36,7 @@ c                                                #3 = data
         INTEGER*4 ::         CNEW
         LOGICAL ::          OK,NEW
 
-      !   write(*,*)FILES(1)
-
-
+        METHOD = 2
         CALL INIT_SIMU(CNEW,NMOD,FILES,NEW)
         
         IF (CNEW.EQ.5) THEN
@@ -130,10 +127,9 @@ c...  Store CHi2 and MAP in additional variables
              CALL WRITE_DISTRIB(NMOD,FILES(1))
           ELSE
              CALL WRITE_DISTRIB_DOUBLING(NMOD,FILES(1))
-          END IF  
-
+          END IF          
         ELSE
-          CALL DISPLAY_SOLUTION(METHOD)
+          CALL DISPLAY_SOLUTION()
         END IF
        
         CALL UTIL_EXIT()

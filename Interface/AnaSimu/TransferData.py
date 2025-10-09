@@ -223,6 +223,9 @@ def TransfertSimu(PathOutputData, UnivYN):
 
         a, P, e, w, i, W, tp, m, m0, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(11)]
 
+        print(m)
+        print(np.var(m))
+
         for j in range(NbBodies):
             a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
 
@@ -231,10 +234,7 @@ def TransfertSimu(PathOutputData, UnivYN):
         i = np.rad2deg(i)
         w = np.rad2deg(w+np.pi)
         W = np.rad2deg(W+np.pi)
-        # tp = jd_to_mjd(tp)
-
-        if UnivYN == 1:
-            tp = jd_to_mjd(tp)
+        if np.mean(tp) > 2400000.5: tp = jd_to_mjd(tp)
 
         if UnivYN == 2:
             a = a/(1-e)

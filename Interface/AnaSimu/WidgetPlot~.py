@@ -39,8 +39,6 @@ class WidgetPlot(QWidget):
         """
         super().__init__()
 
-        QApplication.instance().installEventFilter(self) # interception of events
-
         # Layout
         self.Layout = QVBoxLayout()
 
@@ -90,41 +88,12 @@ class WidgetPlot(QWidget):
         self.Toolbar._actions['pan'].triggered.connect(self.auto_refresh_after_pan_or_zoom)
         self.Toolbar._actions['zoom'].triggered.connect(self.auto_refresh_after_pan_or_zoom)
 
+        # Flags to track events
+        self.button_release_event_triggered = False
+
         # Connect events
         self.draw_event = self.Canvas.mpl_connect('draw_event', self.on_draw_event)
         self.Canvas.mpl_connect('button_release_event', self.on_button_release_event)
-
-    # def eventFilter(self, obj, event):
-    #     # Detect opening of a main window titled "Figure options"
-    #     if (
-    #         self.isVisible()
-    #         and event.type() == QEvent.Type.Show
-    #         and hasattr(obj, "isWindow")
-    #         and obj.isWindow()
-    #         and obj.windowTitle() == 'Figure options'
-    #     ):
-    #         # Connect closeEvent signal to handler
-    #         print('Figure options opened')
-    #         obj.closeEvent.connect(self.on_close_figure_options)
-    #     return super().eventFilter(obj, event)
-
-    def eventFilter(self, obj, event):
-        """
-        Filter events to detect the opening and closing of the 'Figure options' window.
-        """
-        if (
-            self.isVisible()
-            and hasattr(obj, "isWindow")
-            and obj.isWindow()
-            and obj.windowTitle() == 'Figure options'
-        ):
-            # if event.type() == QEvent.Type.Show:
-            #     # print('Figure options opened')
-            if event.type() == QEvent.Type.Close:
-                # print('Figure options closed')
-                self.on_close_figure_options()
-        return super().eventFilter(obj, event)
-
 
     def auto_refresh_after_pan_or_zoom(self):
         """
@@ -186,6 +155,7 @@ class WidgetPlot(QWidget):
         """
         if self.detect_plot_labels_change():
             self.save_plot_labels()
+        self.update_toolbar_buttons()
 
 
     def on_button_release_event(self, event):
@@ -195,17 +165,7 @@ class WidgetPlot(QWidget):
         """        
         if self.detect_plot_state_change():
             self.save_plot_state()
-
-    def on_close_figure_options(self):
-        """
-        Handle the closing of the 'Figure options' window.
-        This method is connected to the destroyed signal of the 'Figure options' window.
-        """
-        if self.detect_plot_labels_change():
-            self.save_plot_labels()
-        if self.detect_plot_state_change():
-            self.save_plot_state()
-            self.refresh_plot()
+            self.update_toolbar_buttons()
 
     def look_plot_labels(self):
         ax = self.Canvas.fig.axes[0]
@@ -377,6 +337,11 @@ class WidgetPlot(QWidget):
         """
         for i in range(10):
             self.Canvas.fig.tight_layout()
+
+    def define_closeEvent_figure_options(self, event):
+        for widget in QApplication.instance().allWidgets():
+            if widget.isWindow() and widget.windowTitle() == 'Figure options':
+                widget.destroyed.connect(lambda: print('figure options closed'))
 
     def close_figure_options(self):
         """

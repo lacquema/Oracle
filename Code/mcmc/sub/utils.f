@@ -415,3 +415,23 @@ C
         CLOSE(SDL)
 
         END
+
+C
+C-----------------------------------------------------------------------------
+C    Converts logical to integer
+C-----------------------------------------------------------------------------
+C
+
+        INTEGER FUNCTION LOG_TO_INT(L)
+
+        IMPLICIT NONE
+
+        LOGICAL ::  L 
+
+        IF (L) THEN
+           LOG_TO_INT = 1
+        ELSE
+           LOG_TO_INT = 0
+        END IF
+
+        END

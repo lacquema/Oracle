@@ -224,11 +224,11 @@ c.......
               NGEL = 100_8
               COUNTOK = 0
            ELSE
-              IF (COUNTOK.LT.10) THEN
-                 NGEL = NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP
-              ELSE
+c              IF (COUNTOK.LT.10) THEN
+c                 NGEL = NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP
+c              ELSE
                  NGEL = MIN(NGROUP,NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP)
-              END IF
+c              END IF
               COUNTOK = COUNTOK+1
               WRITE(SD,*)'countok = ',countok
            END IF

@@ -31,6 +31,9 @@ class WindowSetAnaSimu(WindowWithFinder):
     def __init__(self):
         super().__init__()
 
+        # File to save the last path used
+        self.last_path_file = os.path.join(os.path.dirname(__file__), '.last_path')
+
         # Window characteristics
         self.setWindowTitle('Settings of the analysis')
         self.setMinimumWidth(1000)
@@ -47,24 +50,28 @@ class WindowSetAnaSimu(WindowWithFinder):
         
         self.InitWidgets()
 
+        # Pré-remplir le champ avec le dernier chemin utilisé si dispo
+        last_path = self.load_last_path()
+        if last_path:
+            # print(f'\nLast path used: {last_path}')
+            self.SimuFilePathW.EditParam.setText(last_path)
+            # self.check_change_path(file_path=last_path)
+
         # Widget Container
         self.Container = QWidget()
         self.Container.setLayout(self.Layout)
-
-        # # Container
-        # self.setCentralWidget(self.Container)
 
         # Add container to the split main window
         self.Splitter.addWidget(self.Container)
 
         # Connect folder to edit path
-        self.Finder.doubleClicked.connect(self.ChangePath)
+        self.Finder.doubleClicked.connect(self.check_change_path)
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
 
     
-    def ChangePath(self):
+    def check_change_path(self):
         index = self.Finder.selectedIndexes()[0]
         info = self.Model.fileInfo(index)
         if info.isDir():
@@ -77,6 +84,22 @@ class WindowSetAnaSimu(WindowWithFinder):
             else:
                 print('\nSelected file is not valid')
                 self.ClearEdits()
+
+    def save_last_path(self, path):
+        try:
+            with open(self.last_path_file, "w", encoding="utf-8") as f:
+                f.write(path)
+        except Exception as e:
+            print(f"Erreur lors de la sauvegarde du chemin : {e}")
+
+    def load_last_path(self):
+        try:
+            if os.path.exists(self.last_path_file):
+                with open(self.last_path_file, "r", encoding="utf-8") as f:
+                    return f.read().strip()
+        except Exception as e:
+            print(f"Erreur lors du chargement du chemin : {e}")
+        return ""
 
     def is_valid_file(self, file_path):
         # Add logic to validate the file (e.g., check extension, content, etc.)
@@ -204,6 +227,7 @@ class WindowSetAnaSimu(WindowWithFinder):
         else:
             try:
                 self.OpenWinMain()
+                self.save_last_path(self.SimuFilePathW.EditParam.text())
             except Exception as e:
                 print(f'\nThere is a problem with inputs: {e}')
 

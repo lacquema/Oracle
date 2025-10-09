@@ -3,15 +3,14 @@ C...  Definition of constants and structures common to all versions of the code.
 C...  To be included into the module 'DATA' in every version 
 
         INTEGER*4, PARAMETER :: NDATATYP = 4 ! # of data types
-        INTEGER*4, PARAMETER :: NDATMAX = 100
         INTEGER*4, PARAMETER :: NCH = 8 ! Nombre de chaines
         INTEGER*4, PARAMETER :: NINFER = 50000
         INTEGER*4, PARAMETER :: NMAX = NINFER*NCH
         INTEGER*8, PARAMETER :: NDIAG = 500000_8
         INTEGER*8, PARAMETER :: SD0 = 6
         INTEGER*8, PARAMETER :: SDL = 35
-        INTEGER*4, PARAMETER :: SD = SD0
-        INTEGER*8, PARAMETER :: VERBFREQ = 1000_8
+        INTEGER*4, PARAMETER :: SD = SDL   ! ou SD0
+        INTEGER*8, PARAMETER :: VERBFREQ = 100000_8  ! ou 1000_8
         INTEGER*8, PARAMETER :: WRITFREQ = 10000000_8
         REAL*8, PARAMETER :: BETAMAX = 1.d10
         REAL*8, PARAMETER :: PI = 3.14159265358979323846d0     
@@ -67,6 +66,7 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
           REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                      TVR,V,SIGV,SIGV2,SIGVM2 ! Pl. RV data
           REAL*8 ::  MU,DMU,        ! mass = m_i
+     &               MUNIT,         ! Unit mass (Solar or Jovian)
      &               MDYN,DMDYN,    ! Dynamical mass = sum(m_j,j=0..i)
      &               A,DA,          ! Semi-major axis                    
      &               Q,DQ,          ! Periastron
@@ -97,12 +97,12 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
         
         TYPE PRIOR             ! Priors for masses 
           INTEGER*4 :: TYP     ! Type of prior : 0 = logarithmic (default)
-c    1 = Gaussian, 2 = Gauss-Normal, 3 = linear, 4 = fixed, 5 = sin        
-c    6 = haeviside
+!c    1 = Gaussian, 2 = Gauss-Normal, 3 = linear, 4 = fixed, 5 = sin        
+!c    6 = haeviside
           REAL*8, DIMENSION(2) :: BOUND ! Bounds
-          REAL*8 :: MEAN,SDEV           ! Mean & Standard deviation
+          REAL*8 :: MUNIT,MEAN,SDEV     ! Mass unit, mean & standard deviation
           REAL*8, DIMENSION(:), ALLOCATABLE :: ACOF,BCOF
-c           Prior on sum(acof(i)*m(i))=sum(bcof(i)*mdyn(i))  
+!c           Prior on sum(acof(i)*m(i))=sum(bcof(i)*mdyn(i))  
         END TYPE PRIOR
                 
         TYPE(PLANET), DIMENSION(:), ALLOCATABLE :: PLA
@@ -120,4 +120,5 @@ c           Prior on sum(acof(i)*m(i))=sum(bcof(i)*mdyn(i))
         INTEGER*4 :: XYFORMAT  ! 1 = (DEC,RA), 2 = (SEP,PA)
         INTEGER*4 :: CORRNUM   ! 1 = Correlation XY, 0 = no
         LOGICAL :: CORR        ! True if correlation
-        
+        INTEGER*4 :: METHOD     ! 1 = classical / 2 = universal variables
+!
