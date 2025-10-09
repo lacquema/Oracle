@@ -100,5 +100,3 @@ clean:
 cleanall: 
 	clean
 	rm *.a
-
-
