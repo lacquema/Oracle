@@ -186,7 +186,7 @@ class GeneralToolClass(QWidget):
             self.UpdateParams()
         except Exception as e:
             print('Wrong Parameters: ', e)
-            WidgetPlot.Canvas.draw()
+            WidgetPlot.Canvas.fig.draw()
     
 
 class SpaceView(GeneralToolClass):

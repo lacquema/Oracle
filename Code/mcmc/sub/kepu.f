@@ -647,9 +647,9 @@ c...        Note use of jitter (=0 if no jitter)
                  DO K = 1,PLA(I)%NDATVR
                     CALL VFITSP(I,PLA(I)%TVR(K),GM,QQ,NN,AMPX,AMPY,
      &                              AMX(I),AMY(I),EXC,TP,VRAD)
+                    DV = PLA(I)%V(K)-VRAD
+                    CHI2 = CHI2 + DV*DV*PLA(I)%SIGVM2(K)
                  END DO
-                 DV = PLA(I)%V(K)-VRAD
-                 CHI2 = CHI2 + DV*DV*PLA(I)%SIGVM2(K)
               END DO           
            END IF
         END IF

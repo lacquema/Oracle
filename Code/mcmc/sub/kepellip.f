@@ -305,9 +305,9 @@ c...        Note use of jitter (=0 if no jitter)
                  DO K = 1,PLA(I)%NDATVR
                     CALL VFITSP(I,PLA(I)%TVR(K),NN,AMPS,AMPC,
      &                              AMS(I),AMC(I),EXC,TP,VRAD)
+                    DV = PLA(I)%V(K)-VRAD
+                    CHI2 = CHI2 + DV*DV*PLA(I)%SIGVM2(K)
                  END DO
-                 DV = PLA(I)%V(K)-VRAD
-                 CHI2 = CHI2 + DV*DV*PLA(I)%SIGVM2(K)
               END DO           
            END IF
         END IF
@@ -614,8 +614,8 @@ C
      &                  V0,             ! Offset velocity
      &                  U,CU,SU        ! Anomalie excentrique
 c
-c     For each planet, AMPS = n*a*sin(i)*mfrac*sin(omega)
-c                      AMPC = -n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
+c     For each planet, AMPS = -n*a*sin(i)*mfrac*sin(omega)
+c                      AMPC = +n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
 c     vrad = V0+sum((amps(i)*sin(u)+ampc(i)*cos(u))/(1-e(i)*cos(u))
         
         VRAD = V0
@@ -654,8 +654,8 @@ C
      &                  V0,             ! Offset velocity
      &                  U,CU,SU         ! Anomalie excentrique
 c
-c     For each planet, AMPS = n*a*sin(i)*mfrac*sin(omega)
-c                      AMPC = -n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
+c     For each planet, AMPS = -n*a*sin(i)*mfrac*sin(omega)
+c                      AMPC = n*a*sin(i)*mfrac*sqrt(1-e^2)*cos(omega)         
 c                AMS, AMC = Same as AMPS,AMPC without mfrac
 c     vrad = -sum((amps(i)*sin(u)+ampc(i)*cos(u))/(1-e(i)*cos(u)),i=1..ipla-1
 c            -ams(ipla)*sin(u)+amc(ipla)*cos(u))/(1-e(ipla)*cos(u)),       

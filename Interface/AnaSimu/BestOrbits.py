@@ -93,9 +93,12 @@ class BestOrbitsClass(QWidget):
         self.Widget.setLayout(Layout)
 
         # Ellipse calculations
-        self.Bestt, self.BestX, self.BestY, self.BestZ, self.BestRa, self.BestDec, self.BestSep, self.BestPa = [np.zeros((NbBodies, NbPtsEllipse)) for _ in range(8)]
+        self.Bestt, self.BestX, self.BestY, self.BestZ, self.BestRa, self.BestDec, self.BestSep, self.BestPa, self.BestRV = [np.zeros((NbBodies, NbPtsEllipse)) for _ in range(9)]
         for j in range(NbBodies):
             self.Bestt[j], self.BestX[j], self.BestY[j], self.BestZ[j] = ut.Ellipse(self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], NbPtsEllipse, Time=True)
+
+            # Radial Velocity
+            self.BestRV[j] = np.gradient(self.BestZ[j], self.Bestt[j]) * 1.495978707e8 / 86400.0 # in km/s
             
             # Conversion to milliarcseconds
             self.BestRa[j] = -self.BestX[j]/StarDist*1000
@@ -105,6 +108,6 @@ class BestOrbitsClass(QWidget):
             # Separation and position angle
             self.BestSep[j] = np.sqrt(self.BestRa[j]**2+self.BestDec[j]**2)
             self.BestPa[j] = np.rad2deg(np.arctan2(self.BestRa[j], self.BestDec[j]))
-        
-        self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa]
+
+        self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV]
 

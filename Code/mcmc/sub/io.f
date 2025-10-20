@@ -35,11 +35,17 @@ c        FORMAT(f6.1,a2,(f))
            READ(5,*)PLA(I)%MU,UNIT,PLA(I)%A,PLA(I)%EXC,PLA(I)%INC,
      &                        PLA(I)%O,PLA(I)%OM,PLA(I)%TP
            CALL UPCASE(UNIT)
-           IF (UNIT.EQ.'MS') PLA(I)%MU = PLA(I)%MU*SMAS
-           IF (UNIT.EQ.'MJ') PLA(I)%MU = PLA(I)%MU*MJUP
+           IF (UNIT.EQ.'MS') PLA(I)%MUNIT = SMAS
+           IF (UNIT.EQ.'MJ') PLA(I)%MUNIT = MJUP
+           PLA(I)%MU = PLA(I)%MU*PLA(I)%MUNIT
            SIGMA = SIGMA+PLA(I)%MU
            PLA(I)%MDYN = SIGMA
-           PLA(I)%Q = PLA(I)%A
+           SELECT CASE (METHOD)
+           CASE(1) ! Elliptic variables
+              PLA(I)%Q = PLA(I)%A*(1.d0-PLA(I)%EXC)
+           CASE(2)              ! Universal variables
+              PLA(I)%Q = PLA(I)%A
+           END SELECT
            NN = SQRT(SIGMA/PLA(I)%A**3)
            PLA(I)%PER = DPI/NN
            IF (PLA(I)%EXC.LT.1.d0) PLA(I)%EXQ = SQRT(1.d0-PLA(I)%EXC**2)
@@ -100,6 +106,7 @@ c        FORMAT((f),a2,(f))
      &           'Enter mean and standard deviation + unit (ms or mj) '
           READ(5,*)MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
           CALL CONVERT_UNIT(UNIT,FAC)
+          MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%MEAN = MPRIOR(IV)%MEAN*FAC ! Convert into the right unit
           MPRIOR(IV)%SDEV = MPRIOR(IV)%SDEV*FAC
         CASE(2)                  ! Log-normal
@@ -107,17 +114,20 @@ c        FORMAT((f),a2,(f))
      &           'Enter mean and standard deviation + unit (ms or mj) '
           READ(5,'(a)')MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
           CALL CONVERT_UNIT(UNIT,FAC)
+          MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%SDEV = MPRIOR(IV)%SDEV/MPRIOR(IV)%MEAN ! ln(1±s/x)~s/x
           MPRIOR(IV)%MEAN = LOG(MPRIOR(IV)%MEAN*FAC)
         CASE(3) ! Linear
           WRITE(SD,*)'Enter bounds + unit (ms or mj) '
           READ(5,'(a)')MPRIOR(IV)%BOUND(1:2),UNIT
           CALL CONVERT_UNIT(UNIT,FAC)
+          MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%BOUND(1:2) = MPRIOR(IV)%BOUND(1:2)*FAC
         CASE(4) ! Fixed
           WRITE(SD,*)'Enter value + unit (ms or mj) '
           READ(5,'(a)')MPRIOR(IV)%MEAN,UNIT
           CALL CONVERT_UNIT(UNIT,FAC)
+          MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%MEAN = MPRIOR(IV)%MEAN*FAC ! Convert into the right unit
           MPRIOR(IV)%SDEV = 0.d0
         END SELECT
@@ -317,8 +327,7 @@ c... Central mass
            IF (CNEW.LT.5) THEN
               WRITE(SD,*)'Name of output file ?'
               READ(5,'(a)')FILES(1)
-            !   FILES(1) = TRIM(FILES(1))//'.dat'
-              FILES(1) = TRIM(FILES(1))
+              FILES(1) = TRIM(FILES(1))//'.dat'
               WRITE(SD,*)'Name of dump file ?'
               READ(5,'(a)')FILES(2)
               WRITE(SD,*)'Dump frequency ?'
@@ -366,6 +375,7 @@ c...  Priors #0..NPLA tell that individual masses must be positive
                     ALLOCATE(MPRIOR(I)%BCOF(0:NPLA))      
                     MPRIOR(I)%TYP = 6
                     MPRIOR(I)%MEAN = 0.d0
+                    MPRIOR(I)%MUNIT = 1.d0
                     MPRIOR(I)%SDEV = MTINY
                     MPRIOR(I)%BOUND = 0.d0
                     MPRIOR(I)%ACOF = 0.d0
@@ -543,7 +553,8 @@ C
               WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%TYP
               WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%ACOF(0:NPLA)
               WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%BCOF(0:NPLA)           
-              WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%MEAN,MPRIOR(I)%SDEV
+              WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%MUNIT,MPRIOR(I)%MEAN,
+     &                                                   MPRIOR(I)%SDEV
               WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%BOUND
            END DO
         END IF
@@ -615,7 +626,8 @@ C
               READ(18,*,IOSTAT=ERROR)MPRIOR(I)%TYP
               READ(18,*,IOSTAT=ERROR)MPRIOR(I)%ACOF(0:NPLA)
               READ(18,*,IOSTAT=ERROR)MPRIOR(I)%BCOF(0:NPLA)           
-              READ(18,*,IOSTAT=ERROR)MPRIOR(I)%MEAN,MPRIOR(I)%SDEV
+              READ(18,*,IOSTAT=ERROR)MPRIOR(I)%MUNIT,MPRIOR(I)%MEAN,
+     &                                                 MPRIOR(I)%SDEV
               READ(18,*,IOSTAT=ERROR)MPRIOR(I)%BOUND(1:2)
            END DO
         END IF
@@ -677,15 +689,13 @@ C    Displays a solution on screen
 C-----------------------------------------------------------------------------
 C
 
-        SUBROUTINE DISPLAY_SOLUTION(METHOD)
+        SUBROUTINE DISPLAY_SOLUTION()
 
-        USE DATA, ONLY: NPLA, SD, PLA, RADVEL, MULTIPLA,
-     &                      STAR, JITNUM, MPS, SMAS, MJUP
+        USE DATA
         
         IMPLICIT NONE
 
-        INTEGER*4 :: I,          ! Planet index
-     &               METHOD      ! Elliptic (1) or universal (2)
+        INTEGER*4 :: I          ! Planet index
         
  1      FORMAT(a25,' = ',f15.6,'   +/- ',f12.6,(a))
 
@@ -1134,85 +1144,75 @@ C
         IMPLICIT NONE
 
         INTEGER*4 ::    NMOD,         ! Number of models 
-     &                  NSAV          ! Number of pars. to store per planet
-        CHARACTER*(*) :: DEV          ! 
+     &                  NSAV,         ! Number of pars. to store per planet
+     &                  LOG_TO_INT    ! Conversion function
+        CHARACTER*(*) :: DEV    ! 
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
+     &                  O,OM,         ! Omega's ± Pi
      &                  CI,SI,        ! cos(i),sin(i)
      &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
-        REAL*8 ::       CHI2,         ! Chi2
-     &                  FMAP,         ! MAP
-     &                  SIGMA         ! Cumulative mass
-        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
-        INTEGER*4       I,K
 
+        REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
+        INTEGER*4       I,J,DNPLA,IC
+
+        DNPLA = 2**NPLA
         NSAV = NEL+4
-        ALLOCATE(DATA4(2*(NMOD+1),NSAV,NPLA))
+        ALLOCATE(DATA4(DNPLA*(NMOD+1),NSAV,NPLA))
         ALLOCATE(NN(NPLA))
         ALLOCATE(CI2(NPLA))
         ALLOCATE(SI2(NPLA))
         ALLOCATE(CI(NPLA))
         ALLOCATE(SI(NPLA))
-c...  Note : In the case of universal variables,
-c...           the periastron is stored here in pla%a 
-        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
-     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-        IF (MULTIPLA) STAR%MASS = EXP(PSTART(NPAR))
-        
-        PLA%PER = DPI/NN  ! wtr q if universal variables.
-        PLA%W = ATAN2(PLA%SW,PLA%CW)
-        PLA%PHI = ATAN2(PLA%SP,PLA%CP)
-        PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
-        PLA%O = 0.5d0*(PLA%W-PLA%PHI)
-        PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
-        CHI2 = PSTART(NPAR+1)
-        FMAP = PSTART(NPAR+2)
-        DO K = 1,NPLA
-           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-        END DO
-        PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
-        PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
-        DO K = 1,NPLA
-           DATA4(2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-        END DO
+        ALLOCATE(OM(NPLA))
+        ALLOCATE(O(NPLA))
+
+        CALL STORE_SOLUTION(0,PSTART,NN,CI2,SI2,CI,SI,OM,O)
+
         DO I = 1,NMOD
-          CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
-     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-          IF (MULTIPLA) STAR%MASS = EXP(PSAV(NPAR,I))
-          PLA%PER = DPI/NN
-          PLA%W = ATAN2(PLA%SW,PLA%CW)
-          PLA%PHI = ATAN2(PLA%SP,PLA%CP)
-          PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
-          PLA%O = 0.5d0*(PLA%W-PLA%PHI)
-          PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
-          CHI2 = PSAV(NPAR+1,I)
-          FMAP = PSAV(NPAR+2,I)
-          DO K = 1,NPLA
-             DATA4(2*I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-          END DO
-          PLA%OM = MOD(PLA%OM+PI+PI,DPI)-PI
-          PLA%O = MOD(PLA%O+PI+PI,DPI)-PI
-          DO K = 1,NPLA
-             DATA4(2*I+2,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &       SNGL(PLA(K)%O),SNGL(PLA(K)%TP),SNGL(PLA(K)%MU/MJUP),
-     &       SNGL(STAR%MASS/SMAS),SNGL(CHI2),SNGL(FMAP) /)
-          END DO
+           CALL STORE_SOLUTION(DNPLA*I,PSAV(:,I),
+     &                               NN,CI2,SI2,CI,SI,OM,O)
         END DO
 c...      Save everything into output file
         OPEN(18,FILE=DEV,STATUS='UNKNOWN')
-        WRITE(18,*)2*(NMOD+1),NSAV,NPLA
+        WRITE(18,*)METHOD,DATEINPUT,NPLA,LOG_TO_INT(MULTIPLA),
+     &        LOG_TO_INT(RADVEL),JITNUM,NPRIOR,NLIM
+        WRITE(18,*)LOG_TO_INT(ISDATA(1)),LOG_TO_INT(ISDATA(2)),
+     &             LOG_TO_INT(ISDATA(3)),LOG_TO_INT(ISDATA(4))   
+        WRITE(18,*)STAR%JDOFFSET,STAR%DIST,STAR%PARX
+        WRITE(18,*)STAR%NDATAS,STAR%NDATVR
+        DO I = 1,STAR%NDATAS
+           WRITE(18,*)STAR%TAS(I),STAR%X(I),STAR%Y(I),
+     &                            STAR%SIGX(I),STAR%SIGY(I)
+        END DO
+        DO I = 1,STAR%NDATVR
+           WRITE(18,*)STAR%TVR(I),STAR%V(I),STAR%SIGV(I)
+        END DO
+        WRITE(18,*)PLA%NDATAS
+        WRITE(18,*)PLA%NDATVR
+        DO I = 1,NPLA
+           DO J = 1,PLA(I)%NDATAS
+              WRITE(18,*)PLA(I)%TAS(J),PLA(I)%X(J),PLA(I)%Y(J),
+     &             PLA(I)%SIGX(J),PLA(I)%SIGY(J),PLA(I)%RHOXY(J)
+           END DO
+           DO J = 1,PLA(I)%NDATVR
+              WRITE(18,*)PLA(I)%TVR(J),PLA(I)%V(J),PLA(I)%SIGV(J)
+           END DO
+        END DO
+        WRITE(18,*)PLA%MUNIT        
+c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
+        DO I = NPLA+1,NPRIOR
+           WRITE(18,*)MPRIOR(I)%TYP
+           WRITE(18,*)MPRIOR(I)%ACOF(0:NPLA)
+           WRITE(18,*)MPRIOR(I)%BCOF(0:NPLA)
+           WRITE(18,*)MPRIOR(I)%MUNIT,MPRIOR(I)%MEAN,MPRIOR(I)%SDEV,
+     &                                               MPRIOR(I)%BOUND
+        END DO           
+        DO I = 1,NLIM
+           WRITE(18,*)VPRIOR(I)%BOUND(1:2)
+        END DO
+
+        WRITE(18,*)DNPLA*(NMOD+1),NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
         DEALLOCATE(DATA4)
@@ -1221,7 +1221,64 @@ c...      Save everything into output file
         DEALLOCATE(SI2)
         DEALLOCATE(CI)
         DEALLOCATE(SI)
+        DEALLOCATE(OM)
+        DEALLOCATE(O)
 
+c....... Internal routine : storing 1 solution .................
+        
+        CONTAINS
+
+        SUBROUTINE STORE_SOLUTION(DK,P,NN,CI2,SI2,CI,SI,OM,O)
+
+          IMPLICIT NONE
+
+          INTEGER*4 :: DK       ! Position in DATA array
+          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+          REAL*8, DIMENSION(NPLA) ::
+     &                  NN,           ! Mean motion (wrt/q if univ. var.)
+     &                  O,OM,         ! Omega's ± Pi
+     &                  CI,SI,        ! cos(i),sin(i)
+     &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
+          REAL*8 ::     CHI2,         ! Chi2
+     &                  FMAP         ! MAP
+
+          INTEGER*4 :: IC,K
+          
+          CALL ELEMENTS(P,NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+c...  Note : In the case of universal variables,
+c...           the periastron is stored here in pla%a 
+          IF (MULTIPLA) STAR%MASS = EXP(P(NPAR))
+          PLA%PER = DPI/NN
+          PLA%W = ATAN2(PLA%SW,PLA%CW)
+          PLA%PHI = ATAN2(PLA%SP,PLA%CP)
+          PLA%OM = 0.5d0*(PLA%W+PLA%PHI)
+          PLA%O = 0.5d0*(PLA%W-PLA%PHI)
+          PLA%INC = 2.d0*ATAN2(SQRT(SI2),SQRT(CI2))
+          CHI2 = P(NPAR+1)
+          FMAP = P(NPAR+2)
+          DO IC = 1,DNPLA
+             OM(1:NPLA) = PLA%OM
+             O(1:NPLA) = PLA%O
+             DO K = 1,NPLA
+                IF (BTEST(IC-1,K-1)) THEN
+                   OM(K) = MOD(PLA(K)%OM+DPI,DPI)-PI
+                   O(K) = MOD(PLA(K)%O+DPI,DPI)-PI
+                ELSE
+                   OM(K) = PLA(K)%OM
+                   O(K) = PLA(K)%O
+                END IF
+                DATA4(DK+IC,1:NSAV,K) = (/ SNGL(PLA(K)%A),
+     &               SNGL(PLA(K)%PER),SNGL(PLA(K)%EXC),SNGL(OM(K)),
+     &               SNGL(PLA(K)%INC),SNGL(O(K)),SNGL(PLA(K)%TP),
+     &               SNGL(PLA(K)%MU/PLA(K)%MUNIT),SNGL(STAR%MASS/SMAS),
+     &               SNGL(CHI2),SNGL(FMAP) /)
+             END DO
+          END DO
+
+          END SUBROUTINE STORE_SOLUTION
+        
         END
 
 C
@@ -1236,8 +1293,9 @@ C
         IMPLICIT NONE
 
         INTEGER*4 ::    NMOD,         ! Number of models 
-     &                  NSAV          ! Number of pars. to store per planet
-        CHARACTER*(*) :: DEV          ! 
+     &                  NSAV,         ! Number of pars. to store per planet
+     &                  LOG_TO_INT    ! Conversion function
+        CHARACTER*(*) :: DEV    ! 
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  CI,SI,        ! cos(i),sin(i)
@@ -1246,7 +1304,7 @@ C
      &                  FMAP,         ! MAP
      &                  SIGMA         ! Cumulative mass
         REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
-        INTEGER*4       I,K
+        INTEGER*4       I,J
 
         STAR%SIGJV = 0.d0
         NSAV = NEL+6
@@ -1258,51 +1316,50 @@ C
         ALLOCATE(SI2(NPLA))
 c...  Note : In the case of universal variables,
 c...           the periastron is stored here in pla%a 
-        CALL ELEMENTS(PSTART(1:NPAR),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
-     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-        STAR%MASS = EXP(PSTART(NPAR))
-        STAR%V0 = PSTART(NEL*NPLA+1)
-        IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSTART(NEL*NPLA+2))
-
-        PLA%PER = DPI/NN   ! wtr q if universal variables.
-        PLA%OM = ATAN2(PLA%SOM,PLA%COM)
-        PLA%O = ATAN2(PLA%SO,PLA%CO)
-        PLA%INC = ATAN2(SI,CI)
-        CHI2 = PSTART(NPAR+1)
-        FMAP = PSTART(NPAR+2)
-        DO K = 1,NPLA
-           DATA4(1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
-     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
-     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
-     &          SNGL(CHI2),SNGL(FMAP) /)
-        END DO
+        CALL STORE_SOLUTION(0,PSTART,NN,CI2,SI2,CI,SI)
+C
         DO I = 1,NMOD
-           CALL ELEMENTS(PSAV(1:NPAR,I),NN,PLA%A,PLA%EXC,PLA%EXQ,
-     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
-     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
-          STAR%MASS = EXP(PSAV(NPAR,I))
-          STAR%V0 = PSAV(NEL*NPLA+1,I)
-          IF (JITNUM.EQ.1) STAR%SIGJV = EXP(PSAV(NEL*NPLA+2,I))
-          PLA%PER = DPI/NN
-          PLA%OM = ATAN2(PLA%SOM,PLA%COM)
-          PLA%O = ATAN2(PLA%SO,PLA%CO)
-          PLA%INC = ATAN2(SI,CI)
-          CHI2 = PSAV(NPAR+1,I)
-          FMAP = PSAV(NPAR+2,I)
-          DO K = 1,NPLA
-             DATA4(I+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
-     &       SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
-     &          SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
-     &          SNGL(PLA(K)%MU/MJUP),SNGL(STAR%V0/MPS),
-     &          SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
-     &          SNGL(CHI2),SNGL(FMAP) /)
-          END DO
+           CALL STORE_SOLUTION(I,PSAV(:,I),NN,CI2,SI2,CI,SI)
         END DO
 c...      Save everything into output file
         OPEN(18,FILE=DEV,STATUS='UNKNOWN')
+        WRITE(18,*)METHOD,DATEINPUT,NPLA,LOG_TO_INT(MULTIPLA),
+     &        LOG_TO_INT(RADVEL),JITNUM,NPRIOR,NLIM
+        WRITE(18,*)LOG_TO_INT(ISDATA(1)),LOG_TO_INT(ISDATA(2)),
+     &             LOG_TO_INT(ISDATA(3)),LOG_TO_INT(ISDATA(4))   
+        WRITE(18,*)STAR%JDOFFSET,STAR%DIST,STAR%PARX
+        WRITE(18,*)STAR%NDATAS,STAR%NDATVR
+        DO I = 1,STAR%NDATAS
+           WRITE(18,*)STAR%TAS(I),STAR%X(I),STAR%Y(I),
+     &                            STAR%SIGX(I),STAR%SIGY(I)
+        END DO
+        DO I = 1,STAR%NDATVR
+           WRITE(18,*)STAR%TVR(I),STAR%V(I),STAR%SIGV(I)
+        END DO
+        WRITE(18,*)PLA%NDATAS
+        WRITE(18,*)PLA%NDATVR
+        DO I = 1,NPLA
+           DO J = 1,PLA(I)%NDATAS
+              WRITE(18,*)PLA(I)%TAS(J),PLA(I)%X(J),PLA(I)%Y(J),
+     &             PLA(I)%SIGX(J),PLA(I)%SIGY(J),PLA(I)%RHOXY(J)
+           END DO
+           DO J = 1,PLA(I)%NDATVR
+              WRITE(18,*)PLA(I)%TVR(J),PLA(I)%V(J),PLA(I)%SIGV(J)
+           END DO
+        END DO
+        WRITE(18,*)PLA%MUNIT        
+c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
+        DO I = NPLA+1,NPRIOR
+           WRITE(18,*)MPRIOR(I)%TYP
+           WRITE(18,*)MPRIOR(I)%ACOF(0:NPLA)
+           WRITE(18,*)MPRIOR(I)%BCOF(0:NPLA)
+           WRITE(18,*)MPRIOR(I)%MUNIT,MPRIOR(I)%MEAN,MPRIOR(I)%SDEV,
+     &                                               MPRIOR(I)%BOUND
+        END DO           
+        DO I = 1,NLIM
+           WRITE(18,*)VPRIOR(I)%BOUND(1:2)
+        END DO
+
         WRITE(18,*)NMOD+1,NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
@@ -1312,6 +1369,51 @@ c...      Save everything into output file
         DEALLOCATE(SI)
         DEALLOCATE(CI2)
         DEALLOCATE(SI2)
+
+c....... Internal routine : storing 1 solution .................
+        
+        CONTAINS
+
+        SUBROUTINE STORE_SOLUTION(DK,P,NN,CI2,SI2,CI,SI)
+
+          IMPLICIT NONE
+
+          INTEGER*4 :: DK       ! Position in DATA array
+          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+          REAL*8, DIMENSION(NPLA) ::
+     &                  NN,           ! Mean motion (wrt/q if univ. var.)
+     &                  CI,SI,        ! cos(i),sin(i)
+     &                  CI2,SI2       ! cos^2(i/2), sin^2(i/2)
+          REAL*8 ::     CHI2,         ! Chi2
+     &                  FMAP         ! MAP
+
+          INTEGER*4 :: IC,K
+          
+          CALL ELEMENTS(P,NN,PLA%A,PLA%EXC,PLA%EXQ,
+     &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
+     &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
+
+          STAR%MASS = EXP(P(NPAR))
+          STAR%V0 = P(NEL*NPLA+1)
+          IF (JITNUM.EQ.1) STAR%SIGJV = EXP(P(NEL*NPLA+2))
+
+          PLA%PER = DPI/NN
+          PLA%OM = ATAN2(PLA%SOM,PLA%COM)
+          PLA%O = ATAN2(PLA%SO,PLA%CO)
+          PLA%INC = ATAN2(SI,CI)
+          CHI2 = P(NPAR+1)
+          FMAP = P(NPAR+2)
+
+          DO K = 1,NPLA
+             DATA4(DK+1,1:NSAV,K) = (/ SNGL(PLA(K)%A),SNGL(PLA(K)%PER),
+     &            SNGL(PLA(K)%EXC),SNGL(PLA(K)%OM),SNGL(PLA(K)%INC),
+     &            SNGL(PLA(K)%O),SNGL(PLA(K)%TP),
+     &            SNGL(PLA(K)%MU/PLA(K)%MUNIT),SNGL(STAR%V0/MPS),
+     &            SNGL(STAR%SIGJV/MPS),SNGL(STAR%MASS/SMAS),
+     &            SNGL(CHI2),SNGL(FMAP) /)
+          END DO
+
+          END SUBROUTINE STORE_SOLUTION
 
         END
 

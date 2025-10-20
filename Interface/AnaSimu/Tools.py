@@ -60,13 +60,13 @@ class GeneralToolClass(QWidget):
             (self.NbBodies, self.NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
 
         if SelectOrbitsEllipses is not None:
-            (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa) = SelectOrbitsEllipses
+            (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa, self.SelectRV) = SelectOrbitsEllipses
 
         if BestOrbitsParams is not None:
             (self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitsParams
 
         if BestOrbitsEllipses is not None:
-            (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa) = BestOrbitsEllipses
+            (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV) = BestOrbitsEllipses
 
         # # Fix the width to avoid resizing of parameters
         # left_width = self.WindowPlot.WidgetParam.sizeHint().width()
@@ -440,7 +440,7 @@ class TempoView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbShownOrbitsWidget)
 
         # Choice of coordinate
-        self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRa', 'dDec', 'Sep', 'Pa'])
+        self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRa', 'dDec', 'Sep', 'Pa', 'RV'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
         self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -456,12 +456,15 @@ class TempoView(GeneralToolClass):
             self.Coordinate = 'Sep'
         elif self.CoordinateIndex == 3:
             self.Coordinate = 'Pa'
+        elif self.CoordinateIndex == 4:
+            self.Coordinate = 'RV'
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
 
     def general_plot(self):
         """Plot the temporal view based on the selected parameters."""
-
+        self.YplotInput = []
+        self.YplotInputErr = []
         # Determine the coordinate to plot
         if self.CoordinateIndex == 0:
             self.YplotOutput = self.SelectRa 
@@ -487,14 +490,24 @@ class TempoView(GeneralToolClass):
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Pa'][self.nBody]
                 self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dPa'][self.nBody]
+        elif self.CoordinateIndex == 4:
+            self.YplotOutput = self.SelectRV
+            self.BestYplotOutput = self.BestRV
+            if self.InputData is not None:
+                if self.InputData['Planets']['NbDataRV'][self.nBody] != 0:
+                    self.YplotInput = self.InputData['Planets']['DataRV']['RV'][self.nBody]
+                    self.YplotInputErr = self.InputData['Planets']['DataRV']['dRV'][self.nBody]
 
         # 3 periods of best fit
         self.Bestt3P = np.concatenate((self.Bestt[self.nBody] - self.BestP[self.nBody] * 365.25, self.Bestt[self.nBody], self.Bestt[self.nBody] + self.BestP[self.nBody] * 365.25))
         self.BestYplotOutput3P = np.concatenate((self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody]))
 
         # Range of dates
-        if self.InputData is not None: 
-            self.DateRange = np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
+        if len(self.YplotInput) != 0: 
+            if self.CoordinateIndex != 4:
+                self.DateRange = np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
+            else:
+                self.DateRange = np.max(self.InputData['Planets']['DataRV']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataRV']['Date'][self.nBody])
 
     def Plot1(self):
 
@@ -508,8 +521,11 @@ class TempoView(GeneralToolClass):
         self.general_plot()
 
         # X current limits
-        if self.InputData is not None: 
-            xlim_init = (np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) + 0.1 * self.DateRange)
+        if len(self.YplotInput) != 0: 
+            if self.CoordinateIndex != 4:
+                xlim_init = (np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) + 0.1 * self.DateRange)
+            else:
+                xlim_init = (np.min(self.InputData['Planets']['DataRV']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataRV']['Date'][self.nBody]) + 0.1 * self.DateRange)
         else:
             xlim_init = (None, None)
         xlim = self.WidgetPlot1.history[self.WidgetPlot1.history_index]['xlim'] if len(self.WidgetPlot1.history)!=0 else xlim_init
@@ -520,15 +536,21 @@ class TempoView(GeneralToolClass):
             YplotOutput3P = np.concatenate((self.YplotOutput[self.nBody][n], self.YplotOutput[self.nBody][n], self.YplotOutput[self.nBody][n]))
             self.Subplot1.plot(Selectt3P, YplotOutput3P, color=self.colorList[0], linestyle='-', linewidth=0.2, alpha=0.1)
         
-        if self.InputData is not None: 
-            for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
-                self.Subplot1.errorbar(self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
+        if len(self.YplotInput) != 0: 
+            if self.CoordinateIndex != 4:
+                for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
+                    self.Subplot1.errorbar(self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
+            else:
+                for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
+                    self.Subplot1.errorbar(self.InputData['Planets']['DataRV']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
 
         self.Subplot1.plot(self.Bestt3P, self.BestYplotOutput3P, linestyle='-', linewidth=0.5, color='r')
 
         # Plot features
         if self.CoordinateIndex == 3:
             self.Subplot1.set_ylabel(self.Coordinate + ' [°]')
+        elif self.CoordinateIndex == 4:
+            self.Subplot1.set_ylabel(self.Coordinate + ' [km/s]')
         else:
             self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
         self.Subplot1.grid()
@@ -547,17 +569,25 @@ class TempoView(GeneralToolClass):
         self.general_plot()
 
         # Plot input data and residuals
-        if self.InputData is not None: 
-            for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
-                indext = np.argmin(np.abs(self.Bestt3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
-                Res = self.BestYplotOutput3P[indext] - self.YplotInput[k]  # Residual
-                self.Subplot2.errorbar(self.Bestt3P[indext], Res, self.YplotInputErr[k], color='b')
+        if len(self.YplotInput) != 0: 
+            if self.CoordinateIndex != 4:
+                for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
+                    indext = np.argmin(np.abs(self.Bestt3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
+                    Res = self.BestYplotOutput3P[indext] - self.YplotInput[k]  # Residual
+                    self.Subplot2.errorbar(self.Bestt3P[indext], Res, self.YplotInputErr[k], color='b')
+            else:
+                for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
+                    indext = np.argmin(np.abs(self.Bestt3P - self.InputData['Planets']['DataRV']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
+                    Res = self.BestYplotOutput3P[indext] - self.YplotInput[k]  # Residual
+                    self.Subplot2.errorbar(self.Bestt3P[indext], Res, self.YplotInputErr[k], color='b')
 
         self.Subplot2.hlines(0, np.min(self.Bestt3P), np.max(self.Bestt3P), color='red', linewidth=0.5)
 
         # Plot features
         if self.CoordinateIndex == 3:
             self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [°]')
+        elif self.CoordinateIndex == 4:
+            self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [km/s]')
         else:
             self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')

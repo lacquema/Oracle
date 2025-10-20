@@ -11,8 +11,6 @@ import datetime as dt
 
 # My packages
 
-
-
 def Ellipse(P, a, e, i, w, W, tp, NbPtsEllipse=100, Period=False, Time=False, AnomT=False, AnomE=False):
     '''
     Make and 3D ellipse from orbit parameters
