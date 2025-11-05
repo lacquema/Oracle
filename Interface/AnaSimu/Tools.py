@@ -54,7 +54,7 @@ class GeneralToolClass(QWidget):
         self.InputData = InputData
 
         if OutputParams is not None:
-            (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m0, self.Chi2, self.map) = OutputParams
+            (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m0, self.V0, self.Jitter, self.Chi2, self.map) = OutputParams
 
         if SelectOrbitsParams is not None:
             (self.NbBodies, self.NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
@@ -498,6 +498,8 @@ class TempoView(GeneralToolClass):
                     self.YplotInput = self.InputData['Planets']['DataRV']['RV'][self.nBody]
                     self.YplotInputErr = self.InputData['Planets']['DataRV']['dRV'][self.nBody]
 
+                print(self.YplotInput)
+
         # 3 periods of best fit
         self.Bestt3P = np.concatenate((self.Bestt[self.nBody] - self.BestP[self.nBody] * 365.25, self.Bestt[self.nBody], self.Bestt[self.nBody] + self.BestP[self.nBody] * 365.25))
         self.BestYplotOutput3P = np.concatenate((self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody]))
@@ -607,6 +609,9 @@ class Conv(GeneralToolClass):
 
     def InitParams(self):
         """Initialize parameters for the Convergence tool."""
+        # Equal aspect ratio
+        self.CheckEqualAspect = CheckBox('Equal aspect ratio', 'Force equal aspect ratio for the plot')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
@@ -662,8 +667,18 @@ class Hist(GeneralToolClass):
 
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
 
+        # Equal aspect ratio
+        self.CheckEqualAspect = CheckBox('Equal aspect ratio', 'Force equal aspect ratio for the plot')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
+
         # Orbit parameters
         self.ParamOrbitWidget = ComboBox('Variable', 'Variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'irel', 'other'])
+        if self.NbBodies == 1:
+            self.ParamOrbitWidget.ComboParam.removeItem(self.ParamOrbitWidget.ComboParam.count() - 2)  # Remove 'irel' option if only one body
+        # if self.V0 is None:
+        #     self.ParamOrbitWidget.ComboParam.removeItem(9)  # Remove 'V0' option if no RV data
+        # if self.Jitter is None:
+        #     self.ParamOrbitWidget.ComboParam.removeItem(10)  # Remove 'Jitter' option if no RV data
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ParamOrbitWidget)
         self.ParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -758,6 +773,7 @@ class Hist(GeneralToolClass):
 
         # Subplot initialization
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+        if self.CheckEqualAspect.CheckParam.isChecked(): self.Subplot.set_box_aspect(1)
 
         # Update parameters
         self.try_UpdateParams(self.WidgetPlot)
@@ -842,6 +858,9 @@ class Hist2D(GeneralToolClass):
 
     def InitParams(self):
         """Initialize parameters for the 2D Histogram tool."""
+        # Equal aspect ratio
+        self.CheckEqualAspect = CheckBox('Equal aspect ratio', 'Force equal aspect ratio for the plot')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
 
         # Abscissa orbit parameters
         self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'other'])
@@ -938,6 +957,7 @@ class Hist2D(GeneralToolClass):
 
         # Subplot initialization
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+        if self.CheckEqualAspect.CheckParam.isChecked(): self.Subplot.set_box_aspect(1)
 
         # Check if the parameters are valid for plotting
         if self.EvalXParamOrbit is None or self.EvalYParamOrbit is None: 
@@ -1128,6 +1148,9 @@ class PosAtDate(GeneralToolClass):
 
     def InitParams(self):
         """Initialize parameters for the Position at Date tool."""
+        # Equal aspect ratio
+        # self.CheckEqualAspect = CheckBox('Equal aspect ratio', 'Force equal aspect ratio for the plot')
+        # self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
 
         # Orbit number
         self.ListBody = [str(k + 1) for k in range(self.NbBodies)]
@@ -1171,6 +1194,7 @@ class PosAtDate(GeneralToolClass):
 
         # Subplot initialization
         self.Subplot = self.WidgetPlot.Canvas.fig.add_subplot(111)
+        # if self.CheckEqualAspect.CheckParam.isChecked(): self.Subplot.set_box_aspect(1)
 
         # Compute date
         SelectRaAtDate, SelectDecAtDate = [np.zeros(self.NbSelectOrbits) for _ in range(2)]

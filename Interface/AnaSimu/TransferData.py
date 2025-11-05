@@ -185,8 +185,8 @@ def TransfertSimu(PathOutputData, UnivYN):
                     },
                     "DataRV": {
                         "Date": PlanetsRVDate,
-                        "RV": PlanetsRV,
-                        "dRV": PlanetsdRV
+                        "RV": [RV*149597870.7/86400 for RV in PlanetsRV],
+                        "dRV": [dRV*149597870.7/86400 for dRV in PlanetsdRV]
                     }  
                 },
                 "Priors": {
@@ -221,10 +221,13 @@ def TransfertSimu(PathOutputData, UnivYN):
             Data = np.array(list(map(float, lines[1].split()))).reshape(NbBodies, NbParams, NbOrbits)
 
 
-        a, P, e, w, i, W, tp, m, m0, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(11)]
+        a, P, e, w, i, W, tp, m, V0, Jitter, m0, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(13)]
 
         for j in range(NbBodies):
-            a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
+            if NbParams == 13: # if RV data, V0 and Jitter are included
+                a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], V0[j], Jitter[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(13)]
+            elif NbParams == 11:
+                a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
 
         # Conversions
         P = P/365.25
@@ -233,13 +236,13 @@ def TransfertSimu(PathOutputData, UnivYN):
         W = np.rad2deg(W+np.pi)
         if np.mean(tp) > 2400000.5: tp = jd_to_mjd(tp)
 
-        print(np.mean(m))
+        # print(NbDataPlanetsRV)
 
         if UnivYN == 2:
-            a = a/(1-e)
+            a = a/(1-e) 
             P = P/((1-e)**(3/2))
 
-        OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, Chi2, Map]
+        OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, Map]
 
     return InputData, OutputParams
 

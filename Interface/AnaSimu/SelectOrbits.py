@@ -5,7 +5,7 @@ import Utils as ut
 import random as rd
 
 class SelectOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, Chi2, map, NbSelectOrbits, NbPtsEllipse, StarDist):
+    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbSelectOrbits, NbPtsEllipse, StarDist):
         super().__init__()
 
         # Number of parameters

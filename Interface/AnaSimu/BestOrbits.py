@@ -5,7 +5,7 @@ import numpy as np
 import Utils as ut
 
 class BestOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
+    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
         super().__init__()
 
         # Number of parameters
@@ -20,7 +20,8 @@ class BestOrbitsClass(QWidget):
         for j in range(NbBodies):
             self.BestChi2[j] = np.min(Chi2[j])
             IndexBestChi2 = list(Chi2[j]).index(self.BestChi2[j])  # Adjust index calculation
-            self.BestChi2[j] = self.BestChi2[j] / NbInputData # Reduced Chi2
+            # self.BestChi2[j] = self.BestChi2[j] / NbInputData # Reduced Chi2
+            self.BestChi2[j] = self.BestChi2[j]
             self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.Bestm0[j] = [param[j][IndexBestChi2] for param in self.Params[:-1]]
 
         self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2]
