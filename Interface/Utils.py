@@ -78,6 +78,67 @@ def Ellipse(P, a, e, i, w, W, tp, NbPtsEllipse=100, Period=False, Time=False, An
     return Output
 
 
+def kepler_position(a, P, e, w, i, W, tp, t, StarDist):
+    """
+    Calcule la position (x, y, z) dans un repère inertiel à partir des éléments orbitaux képlériens.
+    
+    Paramètres :
+    a : demi-grand axe (même unité que la sortie)
+    P : période orbitale (même unité que t et tp)
+    e : excentricité
+    w : argument du périastre (radians)
+    i : inclinaison (radians)
+    W : longitude du nœud ascendant (radians)
+    tp : temps de passage au périastre
+    t : date à laquelle on veut la position (scalaire ou array)
+    
+    Retourne :
+    x, y, z : coordonnées dans le repère inertiel
+    """
+    # Convertion
+    i = np.deg2rad(i)
+    w = np.deg2rad(w)
+    W = np.deg2rad(W)+np.pi/2
+    P*=365.25
+
+    # Mouvement moyen
+    n = 2 * np.pi / P
+    M = n * (t - tp)
+    M = np.mod(M, 2 * np.pi)  # Ramène M dans [0, 2π)
+    
+    # Résolution de l'équation de Kepler par Newton-Raphson
+    E = M.copy()
+    for _ in range(50):
+        E = E - (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
+    
+    # Anomalie vraie
+    nu = 2 * np.arctan2(np.sqrt(1 + e) * np.sin(E / 2), np.sqrt(1 - e) * np.cos(E / 2))
+
+    # Rayon orbital
+    r = a * (1 - e * np.cos(E))
+    
+    # Position dans le plan orbital
+    x = r * np.cos(nu)
+    y = r * np.sin(nu)
+    z = np.zeros_like(x)
+    
+    # Passage dans le repère inertiel
+    xR = r * (np.cos(W) * np.cos(w + nu) - np.sin(W) * np.sin(w + nu) * np.cos(i))
+    yR = r * (np.sin(W) * np.cos(w + nu) + np.cos(W) * np.sin(w + nu) * np.cos(i))
+    zR = r * (np.sin(w + nu) * np.sin(i))
+
+    # # Change of referential
+    # xR, yR, zR = np.zeros_like(x), np.zeros_like(y), np.zeros_like(z)
+    # for k in range(len(x)):
+    #     Mp = RotMatrix(w[k], 'z')@RotMatrix(i[k], 'x')@RotMatrix(W[k], 'z')
+
+    #     xR[k] = x[k]*Mp[0,0] + y[k]*Mp[1,0] + z[k]*Mp[2,0]
+    #     yR[k] = x[k]*Mp[0,1] + y[k]*Mp[1,1] + z[k]*Mp[2,1]
+    #     zR[k] = x[k]*Mp[0,2] + y[k]*Mp[1,2] + z[k]*Mp[2,2]
+
+    return xR, yR, zR
+
+
  
 
 

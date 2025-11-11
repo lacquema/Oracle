@@ -1137,11 +1137,12 @@ class Corner(GeneralToolClass):
 
 
 class PosAtDate(GeneralToolClass):
-    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
-        super().__init__('Position at date', 'Position of bodies at a given date', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
+    def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses, SystDist):
+        super().__init__('Position at date', 'Position of bodies at a given date', InputData, OutputParams, None, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses)
 
         # Parameters initialisation
         self.InitParams()
+        self.SystDist = SystDist
 
         # Plot initialization
         self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True, ylim=True)
@@ -1212,6 +1213,11 @@ class PosAtDate(GeneralToolClass):
             indexBestDate = np.argmin(np.abs(self.Selectt[self.nBody][k] - SelectDate))
             SelectRaAtDate[k] = self.SelectRa[self.nBody][k][indexBestDate]
             SelectDecAtDate[k] = self.SelectDec[self.nBody][k][indexBestDate]
+        # print(self.Date)
+        # xR, yR, zR = kepler_position(self.a[self.nBody], self.P[self.nBody], self.e[self.nBody], self.w[self.nBody], self.i[self.nBody], self.W[self.nBody], self.tp[self.nBody], self.Date, self.SystDist)
+
+        # RaAtDate = -xR/self.SystDist*1000
+        # DecAtDate = yR/self.SystDist*1000
 
         # X and Y limits
         xlim_init = (np.max(self.SelectRa[self.nBody]), np.min(self.SelectRa[self.nBody])) # Inverted X axis for Ra

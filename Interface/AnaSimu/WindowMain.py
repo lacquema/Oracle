@@ -76,7 +76,7 @@ class WindowMainClass(QMainWindow):
         GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbits.BestParams), 2, 1)
 
         # Position at date
-        GridLayout.addWidget(PosAtDate(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 2, 2)
+        GridLayout.addWidget(PosAtDate(InputData, OutputParams, SelectOrbits.SelectEllipses, BestOrbits.BestParams, BestOrbits.BestEllipses, SystDist), 2, 2)
 
         # Add grid layout to layout
         Layout.addLayout(GridLayout)
