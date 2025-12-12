@@ -420,6 +420,9 @@ class TempoView(GeneralToolClass):
         self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1, xlim=True, ylim=True)
         self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=self.WidgetPlot1.Layout)
 
+        self.WidgetPlot1.setBaseSize(1000, 500)
+        self.WidgetPlot2.setBaseSize(1000, 500)
+
         # Parameters initialisation
         self.InitParams()
 
