@@ -301,9 +301,9 @@ class WindowSetNewSimu(WindowWithFinder):
                             file.write(' ms')
                     file.write(' ')
                 if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked(): 
-                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] a[AU] e i[deg] om[deg] Om[deg] tp[MJD])')                
+                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] a[AU] e i[deg] Om[deg] om[deg] tp[MJD])')                
                 else: 
-                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] q[AU] e i[deg] om[deg] Om[deg] tp[MJD])')
+                    file.write(f' # First guess of orbit {i} parameters (m[Mjup] q[AU] e i[deg] Om[deg] om[deg] tp[MJD])')
                 file.write('\n')
             if not self.TabPriorSet.CheckUnivVar.CheckParam.isChecked():
                 file.write(self.TabPriorSet.PMin.SpinParam.text()+' '+self.TabPriorSet.PMax.SpinParam.text())

@@ -549,6 +549,7 @@ C
         DO I=1,NLIM        
            WRITE(18,*,IOSTAT=ERROR)VPRIOR(I)%BOUND(1:2)
         END DO
+        WRITE(18,*,IOSTAT=ERROR)PLA%MUNIT
         IF (NPRIOR.GE.0) THEN
            DO I=0,NPRIOR
               WRITE(18,*,IOSTAT=ERROR)MPRIOR(I)%TYP
@@ -619,6 +620,7 @@ C
         ALLOCATE(PSTART(NPAR+2))
         ALLOCATE(PLA(NPLA))
         ALLOCATE(PSAV(NPAR+2,NMAX))
+        READ(18,*,IOSTAT=ERROR)PLA%MUNIT
         IF (NPRIOR.GE.0) THEN
            ALLOCATE(MPRIOR(0:NPRIOR))
            DO I = 0,NPRIOR

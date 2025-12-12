@@ -210,7 +210,8 @@ def TransfertSimu(PathOutputData, UnivYN):
             # Data
             NbOrbits, NbParams, NbBodies = [int(float(x)) for x in lines[current_line].split()]
             current_line += 1
-            Data = np.loadtxt(PathOutputData, skiprows = current_line, max_rows = current_line).reshape(NbBodies, NbParams, NbOrbits)
+            # Data = np.loadtxt(PathOutputData, skiprows = current_line, max_rows = current_line).reshape(NbBodies, NbParams, NbOrbits)
+            Data = np.array(list(map(float, lines[current_line].split()))).reshape(NbBodies, NbParams, NbOrbits)
 
         else:
 
@@ -243,6 +244,11 @@ def TransfertSimu(PathOutputData, UnivYN):
             P = P/((1-e)**(3/2))
 
         OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, Map]
+
+        # for m_i in m[0]:
+        #     if m_i != np.float('inf'):
+        #         print(m_i)
+        # print(a[0]**3 / P[0]**2)
 
     return InputData, OutputParams
 
