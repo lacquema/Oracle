@@ -840,11 +840,11 @@ class Hist(GeneralToolClass):
         # Initial X and Y labels
         # Overwritten if modified by the user
         if self.ParamOrbitWidget.ComboParam.currentText() == 'irel':
-            xlabel_init = r'i$_{rel}$ [°]'
+            xlabel_init = r'i$_{rel}$ between '+self.nBodyWidget.ComboParam.currentText()+' and '+self.nBodyRelWidget.ComboParam.currentText()+' [°]'
         elif self.ParamOrbitWidget.ComboParam.currentText() == 'other':
             xlabel_init = self.FormulaTextEdit.EditParam.text()
         else:
-            xlabel_init = self.LabelOf(self.ParamOrbit)+' '+self.UnitOf(self.ParamOrbit)
+            xlabel_init = self.LabelOf(self.ParamOrbit)+' of '+self.nBodyWidget.ComboParam.currentText()+' '+self.UnitOf(self.ParamOrbit)
         self.Subplot.set_xlabel(xlabel_init)
         self.Subplot.set_ylabel('Count number')
 
@@ -866,7 +866,9 @@ class Hist2D(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
 
         # Abscissa orbit parameters
-        self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'other'])
+        self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'irel', 'other'])
+        if self.NbBodies == 1:
+            self.XParamOrbitWidget.ComboParam.removeItem(self.XParamOrbitWidget.ComboParam.count() - 2)  # Remove 'irel' option if only one body
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XParamOrbitWidget)
         self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -878,6 +880,16 @@ class Hist2D(GeneralToolClass):
         # if self.NbBodies == 1:
         #     self.XnBodyWidget.setEnabled(False)
 
+        # i relatif between 2 bodies on X axis
+        self.XIrelWidget = QWidget()
+        self.XIrelLayout = QHBoxLayout()
+        self.XnBodyRelWidget = ComboBox('Relative body', 'Relative body to compare with the reference', self.ListBody)
+        self.XIrelLayout.addWidget(self.XnBodyRelWidget)
+        self.XnBodyRelWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
+        self.XIrelWidget.setLayout(self.XIrelLayout)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.XIrelWidget)
+        self.XIrelWidget.setVisible(False)
+
         # TextEdit for general x formula
         self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
         self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
@@ -886,7 +898,9 @@ class Hist2D(GeneralToolClass):
         self.XFormulaTextEdit.EditParam.textChanged.connect(self.reset_plots)
 
         # Ordinate orbit parameters
-        self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'other'])
+        self.YParamOrbitWidget = ComboBox('Y variable', 'Ordinate variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'irel', 'other'])
+        if self.NbBodies == 1:
+            self.YParamOrbitWidget.ComboParam.removeItem(self.YParamOrbitWidget.ComboParam.count() - 2)  # Remove 'irel' option if only one body
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YParamOrbitWidget)
         self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -896,6 +910,16 @@ class Hist2D(GeneralToolClass):
         self.YnBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
         # if self.NbBodies == 1:
         #     self.YnBodyWidget.setEnabled(False)
+
+        # i relatif between 2 bodies on Y axis
+        self.YIrelWidget = QWidget()
+        self.YIrelLayout = QHBoxLayout()
+        self.YnBodyRelWidget = ComboBox('Relative body', 'Relative body to compare with the reference', self.ListBody)
+        self.YIrelLayout.addWidget(self.YnBodyRelWidget)
+        self.YnBodyRelWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
+        self.YIrelWidget.setLayout(self.YIrelLayout)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.YIrelWidget)
+        self.YIrelWidget.setVisible(False)
 
         # TextEdit for general y formula
         self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
@@ -907,6 +931,8 @@ class Hist2D(GeneralToolClass):
         # Connect ComboBox change event
         self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleXFormulaTextEdit)
         self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(self.ToggleYFormulaTextEdit)
+        self.XParamOrbitWidget.ComboParam.currentIndexChanged.connect(lambda: self.XIrelWidget.setVisible(self.XParamOrbitWidget.ComboParam.currentText() == 'irel'))
+        self.YParamOrbitWidget.ComboParam.currentIndexChanged.connect(lambda: self.YIrelWidget.setVisible(self.YParamOrbitWidget.ComboParam.currentText() == 'irel'))
 
         # Histogram binning
         self.NbBins = 100
@@ -934,22 +960,35 @@ class Hist2D(GeneralToolClass):
         else:
             self.YFormulaTextEdit.setVisible(False)
             # self.YnBodyWidget.setVisible(True)
-
-    def evaluate_ParamOrbit(self, prefixe, param_widget, formula_text_edit, nBodyWidget):
+    
+    def evaluate_ParamOrbit(self, prefixe, param_widget, formula_text_edit, nbody, nbody_rel):
         """Evaluate the parameter orbit based on the current widget values."""
-        nBody = int(nBodyWidget.ComboParam.currentText()) - 1
-        param_orbit = param_widget.ComboParam.currentText()
-        if param_widget.ComboParam.currentIndex() == param_widget.ComboParam.count() - 1:
-            formula = formula_text_edit.EditParam.text()
-            return self.evaluate_formula(formula, prefixe, nBody)
-        return eval(f'{prefixe}{param_orbit}')[nBody]
+        parameter = param_widget.ComboParam.currentText()
+        if parameter == 'irel' or parameter == 'other':
+            if parameter == 'irel':
+                if nbody_rel == nbody:
+                    print('nBodyRel can not be the same as nBody')
+                    return None
+                else:
+                    formula = f'arccos(cos(i[{nbody+1}])*cos(i[{nbody_rel+1}])+cos(W[{nbody+1}]-W[{nbody_rel+1}])*sin(i[{nbody+1}])*sin(i[{nbody_rel+1}]))'
+            elif parameter == 'other':
+                formula = formula_text_edit.EditParam.text()
+            return self.evaluate_formula(formula, prefixe, nbody)
+        else:
+            parameter = param_widget.ComboParam.currentText()
+            # print('not irel or other')
+            return eval(f'{prefixe}{parameter}')[nbody]
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
+        self.XnBody = int(self.XnBodyWidget.ComboParam.currentText()) - 1
+        self.XnBodyRel = int(self.XnBodyRelWidget.ComboParam.currentText()) - 1
+        self.YnBody = int(self.YnBodyWidget.ComboParam.currentText()) - 1
+        self.YnBodyRel = int(self.YnBodyRelWidget.ComboParam.currentText()) - 1
         self.XParamOrbit = self.XParamOrbitWidget.ComboParam.currentText()
         self.YParamOrbit = self.YParamOrbitWidget.ComboParam.currentText()
-        self.EvalXParamOrbit = self.evaluate_ParamOrbit('self.', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBodyWidget)
-        self.EvalYParamOrbit = self.evaluate_ParamOrbit('self.', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
+        self.EvalXParamOrbit = self.evaluate_ParamOrbit('self.', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBody, self.XnBodyRel)
+        self.EvalYParamOrbit = self.evaluate_ParamOrbit('self.', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBody, self.YnBodyRel)
         self.NbBins = self.NbBinsWidget.SpinParam.value()
 
     def Plot(self):
@@ -984,19 +1023,25 @@ class Hist2D(GeneralToolClass):
 
         # Best fit
         if self.CheckBestFit.CheckParam.isChecked():
-            BestXParam = self.evaluate_ParamOrbit('self.Best', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBodyWidget)
-            BestYParam = self.evaluate_ParamOrbit('self.Best', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBodyWidget)
+            BestXParam = self.evaluate_ParamOrbit('self.Best', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBody, self.XnBodyRel)
+            BestYParam = self.evaluate_ParamOrbit('self.Best', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBody, self.YnBodyRel)
             self.Subplot.plot(BestXParam, BestYParam, color='red', marker='x')
 
         # Plot features
-        if self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 1:
+        # about X axis
+        if self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 1: # 'other' selected
             self.Subplot.set_xlabel(self.XFormulaTextEdit.EditParam.text())
+        elif self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 2: # 'irel' selected
+            self.Subplot.set_xlabel(r'i$_{rel}$ between '+self.XnBodyWidget.ComboParam.currentText()+' and '+self.XnBodyRelWidget.ComboParam.currentText()+' [°]')
         else:
-            self.Subplot.set_xlabel(self.LabelOf(self.XParamOrbit)+' '+self.UnitOf(self.XParamOrbit))
-        if self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 1:
+            self.Subplot.set_xlabel(self.LabelOf(self.XParamOrbit)+' of '+self.XnBodyWidget.ComboParam.currentText()+' '+self.UnitOf(self.XParamOrbit))
+        # about Y axis
+        if self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 1: # 'other' selected
             self.Subplot.set_ylabel(self.YFormulaTextEdit.EditParam.text())
+        elif self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 2: # 'irel' selected
+            self.Subplot.set_ylabel(r'i$_{rel}$ between '+self.YnBodyWidget.ComboParam.currentText()+' and '+self.YnBodyRelWidget.ComboParam.currentText()+' [°]')
         else:
-            self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' '+self.UnitOf(self.YParamOrbit))
+            self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' of '+self.YnBodyWidget.ComboParam.currentText()+' '+self.UnitOf(self.YParamOrbit))
 
 
 class Corner(GeneralToolClass):
