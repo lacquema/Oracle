@@ -418,14 +418,16 @@ class TempoView(GeneralToolClass):
 
         # Window plots initialisation
         VertLayoutPlots = QVBoxLayout()
+        VertLayoutPlots.setContentsMargins(0, 0, 0, 0)
+        VertLayoutPlots.setSpacing(0)
         ContainerPlots = QWidget()
         ContainerPlots.setLayout(VertLayoutPlots)
         self.WindowPlot.Splitter.addWidget(ContainerPlots)
         self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1, xlim=True, ylim=True, layout=VertLayoutPlots)
         self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=VertLayoutPlots)
 
-        # self.WidgetPlot1.setFixedHeight(300)
-        # self.WidgetPlot2.setFixedHeight(300)
+        self.WidgetPlot1.setFixedHeight(430)
+        self.WidgetPlot2.setFixedHeight(430)
 
         # Parameters initialisation
         self.InitParams()
