@@ -417,11 +417,15 @@ class TempoView(GeneralToolClass):
         super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
 
         # Window plots initialisation
-        self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1, xlim=True, ylim=True)
-        self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=self.WidgetPlot1.Layout)
+        VertLayoutPlots = QVBoxLayout()
+        ContainerPlots = QWidget()
+        ContainerPlots.setLayout(VertLayoutPlots)
+        self.WindowPlot.Splitter.addWidget(ContainerPlots)
+        self.WidgetPlot1 = self.WindowPlot.add_WidgetPlot(self.Plot1, xlim=True, ylim=True, layout=VertLayoutPlots)
+        self.WidgetPlot2 = self.WindowPlot.add_WidgetPlot(self.Plot2, layout=VertLayoutPlots)
 
-        self.WidgetPlot1.setBaseSize(1000, 500)
-        self.WidgetPlot2.setBaseSize(1000, 500)
+        # self.WidgetPlot1.setFixedHeight(300)
+        # self.WidgetPlot2.setFixedHeight(300)
 
         # Parameters initialisation
         self.InitParams()
