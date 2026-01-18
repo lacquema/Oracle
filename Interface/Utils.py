@@ -265,6 +265,8 @@ def cartesian_to_polar_with_errors(x, y, sigma_x, sigma_y, rho_xy):
     - r, theta : coordonnées polaires
     - sigma_r, sigma_theta : erreurs associées à r et theta
     - rho_rt : coefficient de corrélation entre r et theta
+
+    Attention convention: en astrometrie Dec vers le haut, Ra vers la gauche, PA=0 vers le haut et augmente dans le sens trigo. Ce qui revient simplement à tourner le repère de 90° dans le sens trigo et faire correspondre x à Dec et y à Ra.
     """
     # Transformation en polaire
     r = np.sqrt(x**2 + y**2)
@@ -308,6 +310,8 @@ def polar_to_cartesian_with_errors(r, theta, sigma_r, sigma_theta, rho_rt):
     - x, y : coordonnées cartésiennes
     - sigma_x, sigma_y : erreurs associées à x et y
     - rho_xy : coefficient de corrélation entre x et y
+
+    Attention convention: en astrometrie Dec vers le haut, Ra vers la gauche, PA=0 vers le haut et augmente dans le sens trigo. Ce qui revient simplement à tourner le repère de 90° dans le sens trigo et faire correspondre x à Dec et y à Ra.
     """
     # Conversion deg to rad
     theta = np.deg2rad(theta)
