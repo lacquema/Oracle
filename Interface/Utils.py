@@ -37,7 +37,8 @@ def Ellipse(P, a, e, i, w, W, tp, NbPtsEllipse=100, Period=False, Time=False, An
     # Convertion
     i = np.deg2rad(i)
     w = np.deg2rad(w)
-    W = np.deg2rad(W)+np.pi/2
+    # W = np.deg2rad(W)+np.pi/2 # to have PA=0 at North and increasing Eastward
+    W = np.deg2rad(W)
     P*=365.25
 
     Output = []
@@ -98,7 +99,8 @@ def kepler_position(a, P, e, w, i, W, tp, t, StarDist):
     # Convertion
     i = np.deg2rad(i)
     w = np.deg2rad(w)
-    W = np.deg2rad(W)+np.pi/2
+    # W = np.deg2rad(W)+np.pi/2
+    W = np.deg2rad(W)
     P*=365.25
 
     # Mouvement moyen
