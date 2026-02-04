@@ -5,7 +5,7 @@ import Utils as ut
 import random as rd
 
 class SelectOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbSelectOrbits, NbPtsEllipse, StarDist):
+    def __init__(self, NbBodies, NbOrbits, PlanetsMassUnit, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbSelectOrbits, NbPtsEllipse, StarDist):
         super().__init__()
 
         # Number of parameters
@@ -19,7 +19,7 @@ class SelectOrbitsClass(QWidget):
                 indexRd = rd.randint(0, NbOrbits-1)
                 self.SelectP[j][k], self.Selecta[j][k], self.Selecte[j][k], self.Selecti[j][k], self.Selectw[j][k], self.SelectW[j][k], self.Selecttp[j][k], self.Selectm[j][k], self.Selectm0[j][k], self.SelectChi2[j][k] = [param[j][indexRd] for param in [P, a, e, i, w, W, tp, m, m0, Chi2]]
 
-        self.SelectParams = [NbBodies, NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2]
+        self.SelectParams = [NbBodies, NbSelectOrbits, PlanetsMassUnit, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2]
 
         # Ellipse calculations
         self.Selectt, self.SelectX, self.SelectY, self.SelectZ, self.SelectRa, self.SelectDec, self.SelectSep, self.SelectPa, self.SelectRV = [np.zeros((NbBodies, NbSelectOrbits, NbPtsEllipse)) for _ in range(9)]

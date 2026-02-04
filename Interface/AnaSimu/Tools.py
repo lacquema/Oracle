@@ -54,16 +54,16 @@ class GeneralToolClass(QWidget):
         self.InputData = InputData
 
         if OutputParams is not None:
-            (self.NbBodies, self.NbOrbits, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m0, self.V0, self.Jitter, self.Chi2, self.map) = OutputParams
+            (self.NbBodies, self.NbOrbits, self.PlanetsMassUnit, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m0, self.V0, self.Jitter, self.Chi2, self.map) = OutputParams
 
         if SelectOrbitsParams is not None:
-            (self.NbBodies, self.NbSelectOrbits, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
+            (self.NbBodies, self.NbSelectOrbits, self.PlanetsMassUnit, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
 
         if SelectOrbitsEllipses is not None:
             (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa, self.SelectRV) = SelectOrbitsEllipses
 
         if BestOrbitsParams is not None:
-            (self.NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitsParams
+            (self.NbBodies, self.PlanetsMassUnit, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitsParams
 
         if BestOrbitsEllipses is not None:
             (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV) = BestOrbitsEllipses
@@ -136,8 +136,8 @@ class GeneralToolClass(QWidget):
             'w': '[°]',
             'W': '[°]',
             'tp': '[MJD]',
-            'm': '[Mjup]',
-            'm0': '[Mjup]',
+            'm': f'[{self.PlanetsMassUnit}]',
+            'm0': '[Msun]',
             'Chi2': ''
         }
         return units.get(var, 'Unknown variable')
@@ -304,7 +304,7 @@ class SpaceView(GeneralToolClass):
                     dra = self.InputData['Planets']['DataAstrom']['dRa'][k]
                     ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
                     dates = self.InputData['Planets']['DataAstrom']['Date'][k]
-                    self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='black')
+                    self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
                     if self.CheckDateObs.CheckParam.isChecked():
                         if Xmin!=None and Ymin!=None: 
                             self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
@@ -315,7 +315,7 @@ class SpaceView(GeneralToolClass):
                 dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
                 ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
                 dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-                self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='black')
+                self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
                 if self.CheckDateObs.CheckParam.isChecked():
                     if Xmin!=None and Ymin!=None: 
                         self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)

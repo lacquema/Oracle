@@ -206,6 +206,7 @@ def TransfertSimu(PathOutputData, UnivYN):
                     "Max": RangesMax
                 }
             } 
+
             
             # Data
             NbOrbits, NbParams, NbBodies = [int(float(x)) for x in lines[current_line].split()]
@@ -221,7 +222,6 @@ def TransfertSimu(PathOutputData, UnivYN):
             NbOrbits, NbParams, NbBodies = [int(float(x)) for x in lines[0].split()]
             Data = np.array(list(map(float, lines[1].split()))).reshape(NbBodies, NbParams, NbOrbits)
 
-
         a, P, e, w, i, W, tp, m, V0, Jitter, m0, Chi2, Map = [np.zeros((NbBodies, NbOrbits)) for k in range(13)]
 
         for j in range(NbBodies):
@@ -229,6 +229,21 @@ def TransfertSimu(PathOutputData, UnivYN):
                 a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], V0[j], Jitter[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(13)]
             elif NbParams == 11:
                 a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
+
+        # Uniformize mass units
+        if HeaderDataIn(PathOutputData) and len(PlanetsMassUnit) > 1:
+            if not all(x == PlanetsMassUnit[0] for x in PlanetsMassUnit): # if all planets don't have the same mass unit
+                PlanetsMassUnit = 'Mjup'
+                for i in range(NbPlanets):
+                    if PlanetsMassUnit[i] == 0: # Msun to Mjup
+                        m[i] = m[i] * 1047.348644
+            else:
+                if PlanetsMassUnit[0] == 0:
+                    PlanetsMassUnit = 'Msun'
+                elif PlanetsMassUnit[0] == 1:
+                    PlanetsMassUnit = 'Mjup'
+        else:
+            PlanetsMassUnit = 'Mjup or Msun'
 
         # Conversions
         P = P/365.25
@@ -245,7 +260,7 @@ def TransfertSimu(PathOutputData, UnivYN):
             a = a/(1-e) 
             P = P/((1-e)**(3/2))
 
-        OutputParams = [NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, Map]
+        OutputParams = [NbBodies, NbOrbits, PlanetsMassUnit, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, Map]
 
         # for m_i in m[0]:
         #     if m_i != np.float('inf'):

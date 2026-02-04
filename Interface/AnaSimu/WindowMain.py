@@ -47,9 +47,11 @@ class WindowMainClass(QMainWindow):
         # Best orbits
         BestOrbits = BestOrbitsClass(*OutputParams, NbPtsEllipse, SystDist, NbInputData)
         Layout.addWidget(BestOrbits.Widget)
+        # print("Best orbits done")
 
         # Select orbits
         SelectOrbits = SelectOrbitsClass(*OutputParams, NbSelectOrbits, NbPtsEllipse, SystDist)
+        # print("Select orbits done")
 
         # Separation
         Layout.addWidget(Delimiter())
@@ -59,24 +61,31 @@ class WindowMainClass(QMainWindow):
 
         # Space view
         GridLayout.addWidget(SpaceView(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 0, 0, 1, 3)
+        # print("Space view done")
 
         # Temporal study
         GridLayout.addWidget(TempoView(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 1, 0)
+        # print("Temporal view done")
 
         # Convergence of orbit parameters
         GridLayout.addWidget(Conv(OutputParams), 1, 1)
+        # print("Convergence done")
 
         # Histogram of orbit parameters
         GridLayout.addWidget(Hist(OutputParams, BestOrbits.BestParams), 1, 2)
+        # print("Histogram done")
 
         # Histogram 2D of orbit parameters
         GridLayout.addWidget(Hist2D(OutputParams, BestOrbits.BestParams), 2, 0)
+        # print("2D Histogram done")
 
         # Corner plot
         GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbits.BestParams), 2, 1)
+        # print("Corner plot done")
 
         # Position at date
         GridLayout.addWidget(PosAtDate(InputData, OutputParams, SelectOrbits.SelectEllipses, BestOrbits.BestParams, BestOrbits.BestEllipses, SystDist), 2, 2)
+        # print("Position at date done")
 
         # Add grid layout to layout
         Layout.addLayout(GridLayout)

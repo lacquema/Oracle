@@ -5,7 +5,7 @@ import numpy as np
 import Utils as ut
 
 class BestOrbitsClass(QWidget):
-    def __init__(self, NbBodies, NbOrbits, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
+    def __init__(self, NbBodies, NbOrbits, PlanetsMassUnit, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
         super().__init__()
 
         # Number of parameters
@@ -24,7 +24,7 @@ class BestOrbitsClass(QWidget):
             self.BestChi2[j] = self.BestChi2[j]
             self.BestP[j], self.Besta[j], self.Beste[j], self.Besti[j], self.Bestw[j], self.BestW[j], self.Besttp[j], self.Bestm[j], self.Bestm0[j] = [param[j][IndexBestChi2] for param in self.Params[:-1]]
 
-        self.BestParams = [NbBodies, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2]
+        self.BestParams = [NbBodies, PlanetsMassUnit, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2]
 
         # Widget container
         self.Widget = QWidget()
@@ -40,7 +40,7 @@ class BestOrbitsClass(QWidget):
         TblBestFit.setStatusTip('Orbits parameters corresponding to the best Chi2 fit')
         TblBestFit.setRowCount(NbBodies)
         TblBestFit.setColumnCount(self.NbParams)
-        self.LabelParams = ['P [yr]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]', 'm [Mjup]', 'm0 [Msun]', 'Chi2']
+        self.LabelParams = ['P [yr]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]', 'm ['+PlanetsMassUnit+']', 'm0 [Msun]', 'Chi2']
         TblBestFit.setHorizontalHeaderLabels(self.LabelParams)
 
         # Disable selection
@@ -84,7 +84,7 @@ class BestOrbitsClass(QWidget):
                 if np.var(self.Params[k][j]) == 0 or self.Params[k][j][0] == float('inf'):
                     value = "/"
                 else:
-                    value = '{}'.format(np.around(self.BestParams[k+1][j], 3))
+                    value = '{}'.format(np.around(self.BestParams[k+2][j], 3))
                 # value = '...'
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Center align text
@@ -111,4 +111,3 @@ class BestOrbitsClass(QWidget):
             self.BestPa[j] = np.rad2deg(np.arctan2(self.BestRa[j], self.BestDec[j]))
 
         self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV]
-
