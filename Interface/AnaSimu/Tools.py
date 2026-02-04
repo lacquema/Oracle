@@ -4,6 +4,7 @@
 
 # Transverse packages
 import sys
+from matplotlib.pyplot import subplots_adjust
 import numpy as np
 from random import random, randint
 import corner
@@ -1171,8 +1172,8 @@ class Corner(GeneralToolClass):
         # Adjust the labels to not be slanted
         for k in range(len(grid.get_axes())):
             ax = grid.get_axes()[k]
-            ax.tick_params(axis='x', rotation=0)
-            ax.tick_params(axis='y', rotation=0)
+            # ax.tick_params(axis='x', rotation=0)
+            # ax.tick_params(axis='y', rotation=0)
 
             # Best fit
             if self.CheckBestFit.CheckParam.isChecked():
@@ -1189,6 +1190,8 @@ class Corner(GeneralToolClass):
                         BestYParam = eval(f'self.Best{DataNames[row]}')[self.nBody]
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
+            self.WidgetPlot.Canvas.fig.subplots_adjust(wspace=0.05, hspace=0.05)
+            
 
 class PosAtDate(GeneralToolClass):
     def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses, SystDist):
