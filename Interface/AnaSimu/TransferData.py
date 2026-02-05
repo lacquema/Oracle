@@ -61,7 +61,7 @@ def TransfertSimu(PathOutputData, UnivYN):
             PlanetsAstromDate = [np.array([]) for _ in range(NbPlanets)]
             PlanetsAstromRa = [np.array([]) for _ in range(NbPlanets)]
             PlanetsAstromDec = [np.array([]) for _ in range(NbPlanets)]
-            PlanetsAstromdRa = [np.array([]) for _ in range(NbPlanets)]
+            PlanetsAstromdRA = [np.array([]) for _ in range(NbPlanets)]
             PlanetsAstromdDec = [np.array([]) for _ in range(NbPlanets)]
             PlanetsAstromCorrRaDec = [np.array([]) for _ in range(NbPlanets)]
             PlanetsAstromSep = [np.array([]) for _ in range(NbPlanets)]
@@ -78,14 +78,14 @@ def TransfertSimu(PathOutputData, UnivYN):
                 # Données astrométriques pour la planète
                 if NbDataPlanetsAstrom[i] > 0:
                     planet_astrom_data = np.array([list(map(float, lines[current_line + j].split())) for j in range(NbDataPlanetsAstrom[i])])
-                    PlanetsAstromDate[i], PlanetsAstromDec[i], PlanetsAstromRa[i], PlanetsAstromdDec[i], PlanetsAstromdRa[i], PlanetsAstromCorrRaDec[i] = planet_astrom_data.T
+                    PlanetsAstromDate[i], PlanetsAstromDec[i], PlanetsAstromRa[i], PlanetsAstromdDec[i], PlanetsAstromdRA[i], PlanetsAstromCorrRaDec[i] = planet_astrom_data.T
                     current_line += NbDataPlanetsAstrom[i]
 
                     # Conversion des coordonnées cartésiennes en coordonnées polaires
                     PlanetsAstromSep[i], PlanetsAstromPa[i], PlanetsAstromdSep[i], PlanetsAstromdPa[i], PlanetsAstromCorrSepPa[i] = map(
                         np.array, zip(*map(cartesian_to_polar_with_errors, 
                                            PlanetsAstromDec[i], PlanetsAstromRa[i], 
-                                           PlanetsAstromdDec[i], PlanetsAstromdRa[i], 
+                                           PlanetsAstromdDec[i], PlanetsAstromdRA[i], 
                                            PlanetsAstromCorrRaDec[i])))
 
                 # Données de vitesse radiale pour la planète
@@ -174,7 +174,7 @@ def TransfertSimu(PathOutputData, UnivYN):
                         "Date": PlanetsAstromDate,
                         "Ra": [ra*SystDist_mas for ra in PlanetsAstromRa],
                         "Dec": [dec*SystDist_mas for dec in PlanetsAstromDec],
-                        "dRa": [dra*SystDist_mas for dra in PlanetsAstromdRa],
+                        "dRA": [dra*SystDist_mas for dra in PlanetsAstromdRA],
                         "dDec": [ddec*SystDist_mas for ddec in PlanetsAstromdDec],
                         "CorrRaDec": PlanetsAstromCorrRaDec,
                         "Sep": [sep*SystDist_mas for sep in PlanetsAstromSep],

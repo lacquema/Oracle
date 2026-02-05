@@ -302,7 +302,7 @@ class SpaceView(GeneralToolClass):
                 for k in range(self.InputData['Planets']['Nb']):
                     ra = self.InputData['Planets']['DataAstrom']['Ra'][k]
                     dec = self.InputData['Planets']['DataAstrom']['Dec'][k]
-                    dra = self.InputData['Planets']['DataAstrom']['dRa'][k]
+                    dra = self.InputData['Planets']['DataAstrom']['dRA'][k]
                     ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
                     dates = self.InputData['Planets']['DataAstrom']['Date'][k]
                     self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
@@ -313,7 +313,7 @@ class SpaceView(GeneralToolClass):
             else:
                 ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
                 dec = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
-                dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
+                dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
                 ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
                 dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
                 self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
@@ -322,8 +322,8 @@ class SpaceView(GeneralToolClass):
                         self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
         
         # Set axis
-        self.SubplotXY.set_xlabel(r'$\delta Ra$ [mas]')
-        self.SubplotXY.set_ylabel(r'$\delta Dec$ [mas]')
+        self.SubplotXY.set_xlabel(r'$\delta$RA [mas]')
+        self.SubplotXY.set_ylabel(r'$\delta$Dec [mas]')
         self.SubplotXY.invert_xaxis()
         self.SubplotXY.set_aspect('equal', adjustable='box')
 
@@ -353,7 +353,7 @@ class SpaceView(GeneralToolClass):
                 self.SubplotXZ.plot(self.BestRa[self.nBody], self.BestZ[self.nBody], color='C3', linewidth=0.5)
 
         # Set axis
-        self.SubplotXZ.set_xlabel(r'$\delta Ra$ [mas]')
+        self.SubplotXZ.set_xlabel(r'$\delta$RA [mas]')
         self.SubplotXZ.set_ylabel('Depth [mas]')
         self.SubplotXZ.invert_xaxis()
         self.SubplotXZ.set_aspect('equal', adjustable='box')
@@ -382,8 +382,8 @@ class SpaceView(GeneralToolClass):
             for n in range(self.NbShownOrbits):
                 self.SubplotXYZ.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
-        self.SubplotXYZ.set_xlabel(r'$\delta Ra$ [mas]')
-        self.SubplotXYZ.set_ylabel(r'$\delta Dec$ [mas]')
+        self.SubplotXYZ.set_xlabel(r'$\delta$RA [mas]')
+        self.SubplotXYZ.set_ylabel(r'$\delta$Dec [mas]')
         self.SubplotXYZ.set_zlabel('Depth [mas]')
         self.SubplotXYZ.invert_xaxis()
         self.SubplotXYZ.set_aspect('equal', adjustable='box')
@@ -450,7 +450,7 @@ class TempoView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbShownOrbitsWidget)
 
         # Choice of coordinate
-        self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRa', 'dDec', 'Sep', 'Pa', 'RV'])
+        self.CoordinateWidget = ComboBox('Choice of coordinate', 'Coordinates', ['dRA', 'dDec', 'Sep', 'Pa', 'RV'])
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
         self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
@@ -459,9 +459,9 @@ class TempoView(GeneralToolClass):
         """Update parameters based on the current widget values."""
         self.CoordinateIndex = self.CoordinateWidget.ComboParam.currentIndex()
         if self.CoordinateIndex == 0:
-            self.Coordinate = r'$\delta Ra$'
+            self.Coordinate = r'$\delta$RA'
         elif self.CoordinateIndex == 1:
-            self.Coordinate = r'$\delta Dec$'
+            self.Coordinate = r'$\delta$Dec'
         elif self.CoordinateIndex == 2:
             self.Coordinate = 'Sep'
         elif self.CoordinateIndex == 3:
@@ -481,7 +481,7 @@ class TempoView(GeneralToolClass):
             self.BestYplotOutput = self.BestRa
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
-                self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
+                self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
         elif self.CoordinateIndex == 1:
             self.YplotOutput = self.SelectDec
             self.BestYplotOutput = self.BestDec
@@ -1191,7 +1191,7 @@ class Corner(GeneralToolClass):
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
             self.WidgetPlot.Canvas.fig.subplots_adjust(wspace=0.05, hspace=0.05)
-            
+
 
 class PosAtDate(GeneralToolClass):
     def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses, SystDist):
@@ -1309,14 +1309,14 @@ class PosAtDate(GeneralToolClass):
         if self.CheckObs.CheckParam.isChecked():
             ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
             dec = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
-            dra = self.InputData['Planets']['DataAstrom']['dRa'][self.nBody]
+            dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
             self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='white')
 
         # Plot features
-        self.Subplot.set_xlabel(r'$\delta$ Ra [mas]')
-        self.Subplot.set_ylabel(r'$\delta$ Dec [mas]')
+        self.Subplot.set_xlabel(r'$\delta$RA [mas]')
+        self.Subplot.set_ylabel(r'$\delta$Dec [mas]')
         self.Subplot.invert_xaxis()
         self.Subplot.set_aspect('equal', adjustable='box')
         self.Subplot.set_xlim(xlim_init)
