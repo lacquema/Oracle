@@ -1,0 +1,36 @@
+Parameters without universal variables : 
+- with radial velocity data :
+    1 ln(a)
+    2 e*cos(omega+Omega)/sqrt(1-e^2)
+    3 e*sin(omega+Omega)/sqrt(1-e^2)
+    4 sin(i/2)*cos(Omega)*(1-e^2)^(1/4)
+    5 sin(i/2)*sin(Omega)*(1-e^2)^(1/4)
+    6 cos(omega+Omega+nu)/P # nu is true anomalie
+    7 sin(omega+Omega+nu)/P
+- without radial velocity data :
+    1 ln(a)
+    2 e*cos(omega+Omega)/sqrt(1-e^2)
+    3 e*sin(omega+Omega)/sqrt(1-e^2)
+    4 sin(i/2)*cos(omega-Omega)*(1-e^2)^(1/4)
+    5 sin(i/2)*sin(omega-Omega)*(1-e^2)^(1/4)
+    6 cos(omega+Omega+nu)/P # nu is true anomalie
+    7 sin(omega+Omega+nu)/P
+
+Parameters with universal variables : 
+- with radial velocity data :
+    1 ln(q) # q is the periastre
+    2 e*cos(omega+Omega)
+    3 e*sin(omega+Omega)
+    4 sin(i/2)*cos(Omega)
+    5 sin(i/2)*sin(Omega)
+    6 ln(Pq) # Pq is the orbital period of a circular orbit with radius q
+    7 s # s is the universal variable
+- without radial velocity data :
+    1 ln(q) # q is the periastre
+    2 e*cos(omega+Omega)
+    3 e*sin(omega+Omega)
+    4 sin(i/2)*cos(omega-Omega)
+    5 sin(i/2)*sin(omega-Omega)
+    6 ln(Pq) # Pq is the orbital period of a circular orbit with radius q
+    7 s # s is the universal variable
+

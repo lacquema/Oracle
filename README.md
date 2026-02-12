@@ -48,25 +48,25 @@ Now that the container is ready, you can download the gihub directory inside:
 
 `cd <environment_path>`
 
-`git clone https://github.com/lacquema/Astroide`
+`git clone https://github.com/lacquema/Oracle`
 
 
 ## Install python packages
 
-All the necessary python packages are listed in the `<environment_path>/Astroide/requirements.txt` file. You can install them all:
+All the necessary python packages are listed in the `<environment_path>/Oracle/requirements.txt` file. You can install them all:
 
-`pip3 install -r <environment_path>/Astroide/requirements.txt`
+`pip3 install -r <environment_path>/Oracle/requirements.txt`
 
 
 ## Compile fortran code
 
 If you are using the fortran compiler `gfortran`, you can directly compile all the fortran files:
 
-`cd <environment_path>/Astroide`
+`cd <environment_path>/Oracle`
 
 `make compile`
 
-Else, edit the `<environment_path>/Astroide/Makefile` file by updating the COMPILF variable. This corresponds to the paths or simply the command for the executables of the fortran compiler installed on your computer. Then, run the commands above. 
+Else, edit the `<environment_path>/Oracle/Makefile` file by updating the COMPILF variable. This corresponds to the paths or simply the command for the executables of the fortran compiler installed on your computer. Then, run the commands above. 
 
 <br><br>
 
@@ -78,9 +78,9 @@ You can import the code from github in the same way as on your personal computer
 
 On computing servers, the use of modern package managers such as Guix is highly recommended and often mandatory. These tools enable isolated and reproducible management of software dependencies, thus avoiding unintentional changes to the server environment. In addition, Guix avoids unnecessary duplication of packages by storing shared dependencies only once in the server's `/gnu/store`. This considerably reduces the use of storage space. 
 
-Instead of installing packages directly, you configure them to reference the Guix-managed library. All required packages are explicitly listed in the `<environment_path>/Astroide/manifest.scm` file. You can reference them all:
+Instead of installing packages directly, you configure them to reference the Guix-managed library. All required packages are explicitly listed in the `<environment_path>/Oracle/manifest.scm` file. You can reference them all:
 
-`guix package -m <environment_path>/Astroide/manifest.scm`
+`guix package -m <environment_path>/Oracle/manifest.scm`
 
 Ensure to consult the Guix documentation provided by your server administrators, as specific configurations or permissions might apply.
 
@@ -97,7 +97,7 @@ At this point, all that remains is to compile the fortran files in the same way 
 
 You have access to a graphical interface to set up and launch a new simulation. To start the interface, run:
 
-`python3 <environment_path>/Astroide/Interface/Main.py`
+`python3 <environment_path>/Oracle/Interface/Main.py`
 
 Click the `New simulation` button and follow the guided options provided by the interface. The step-by-step process will help you configure all necessary parameters for your simulation.
 
