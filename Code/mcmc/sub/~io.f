@@ -327,7 +327,8 @@ c... Central mass
            IF (CNEW.LT.5) THEN
               WRITE(SD,*)'Name of output file ?'
               READ(5,'(a)')FILES(1)
-              FILES(1) = TRIM(FILES(1))//'.dat'
+            !   FILES(1) = TRIM(FILES(1))//'.dat'
+              FILES(1) = TRIM(FILES(1))
               WRITE(SD,*)'Name of dump file ?'
               READ(5,'(a)')FILES(2)
               WRITE(SD,*)'Dump frequency ?'
@@ -1147,10 +1148,8 @@ C
 
         INTEGER*4 ::    NMOD,         ! Number of models 
      &                  NSAV,         ! Number of pars. to store per planet
-     &                  ERROR,        ! Error flag
      &                  LOG_TO_INT    ! Conversion function
-        CHARACTER*(*) :: DEV          ! Output file 
-        CHARACTER*80 :: LINE          ! Command line
+        CHARACTER*(*) :: DEV    ! 
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  O,OM,         ! Omega's ± Pi
@@ -1159,8 +1158,7 @@ C
 
         REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
         INTEGER*4       I,J,DNPLA,IC
- 1      FORMAT("gzip -9 ",'(a)')
-        
+
         DNPLA = 2**NPLA
         NSAV = NEL+4
         ALLOCATE(DATA4(DNPLA*(NMOD+1),NSAV,NPLA))
@@ -1220,8 +1218,6 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)DNPLA*(NMOD+1),NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        WRITE(LINE,1,IOSTAT=ERROR)TRIM(DEV)
-        CALL SYSTEM(LINE)
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
         DEALLOCATE(CI2)
@@ -1301,10 +1297,8 @@ C
 
         INTEGER*4 ::    NMOD,         ! Number of models 
      &                  NSAV,         ! Number of pars. to store per planet
-     &                  ERROR,        ! Error flag
      &                  LOG_TO_INT    ! Conversion function
-        CHARACTER*(*) :: DEV          ! Output file 
-        CHARACTER*80 :: LINE          ! Command line
+        CHARACTER*(*) :: DEV    ! 
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  CI,SI,        ! cos(i),sin(i)
@@ -1314,7 +1308,6 @@ C
      &                  SIGMA         ! Cumulative mass
         REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
         INTEGER*4       I,J
- 1      FORMAT("gzip -9 ",'(a)')
 
         STAR%SIGJV = 0.d0
         NSAV = NEL+6
@@ -1373,8 +1366,7 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)NMOD+1,NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        WRITE(LINE,1,IOSTAT=ERROR)TRIM(DEV)
-        CALL SYSTEM(LINE)
+        
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
         DEALLOCATE(CI)
