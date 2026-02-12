@@ -6,6 +6,8 @@ sys.path.append(os.path.dirname(__file__)+'/..')
 ### --- Packages --- ###
 
 # Transverse packages
+import gzip
+import shutil
 
 # PyQt packages
 from PyQt6.QtWidgets import QTabWidget, QMainWindow, QStatusBar, QApplication, QVBoxLayout, QPushButton, QFileDialog
@@ -33,6 +35,8 @@ class WindowSetAnaSimu(WindowWithFinder):
 
         # File to save the last path used
         self.last_path_file = os.path.join(os.path.dirname(__file__), '.last_path')
+        # Track decompressed file to delete it on close
+        self.decompressed_file = None
 
         # Window characteristics
         self.setWindowTitle('Settings of the analysis')
@@ -90,7 +94,7 @@ class WindowSetAnaSimu(WindowWithFinder):
             with open(self.last_path_file, "w", encoding="utf-8") as f:
                 f.write(path)
         except Exception as e:
-            print(f"Erreur lors de la sauvegarde du chemin : {e}")
+            print(f"\nErreur lors de la sauvegarde du chemin : {e}")
 
     def load_last_path(self):
         try:
@@ -98,12 +102,30 @@ class WindowSetAnaSimu(WindowWithFinder):
                 with open(self.last_path_file, "r", encoding="utf-8") as f:
                     return f.read().strip()
         except Exception as e:
-            print(f"Erreur lors du chargement du chemin : {e}")
+            print(f"\nErreur lors du chargement du chemin : {e}")
         return ""
 
     def is_valid_file(self, file_path):
         # Add logic to validate the file (e.g., check extension, content, etc.)
-        return file_path.endswith('.dat')  # Example: only allow .dat files
+        state = file_path.endswith('.dat') or file_path.endswith('.gz') # Example: allow .dat and .gz files
+        return state
+
+    def decompress_gz(self, gz_path):
+        """
+        Décompresse un fichier .gz et retourne le chemin du fichier décompressé.
+        Le fichier décompressé est créé dans le même répertoire avec l'extension .gz retirée.
+        """
+        try:
+            # Créer le nom du fichier de sortie en retirant l'extension .gz
+            dat_path = gz_path[:-3]  # Retire les 3 derniers caractères (.gz)
+            # Décompresser le fichier
+            with gzip.open(gz_path, 'rb') as f_in:
+                with open(dat_path, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            return dat_path
+        except Exception as e:
+            print(f'\nError decompressing file: {e}')
+            return None
 
     def InitWidgets(self):
         
@@ -226,6 +248,16 @@ class WindowSetAnaSimu(WindowWithFinder):
             print('\nSimulation path not given')
         else:
             try:
+                # Vérifier si le fichier est compressé et le dézipper si nécessaire
+                file_path = self.SimuFilePathW.EditParam.text()
+                if file_path.endswith('.gz'):
+                    print(f'\nDecompressing {file_path}...')
+                    file_path = self.decompress_gz(file_path)
+                    if file_path:
+                        print(f'\nFile decompressed successfully: {file_path}')
+                        self.SimuFilePathW.EditParam.setText(file_path)
+                        # Enregistrer le fichier décompressé pour le supprimer à la fermeture
+                        self.decompressed_file = file_path
                 self.OpenWinMain()
                 self.save_last_path(self.SimuFilePathW.EditParam.text())
             except Exception as e:
@@ -259,6 +291,14 @@ class WindowSetAnaSimu(WindowWithFinder):
 
     # Emition of the CloseEvent signal when the parameter window is closed
     def closeEvent(self, e):
+        # Supprimer le fichier .dat décompressé si nécessaire
+        if self.decompressed_file and os.path.exists(self.decompressed_file):
+            try:
+                os.remove(self.decompressed_file)
+                print(f'\nDecompressed file removed: {self.decompressed_file}')
+            except Exception as ex:
+                print(f'\nError removing decompressed file: {ex}')
+        
         try: # In the case self.WinMain openning, dont show again WindowMenu
             if self.WinMain.isVisible() == False:
                 self.SignalCloseWindowSetAnaSimu.emit() 
