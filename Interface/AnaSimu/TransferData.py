@@ -95,8 +95,14 @@ def TransfertSimu(PathOutputData, UnivYN):
                     current_line += NbDataPlanetsRV[i]
 
             # Lecture des unités de masse
-            PlanetsMassUnit = [int(float(x)) for x in lines[current_line].split()]
+            PlanetsMassUnit = []
+            for i in range(NbPlanets):
+                if lines[current_line].split()[i] == '2.8253286448777265E-007':
+                    PlanetsMassUnit.append('Mjup')
+                elif lines[current_line].split()[i] == '2.9591220828559115E-004':
+                    PlanetsMassUnit.append('Msun')
             current_line += 1
+
 
             # Lecture des priors
             PriorsType, PriorsCoef_m, PriorsCoef_CM = [], [], []
@@ -231,17 +237,18 @@ def TransfertSimu(PathOutputData, UnivYN):
                 a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
 
         # Uniformize mass units
-        if HeaderDataIn(PathOutputData) and len(PlanetsMassUnit) > 1:
-            if not all(x == PlanetsMassUnit[0] for x in PlanetsMassUnit): # if all planets don't have the same mass unit
-                PlanetsMassUnit = 'Mjup'
-                for i in range(NbPlanets):
-                    if PlanetsMassUnit[i] == 0: # Msun to Mjup
-                        m[i] = m[i] * 1047.348644
-            else:
-                if PlanetsMassUnit[0] == 0:
-                    PlanetsMassUnit = 'Msun'
-                elif PlanetsMassUnit[0] == 1:
+        print(f"PlanetsMassUnit before uniformization: {PlanetsMassUnit}")
+        if HeaderDataIn(PathOutputData):
+            if len(PlanetsMassUnit) > 1: # if there are more than 1 planet
+                if not all(x == PlanetsMassUnit[0] for x in PlanetsMassUnit): # if all planets don't have the same mass unit
+                    for i in range(NbPlanets):
+                        if PlanetsMassUnit[i] == 'Msun': # Msun to Mjup
+                            m[i] = m[i] * 1047.348644
                     PlanetsMassUnit = 'Mjup'
+                else:
+                    PlanetsMassUnit = PlanetsMassUnit[0]
+            else:
+                PlanetsMassUnit = PlanetsMassUnit[0]
         else:
             PlanetsMassUnit = 'Mjup or Msun'
 

@@ -184,8 +184,11 @@ class WindowSetAnaSimu(WindowWithFinder):
         # self.SystDistW.SpinParam.valueChanged.connect(self.EnableBtnStartOrNot)
 
     def HeaderOptionsVisible(self):
+        PathSimu = self.SimuFilePathW.EditParam.text()
+        if PathSimu.endswith('.gz'):
+            PathSimu = self.decompressed_file if self.decompressed_file else PathSimu[:-3] # Use the decompressed file if available
         try:
-            if HeaderDataIn(self.SimuFilePathW.EditParam.text()):
+            if HeaderDataIn(PathSimu):
                 self.SystDistW.setVisible(False)
                 self.UnivYNW.setVisible(False)
             else:
@@ -255,7 +258,6 @@ class WindowSetAnaSimu(WindowWithFinder):
                     file_path = self.decompress_gz(file_path)
                     if file_path:
                         print(f'\nFile decompressed successfully: {file_path}')
-                        self.SimuFilePathW.EditParam.setText(file_path)
                         # Enregistrer le fichier décompressé pour le supprimer à la fermeture
                         self.decompressed_file = file_path
                 self.OpenWinMain()
@@ -270,6 +272,8 @@ class WindowSetAnaSimu(WindowWithFinder):
         else:
             self.UnivYN = 1
         PathSimu = self.SimuFilePathW.EditParam.text()
+        if PathSimu.endswith('.gz'):
+            PathSimu = self.decompressed_file if self.decompressed_file else PathSimu[:-3] # Use the decompressed file if available
         SimuName = PathSimu.split('/')[-1]
         InputData, OutputParams = TransfertSimu(PathSimu, self.UnivYN)
         if InputData != None:
