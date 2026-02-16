@@ -237,7 +237,7 @@ def TransfertSimu(PathOutputData, UnivYN):
                 a[j], P[j], e[j], w[j], i[j], W[j], tp[j], m[j], m0[j], Chi2[j], Map[j] = [Data[j][k][:] for k in range(11)]
 
         # Uniformize mass units
-        print(f"PlanetsMassUnit before uniformization: {PlanetsMassUnit}")
+        # print(f"PlanetsMassUnit before uniformization: {PlanetsMassUnit}")
         if HeaderDataIn(PathOutputData):
             if len(PlanetsMassUnit) > 1: # if there are more than 1 planet
                 if not all(x == PlanetsMassUnit[0] for x in PlanetsMassUnit): # if all planets don't have the same mass unit

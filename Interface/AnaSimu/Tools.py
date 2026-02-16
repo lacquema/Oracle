@@ -1172,8 +1172,10 @@ class Corner(GeneralToolClass):
         # Adjust the labels to not be slanted
         for k in range(len(grid.get_axes())):
             ax = grid.get_axes()[k]
-            # ax.tick_params(axis='x', rotation=0)
-            # ax.tick_params(axis='y', rotation=0)
+            ax.tick_params(axis='x', labelsize=7, pad=0.2)
+            ax.tick_params(axis='y', labelsize=7, pad=0.2)
+            ax.xaxis.labelpad = 15
+            ax.yaxis.labelpad = 15
 
             # Best fit
             if self.CheckBestFit.CheckParam.isChecked():
@@ -1190,7 +1192,7 @@ class Corner(GeneralToolClass):
                         BestYParam = eval(f'self.Best{DataNames[row]}')[self.nBody]
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
-            self.WidgetPlot.Canvas.fig.subplots_adjust(wspace=0.05, hspace=0.05)
+        self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.1, hspace=0.1)
 
 
 class PosAtDate(GeneralToolClass):
