@@ -78,7 +78,7 @@ class PriorMassClass(QWidget):
             self.Layout.addWidget(self.Value)
 
         if self.DistribIndex != 0: 
-            self.PriorUnit = ComboBox(None, 'Unit', ['ms', 'mj'])
+            self.PriorUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
             self.Layout.addWidget(self.PriorUnit)
 
         self.Layout.setAlignment(Qt.AlignmentFlag.AlignLeft)

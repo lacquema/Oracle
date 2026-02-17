@@ -93,16 +93,19 @@ class TabSimuSet(GeneralTab):
         self.LayoutH = QHBoxLayout()
         self.CheckLM = QCheckBox('Levenberg-Marquardt')
         self.CheckLM.setChecked(True)
-        self.LayoutH.addWidget(self.CheckLM, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.LayoutH.addWidget(self.CheckLM)
         self.LayoutH.setSpacing(100)
         self.CheckMCMC = QCheckBox('MCMC')
         self.CheckMCMC.setChecked(True)
-        self.LayoutH.addWidget(self.CheckMCMC, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.LayoutH.addWidget(self.CheckMCMC)
         self.WidgetH.setLayout(self.LayoutH)
-        self.Layout.addWidget(self.WidgetH, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.WidgetH)
 
         self.Precision = SpinBox('Precision order', 'Order of adjustment precision in powers of 10', 7, 0, 10, 1)
-        self.Layout.addWidget(self.Precision, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.Precision)
+
+        self.CheckUnivVar = CheckBox('Universal variables', 'If the eccentricity of an orbit is very large or if it is poorly constrained')
+        self.Layout.addWidget(self.CheckUnivVar)
 
         self.Layout.addWidget(Delimiter(Title='Outputs :'))
 
@@ -110,7 +113,7 @@ class TabSimuSet(GeneralTab):
         # self.Layout.addWidget(self.DumpFileName, alignment=Qt.AlignmentFlag.AlignLeft)
         # self.DumpFileName.Layout.addSpacing(50)
         self.DumpFreq = SpinBox('Save frequency', 'Number of iterations between two saves to dump file', 10000000, 0, 1000000000, 100000)
-        self.Layout.addWidget(self.DumpFreq, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.DumpFreq)
 
         # self.OutFileName = LineEdit('Results file', 'Name you want to give to the results file', 'simulation')
         # self.Layout.addWidget(self.OutFileName, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -126,6 +129,23 @@ class TabDataSet(GeneralTab):
 
 
     def InitWidgets(self):
+
+        self.NbBodies = SpinBox('Number of bodies', 'Number of bodies', 2, 2, 5, 1)
+        # self.NbBodies.SpinParam.setMaximumWidth(50)
+        self.Layout.addWidget(self.NbBodies)
+        self.NbBodiesValue = self.NbBodies.SpinParam.value()
+
+        self.NbOrbitsValue = self.NbBodiesValue-1
+        self.NbOrbits = QLabel(f'\t=>    {self.NbOrbitsValue} Orbit')
+        self.NbBodies.Layout.addWidget(self.NbOrbits)
+
+        self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 1, 2)
+        self.Layout.addWidget(self.SystDist)
+
+        self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
+        self.SystDist.Layout.addWidget(self.SystDistUnit)
+
+        self.Layout.addWidget(Delimiter(Title='Input data file :'))
 
         self.PathData = PathBrowser('Path to data file', 'Path to the existing data file', 1)
         self.Layout.addWidget(self.PathData)
@@ -145,24 +165,23 @@ class TabDataSet(GeneralTab):
 
         self.LayoutAstroV.addWidget(Delimiter(Title='Astrometric data :'))
 
-        self.CheckRelAstro = CheckBox('Relative:', 'If you want use relative astrometric data')
+        self.CheckRelAstro = CheckBox('Relative planet :', 'If you want use relative astrometric data')
         self.LayoutAstroV.addWidget(self.CheckRelAstro)
         # self.CheckRelAstro.CheckData.setCheckState()
         self.CheckRelAstro.CheckParam.setChecked(True)
         self.CheckRelAstro.CheckParam.clicked.connect(lambda: self.CheckRelAstro.CheckParam.setChecked(True))
-        self.CheckRelAstro.Layout.setSpacing(0)
-        self.CheckRelAstro.Layout.addSpacing(30)
-        self.FormatRelAstro = ComboBox(None, 'Format of astrometric data', ['Format', 'Dec RA', 'Sep PA'], 0)
-        self.CheckRelAstro.Layout.addWidget(self.FormatRelAstro)
-        # self.CheckRelAstro.Layout.addSpacing(10)
-        self.CheckCorrCoef = CheckBox('Correlation', 'If you wish to use a correlation coefficient between coordinates')
-        self.CheckRelAstro.Layout.addWidget(self.CheckCorrCoef)
 
-        self.CheckAbsAstro = CheckBox('Absolute', 'If you want use absolute astrometric data')
+        self.FormatRelAstro = ComboBox(None, 'Format of astrometric data', ['Format', 'Dec RA', 'Sep PA'], 0)
+        self.LayoutAstroV.addWidget(self.FormatRelAstro)
+        self.FormatRelAstro.Layout.insertSpacing(0, 20)
+        self.CheckCorrCoef = CheckBox('Correlation', 'If you wish to use a correlation coefficient between coordinates')
+        self.FormatRelAstro.Layout.addWidget(self.CheckCorrCoef)
+
+        self.CheckAbsAstro = CheckBox('Absolute star', 'If you want use absolute astrometric data')
         self.LayoutAstroV.addWidget(self.CheckAbsAstro)
         # self.CheckAbsAstro.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
 
-        self.LayoutAstroV.setSpacing(0)
+        # self.LayoutAstroV.setSpacing(0)
 
         self.LayoutDataTypeH.addLayout(self.LayoutAstroV)
 
@@ -170,26 +189,42 @@ class TabDataSet(GeneralTab):
 
         self.LayoutRVV.addWidget(Delimiter(Title='Radial velocity data :'))
 
-        self.LayoutRVV.addSpacing(10)
-
-        self.RelRV = CheckBox('Relative', 'If you want use relative radial velocity data')
+        self.RelRV = CheckBox('Relative planet', 'If you want use relative radial velocity data')
         self.LayoutRVV.addWidget(self.RelRV)
         # self.RelRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
 
-        self.LayoutRVV.addSpacing(10)
-
-        self.AbsRV = CheckBox('Absolute', 'If you want use absolute radial velocity data')
+        self.AbsRV = CheckBox('Absolute star :', 'If you want use absolute radial velocity data')
         self.LayoutRVV.addWidget(self.AbsRV)
         # self.AbsRV.CheckData.stateChanged.connect(self.EnableOrNotPutDataPath)
 
+        self.CheckJitter = CheckBox('Jitter :')
+        self.CheckJitter.setEnabled(False)
+        self.LayoutRVV.addWidget(self.CheckJitter)
+        self.CheckJitter.Layout.insertSpacing(0, 20)
+        self.Jitter = DoubleSpinBox(None, 'Jitter [m/s]', 0, 0, 2147483647, None, 2)
+        self.Jitter.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.Jitter)
+        self.LblPlusV0 = QLabel('+')
+        self.LblPlusV0.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.LblPlusV0)
+        self.V0 = DoubleSpinBox(None, 'Systematic error V0 [m/s]', 0, 0, 2147483647, None, 2)
+        self.V0.setEnabled(False)
+        self.CheckJitter.Layout.addWidget(self.V0)
+
+        self.AbsRV.CheckParam.stateChanged.connect(self.CheckJitter.setEnabled)
+        self.CheckJitter.CheckParam.stateChanged.connect(self.Jitter.setEnabled)
+        self.CheckJitter.CheckParam.stateChanged.connect(self.LblPlusV0.setEnabled)
+        self.CheckJitter.CheckParam.stateChanged.connect(self.V0.setEnabled)
+
+        self.LayoutDataTypeH.addSpacing(50)
         self.LayoutDataTypeH.addLayout(self.LayoutRVV)
 
         self.WidgetDataType.setLayout(self.LayoutDataTypeH)
         self.Layout.addWidget(self.WidgetDataType)
 
-        self.LayoutAstroV.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.LayoutRVV.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # self.LayoutAstroV.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # self.LayoutRVV.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
     # def EnableOrNotPutDataPath(self):
     #     self.DataFileName.setEnabled(self.CheckAbsAstro.CheckData.isChecked() or self.CheckRelAstro.CheckData.isChecked() or self.AbsRV.CheckData.isChecked() or self.RelRV.CheckData.isChecked())
@@ -198,7 +233,7 @@ class TabDataSet(GeneralTab):
     #         print('Adjustments need data.')
 
 
-class TabPriorSet(GeneralTab):
+class TabGuessSet(GeneralTab):
     
     def __init__(self):
         super().__init__()
@@ -212,137 +247,127 @@ class TabPriorSet(GeneralTab):
         # self.BtnGGTau = QPushButton('GGTau model')
         # self.Layout.addWidget(self.BtnGGTau)
 
-        self.ListPriorMass = []
-        self.ListPriorMassId = []
-        self.c = 0 # counter
-
-        self.WidgetH = QWidget()
-        self.LayoutH = QHBoxLayout()
-        
-        self.LayoutV1 = QVBoxLayout()
-
-        self.NbBodies = SpinBox('Number of bodies', 'Number of bodies', 2, 2, 5, 1)
-        self.LayoutV1.addWidget(self.NbBodies, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.NbBodiesValue = self.NbBodies.SpinParam.value()
-        self.NbBodies.SpinParam.valueChanged.connect(self.ChangeNbBodies)
-
-        self.NbOrbitsValue = self.NbBodiesValue-1
-        self.NbOrbits = QLabel(f'=>    {self.NbOrbitsValue} Orbit')
-        self.NbBodies.Layout.addWidget(self.NbOrbits)
-
-        self.SystDist = DoubleSpinBox('System distance', 'Distance from us of the studied system', 0, 0, None, 1, 2)
-        self.LayoutV1.addWidget(self.SystDist)
-
-        self.SystDistUnit = ComboBox(None, 'Unit', ['pc', 'mas'])
-        self.SystDist.Layout.addWidget(self.SystDistUnit, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.CheckJitter = CheckBox('Jitter :')
-        self.CheckJitter.setEnabled(False)
-        self.CheckJitter.CheckParam.stateChanged.connect(self.EnablePriorJitterOrNot)
-        self.LayoutV1.addWidget(self.CheckJitter, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.Jitter = DoubleSpinBox(None, 'Jitter [m/s]', 0, 0, 2147483647, None, 2)
-        self.Jitter.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.Jitter, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.LblPlusV0 = QLabel('+')
-        self.LblPlusV0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.LblPlusV0)
-        self.V0 = DoubleSpinBox(None, 'Systematic error V0 [m/s]', 0, 0, 2147483647, None, 2)
-        self.V0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.V0, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.CheckUnivVar = CheckBox('Universal variables', 'If the eccentricity of an orbit is very large or if it is poorly constrained')
-        self.LayoutV1.addWidget(self.CheckUnivVar)
-        self.CheckUnivVar.CheckParam.stateChanged.connect(self.EnableUnivVarOrNot)
-
-        self.LayoutV1.addWidget(Delimiter(Title='Range of parameters :'))
-
-        # self.LayoutV1.setFixedWidth(300)
-
-        self.PMin = DoubleSpinBox('Period', 'Mimimum of orbits period [day]', None, 0, None, 1, 2)
-        self.PMin.LblParam.setMinimumWidth(500)
-        self.LayoutV1.addWidget(self.PMin)
-        self.PMin.Layout.addSpacing(15)
-        self.PMin.Layout.addWidget(QLabel('<->'))
-        self.PMin.Layout.addSpacing(10)
-        self.PMax = DoubleSpinBox(None, 'Maximum of orbits period [day]', None, 0, None, 1, 2)
-        self.PMin.Layout.addWidget(self.PMax)
-
-        self.aMin = DoubleSpinBox('Semi-major axis', 'Mimimum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
-        self.LayoutV1.addWidget(self.aMin)
-        self.aMin.Layout.addSpacing(15)
-        self.aMin.Layout.addWidget(QLabel('<->'))
-        self.aMin.Layout.addSpacing(10)
-        self.aMax = DoubleSpinBox(None, 'Maximum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
-        self.aMin.Layout.addWidget(self.aMax)
-
-        self.PeriMin = DoubleSpinBox('Periastron', 'Mimimum of orbits periastron [AU]', None, 0, None, 1, 2)
-        self.LayoutV1.addWidget(self.PeriMin)
-        self.PeriMin.Layout.addSpacing(15)
-        self.PeriMin.Layout.addWidget(QLabel('<->'))
-        self.PeriMin.Layout.addSpacing(10)
-        self.PeriMax = DoubleSpinBox(None, 'Maximum of orbits periastron [AU]', None, 0, None, 1, 2)
-        self.PeriMin.Layout.addWidget(self.PeriMax)
-
-        self.eMin = DoubleSpinBox('Eccentricity', 'Mimimum of orbits eccentricity', None, 0, 10, 0.1, 2)
-        self.LayoutV1.addWidget(self.eMin)
-        self.eMin.Layout.addSpacing(15)
-        self.eMin.Layout.addWidget(QLabel('<->'))
-        self.eMin.Layout.addSpacing(10)
-        self.eMax = DoubleSpinBox(None, 'Maximum of orbits eccentricity', None, 0, 10, 0.1, 2)
-        self.eMin.Layout.addWidget(self.eMax)
-
-        self.LayoutV1.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.LayoutV1.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.LayoutV1.setSpacing(0)
-        self.LayoutH.addLayout(self.LayoutV1)
-
-        self.LayoutH.addSpacing(20)
-
-        self.LayoutV2 = QVBoxLayout()
-
-        self.LayoutV2.addWidget(Delimiter(Title = 'Orbits parameters first guess :'))
+        self.NbBodiesValue = 2
 
         self.FirstGuessCenterMass = DoubleSpinBox('Center mass', 'First guess of center mass [Msun]', 0, 0, None, 1, 2)
-        self.LayoutV2.addWidget(self.FirstGuessCenterMass)
+        self.Layout.addWidget(self.FirstGuessCenterMass)
 
         # self.FirstGuessCenterMassUnit = ComboBox(None, 'Unit', ['Msun', 'Mjup'])
         # self.FirstGuessCenterMass.Layout.addWidget(self.FirstGuessCenterMassUnit)
 
         self.FirstGuessOtherMassUnit = ComboBox('Other bodies mass unit', 'Unit of mass of the other bodies', ['Mjup', 'Msun'])
         self.FirstGuessOtherMassUnit.ComboParam.currentIndexChanged.connect(self.OtherMassUnitChange)
-        self.LayoutV2.addWidget(self.FirstGuessOtherMassUnit)
+        self.Layout.addWidget(self.FirstGuessOtherMassUnit)
 
         self.TablePriors = QTableWidget()
 
         self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
-        self.EnableUnivVarOrNot(self.CheckUnivVar.CheckParam.isChecked())
 
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
-        self.TablePriors.setRowCount(self.NbOrbitsValue)
-        self.LayoutV2.addWidget(self.TablePriors, alignment=Qt.AlignmentFlag.AlignVCenter)
-        for i in range(self.NbOrbitsValue):
+        self.TablePriors.setRowCount(self.NbBodiesValue-1)
+        self.TablePriors.setColumnCount(len(self.LabelParams))
+        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
+        self.Layout.addWidget(self.TablePriors, alignment=Qt.AlignmentFlag.AlignVCenter)
+        for i in range(self.NbBodiesValue-1):
+            # print("i:", i)
             for j in range(len(self.LabelParams)):
+                # print("j:", j)
                 # if i==0 and j!=0: self.TablePriors.setItem(i, j, QTableWidgetItem('X'))
                 # else: 
                 self.TablePriors.setItem(i, j, QTableWidgetItem('0.'))
                 self.TablePriors.item(i, j).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # self.ContainerTest = QWidget()
-        # self.LayoutTest = QHBoxLayout()
 
         # self.TablePriors.setCellWidget(0, 0, self.FirstGuessCenterMassUnit)
         self.TablePriors.itemChanged.connect(self.ValidationItemTbl)
         self.TablePriors.cellClicked.connect(self.SaveOldTextTbl)
 
         self.RefTime = DateAndMJDEdit('Time reference', 'Reference of the time to count the orbit phase, preferably in the middle of data times')
-        self.LayoutV2.addWidget(self.RefTime, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.Layout.addWidget(self.RefTime)
 
-        self.LayoutV2.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.LayoutH.addLayout(self.LayoutV2)
+        # self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.WidgetH.setLayout(self.LayoutH)
-        self.Layout.addWidget(self.WidgetH)
+    def ValidationItemTbl(self):
+        if self.TablePriors.currentItem()!=None:
+            TextNew = self.TablePriors.currentItem().text()
+            try:
+                TextNew = float(TextNew)
+                if self.TablePriors.currentColumn() not in [3,4,5] and TextNew<0:
+                    self.TablePriors.currentItem().setText(self.TextOld)
+            except:
+                self.TablePriors.currentItem().setText(self.TextOld)
+                print('Only numbers are allowed in this table.')
+                
+    def SaveOldTextTbl(self):
+        self.TextOld = self.TablePriors.currentItem().text()
+
+    def InputBetaPicValues(self):
+        return
+
+    def OtherMassUnitChange(self, index):
+        if index==0:
+            self.LabelParams[0] = 'm [Mjup]'
+        elif index==1: 
+            self.LabelParams[0] = 'm [Msun]'
+
+        self.TablePriors.setColumnCount(len(self.LabelParams))
+        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
+
+
+class TabRangeSet(GeneralTab):
+    
+    def __init__(self):
+        super().__init__()
+
+
+    def InitWidgets(self):
+
+        self.NbBodiesValue = 2
+
+        # self.BtnBetaPic = QPushButton('Beta Pic model')
+        # self.Layout.addWidget(self.BtnBetaPic)
+
+        # self.BtnGGTau = QPushButton('GGTau model')
+        # self.Layout.addWidget(self.BtnGGTau)
+
+        self.PMin = DoubleSpinBox('Period', 'Mimimum of orbits period [day]', None, 0, None, 1, 2)
+        self.Layout.addWidget(self.PMin)
+        self.PMin.Layout.addSpacing(10)
+        self.PMin.Layout.addWidget(QLabel('<->'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.PMin.Layout.addSpacing(10)
+        self.PMax = DoubleSpinBox(None, 'Maximum of orbits period [day]', None, 0, None, 1, 2)
+        self.PMin.Layout.addWidget(self.PMax)
+
+        self.aMin = DoubleSpinBox('Semi-major axis', 'Mimimum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
+        self.Layout.addWidget(self.aMin)
+        self.aMin.Layout.addSpacing(10)
+        self.aMin.Layout.addWidget(QLabel('<->'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.aMin.Layout.addSpacing(10)
+        self.aMax = DoubleSpinBox(None, 'Maximum of orbits semi-major axis [AU]', None, 0, None, 1, 2)
+        self.aMin.Layout.addWidget(self.aMax)
+
+        self.PeriMin = DoubleSpinBox('Periastron', 'Mimimum of orbits periastron [AU]', None, 0, None, 1, 2)
+        self.Layout.addWidget(self.PeriMin)
+        self.PeriMin.Layout.addSpacing(10)
+        self.PeriMin.Layout.addWidget(QLabel('<->'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.PeriMin.Layout.addSpacing(10)
+        self.PeriMax = DoubleSpinBox(None, 'Maximum of orbits periastron [AU]', None, 0, None, 1, 2)
+        self.PeriMin.Layout.addWidget(self.PeriMax)
+
+        self.eMin = DoubleSpinBox('Eccentricity', 'Mimimum of orbits eccentricity', None, 0, 10, 0.1, 2)
+        self.Layout.addWidget(self.eMin)
+        self.eMin.Layout.addSpacing(10)
+        self.eMin.Layout.addWidget(QLabel('<->'), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.eMin.Layout.addSpacing(10)
+        self.eMax = DoubleSpinBox(None, 'Maximum of orbits eccentricity', None, 0, 10, 0.1, 2)
+        self.eMin.Layout.addWidget(self.eMax)
+
+        # self.Layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # self.Layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # self.Layout.setSpacing(0)
+
+        self.ListPriorMass = []
+        self.ListPriorMassId = []
+        self.c = 0 # counter
 
         self.ContainerMass = QWidget()
         self.LayoutMass = QVBoxLayout()
@@ -358,7 +383,6 @@ class TabPriorSet(GeneralTab):
 
         self.Layout.setSpacing(0)
 
-        
     def AddNewPriorMass(self):
         self.PriorMass = PriorMassClass(self.NbBodiesValue)
         self.ListPriorMass.append(self.PriorMass)
@@ -378,78 +402,9 @@ class TabPriorSet(GeneralTab):
         
         for i in range(len(self.ListPriorMass)):
             self.LayoutMass.addWidget(self.ListPriorMass[i], alignment=Qt.AlignmentFlag.AlignLeft)
-
-    def ChangeNbBodies(self):
-        # Change widgets
-        OldValue = self.NbBodiesValue
-        self.NbBodiesValue = self.NbBodies.SpinParam.value()
-        self.NbOrbitsValue = self.NbBodiesValue-1
-        if  self.NbOrbitsValue==1: self.NbOrbits.setText(f'=>    {self.NbOrbitsValue} Orbit')
-        else: self.NbOrbits.setText(f'=>    {self.NbOrbitsValue} Orbits')
-
-        # Change the number of row in the priors table
-        self.TablePriors.setRowCount(self.NbOrbitsValue)
-
-        if self.NbBodiesValue > OldValue:
-            for n in range(len(self.LabelParams)):
-                self.TablePriors.setItem(self.NbOrbitsValue-1, n, QTableWidgetItem('0.'))
-                self.TablePriors.item(self.NbOrbitsValue-1, n).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            
-            for x in self.ListPriorMass:
-                x.Layout.insertWidget(x.Layout.indexOf(x.Distrib)-1, QLabel('+'), alignment=Qt.AlignmentFlag.AlignLeft)
-                x.Layout.insertWidget(x.Layout.indexOf(x.Distrib)-1, SpinBox(None, 'Coefficient of mass', 0, 0, 1, 1), alignment=Qt.AlignmentFlag.AlignLeft)
-                x.Layout.insertWidget(x.Layout.indexOf(x.Distrib)-1, QLabel('m'+str(self.NbBodiesValue)), alignment=Qt.AlignmentFlag.AlignLeft)
-
-        elif self.NbOrbitsValue < OldValue:
-            for x in self.ListPriorMass:
-                for i in range(3):
-                    x.Layout.removeWidget(x.Layout.itemAt(x.Layout.indexOf(x.Distrib)-2).widget())
-
-    def ValidationItemTbl(self):
-        if self.TablePriors.currentItem()!=None:
-            TextNew = self.TablePriors.currentItem().text()
-            try:
-                TextNew = float(TextNew)
-                if self.TablePriors.currentColumn() not in [3,4,5] and TextNew<0:
-                    self.TablePriors.currentItem().setText(self.TextOld)
-            except:
-                self.TablePriors.currentItem().setText(self.TextOld)
-                
-    def SaveOldTextTbl(self):
-        self.TextOld = self.TablePriors.currentItem().text()
-
-    def EnablePriorJitterOrNot(self, state):
-        self.Jitter.setEnabled(state)
-        self.V0.setEnabled(state)
-        self.LblPlusV0.setEnabled(state)
-
-    def EnableUnivVarOrNot(self, state):
-        self.PMin.setEnabled(not state)
-        self.aMin.setEnabled(not state)
-        self.PeriMin.setEnabled(state)
-        if not state:
-            self.eMin.SpinParam.setMaximum(1)
-            self.eMax.SpinParam.setMaximum(1)
-            self.LabelParams[1] = 'a [AU]'
-        else:
-            self.eMin.SpinParam.setMaximum(10)
-            self.eMax.SpinParam.setMaximum(10)
-            self.LabelParams[1] = 'q [AU]'
-
-        self.TablePriors.setColumnCount(len(self.LabelParams))
-        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
-
+        
     def InputBetaPicValues(self):
         return
-
-    def OtherMassUnitChange(self, index):
-        if index==0:
-            self.LabelParams[0] = 'm [Mjup]'
-        elif index==1: 
-            self.LabelParams[0] = 'm [Msun]'
-
-        self.TablePriors.setColumnCount(len(self.LabelParams))
-        self.TablePriors.setHorizontalHeaderLabels(self.LabelParams)
 
 
 class TabStartSet(GeneralTab):
