@@ -1117,9 +1117,17 @@ class Corner(GeneralToolClass):
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
 
-        # Short labels
+        # Cosmetic options
+        self.WindowPlot.WidgetParam.Layout.addWidget(Delimiter(Title='Cosmetic :'))
+
         self.CheckShortLabels = CheckBox('Short labels', 'Show short labels')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckShortLabels)
+        
+        self.CheckContour = CheckBox('Contours', 'Show contours')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckContour)
+
+        self.CheckDensity = CheckBox('Density', 'Show density representation')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckDensity)
 
 
     def CheckParamsVar(self):
@@ -1167,7 +1175,7 @@ class Corner(GeneralToolClass):
             return
 
         # Create corner plot
-        grid = corner.corner(Data, labels=DataLabels, bins=self.NbBins, fig=self.WidgetPlot.Canvas.fig)
+        grid = corner.corner(Data, labels=DataLabels, bins=self.NbBins, fig=self.WidgetPlot.Canvas.fig, plot_contours=self.CheckContour.CheckParam.isChecked(), fill_contours=self.CheckContour.CheckParam.isChecked() and not self.CheckDensity.CheckParam.isChecked(), plot_density=self.CheckDensity.CheckParam.isChecked())
 
         # Adjust the labels to not be slanted
         for k in range(len(grid.get_axes())):
@@ -1193,7 +1201,6 @@ class Corner(GeneralToolClass):
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
         self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.1, hspace=0.1)
-
 
 class PosAtDate(GeneralToolClass):
     def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses, SystDist):
