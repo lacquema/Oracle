@@ -4,6 +4,8 @@
 
 # Transverse packages
 import sys
+import logging
+import warnings
 from matplotlib.pyplot import subplots_adjust
 import numpy as np
 from random import random, randint
@@ -18,18 +20,26 @@ from Utils import date_to_jd, jd_to_mjd, mjd_to_jd, jd_to_date
 
 # My packages
 from Parameters import *
-from BestOrbits import BestOrbitsClass
 from SelectOrbits import SelectOrbitsClass
 
 from WindowPlot import WindowPlot
 import itertools
 
 
+class _MatplotlibFinitePosFilter(logging.Filter):
+    def filter(self, record):
+        return 'posx and posy should be finite values' not in record.getMessage()
+
+
+logging.getLogger('matplotlib.text').addFilter(_MatplotlibFinitePosFilter())
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+
+
 ### --- Tools Generating --- ###
 
 class GeneralToolClass(QWidget):
 
-    def __init__(self, ToolName, ToolStatus, InputData, OutputParams, SelectOrbitsParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses):
+    def __init__(self, ToolName, ToolStatus, InputData, OutputParams, SelectOrbitsParams, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse):
         super().__init__()
 
         self.colorList = ['darkslategrey', 'darkolivegreen', 'indianred', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9']
@@ -63,11 +73,17 @@ class GeneralToolClass(QWidget):
         if SelectOrbitsEllipses is not None:
             (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa, self.SelectRV) = SelectOrbitsEllipses
 
-        if BestOrbitsParams is not None:
-            (self.NbBodies, self.PlanetsMassUnit, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitsParams
+        if BestOrbitParams is not None:
+            (self.NbBodies, self.PlanetsMassUnit, self.BestP, self.Besta, self.Beste, self.Besti, self.Bestw, self.BestW, self.Besttp, self.Bestm, self.Bestm0, self.BestChi2) = BestOrbitParams
 
-        if BestOrbitsEllipses is not None:
-            (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV) = BestOrbitsEllipses
+        if BestOrbitEllipse is not None:
+            (self.NbBodies, self.NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV) = BestOrbitEllipse
+
+        if LMOrbitParams is not None:
+            (self.NbBodies, self.PlanetsMassUnit, self.LMP, self.LMa, self.LMe, self.LMi, self.LMw, self.LMW, self.LMtp, self.LMm, self.LMm0, self.LMChi2) = LMOrbitParams  
+
+        if LMOrbitEllipse is not None:
+            (self.NbBodies, self.NbPtsEllipse, self.LMP, self.LMt, self.LMRa, self.LMDec, self.LMZ, self.LMSep, self.LMPa, self.LMRV) = LMOrbitEllipse
 
         # # Fix the width to avoid resizing of parameters
         # left_width = self.WindowPlot.WidgetParam.sizeHint().width()
@@ -191,8 +207,8 @@ class GeneralToolClass(QWidget):
     
 
 class SpaceView(GeneralToolClass):
-    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
-        super().__init__('Space view', 'Space view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
+    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse):
+        super().__init__('Space view', 'Space view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitEllipse, None, LMOrbitEllipse)
 
         # Window plots initialisation
         self.WidgetPlotXY = self.WindowPlot.add_WidgetPlot(self.PlotXY, xlim=True, ylim=True)
@@ -225,9 +241,15 @@ class SpaceView(GeneralToolClass):
         self.ViewWidget.ComboParam.currentIndexChanged.connect(self.indexViewChanged)
         self.indexViewChanged(self.indexView)
 
+        # Show LM fit
+        self.CheckLMFit = CheckBox('LM fit', 'Show the Levenberg-Marquardt fit')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckLMFit)
+        self.CheckLMFit.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
+        self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
@@ -235,6 +257,7 @@ class SpaceView(GeneralToolClass):
         if self.InputData is None:
             self.CheckObs.CheckParam.setEnabled(False)
         self.ViewWidget.ComboParam.currentIndexChanged.connect(lambda: self.CheckObs.CheckParam.setEnabled(self.ViewWidget.ComboParam.currentIndex() == 0))  # Enable observations only for 2D view
+        self.CheckObs.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Show date of observations
         self.CheckDateObs = CheckBox('Date of observations', 'Show the date of observations')
@@ -242,6 +265,7 @@ class SpaceView(GeneralToolClass):
         self.CheckDateObs.CheckParam.setEnabled(False)  # Initially disabled, enabled in Plot method if observations are shown
         self.ViewWidget.ComboParam.currentIndexChanged.connect(lambda: self.CheckDateObs.CheckParam.setEnabled(self.ViewWidget.ComboParam.currentIndex() == 0 and self.CheckObs.CheckParam.isChecked()))
         self.CheckObs.CheckParam.stateChanged.connect(lambda bool: self.CheckDateObs.CheckParam.setEnabled(bool))
+        self.CheckDateObs.CheckParam.stateChanged.connect(self.refresh_plots)
 
     def indexViewChanged(self, value):
         self.indexView = value
@@ -265,7 +289,6 @@ class SpaceView(GeneralToolClass):
         # self.indexView = self.ViewWidget.ComboParam.currentIndex()
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
 
-
     def PlotXY(self):
         """Plot the 2D view of the orbits in the XY plane."""
 
@@ -288,13 +311,17 @@ class SpaceView(GeneralToolClass):
             for k in range(self.NbBodies):
                 for n in range(self.NbShownOrbits):
                     self.SubplotXY.plot(self.SelectRa[k][n], self.SelectDec[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                if self.CheckLMFit.CheckParam.isChecked():
+                    self.SubplotXY.plot(self.LMRa[k], self.LMDec[k], color='orange', linewidth=1, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXY.plot(self.BestRa[k], self.BestDec[k], color='C3', linewidth=0.5)
+                    self.SubplotXY.plot(self.BestRa[k], self.BestDec[k], color='r', linewidth=1, label='Best fit' if k==0 else None)
         else:
             for n in range(self.NbShownOrbits):
                 self.SubplotXY.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+            if self.CheckLMFit.CheckParam.isChecked():
+                self.SubplotXY.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXY.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='C3', linewidth=0.5)
+                self.SubplotXY.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='r', linewidth=1, label='Best fit')
 
         # Add observations points if available
         if self.CheckObs.CheckParam.isChecked() and self.indexView == 0:
@@ -344,13 +371,17 @@ class SpaceView(GeneralToolClass):
             for k in range(self.NbBodies):
                 for n in range(self.NbShownOrbits):
                     self.SubplotXZ.plot(self.SelectRa[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                if self.CheckLMFit.CheckParam.isChecked():
+                    self.SubplotXZ.plot(self.LMRa[k], self.LMZ[k], color='orange', linewidth=1, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXZ.plot(self.BestRa[k], self.BestZ[k], color='C3', linewidth=0.5)
+                    self.SubplotXZ.plot(self.BestRa[k], self.BestZ[k], color='r', linewidth=1, label='Best fit' if k==0 else None)
         else:
             for n in range(self.NbShownOrbits):
                 self.SubplotXZ.plot(self.SelectRa[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+            if self.CheckLMFit.CheckParam.isChecked():
+                self.SubplotXZ.plot(self.LMRa[self.nBody], self.LMZ[self.nBody], color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXZ.plot(self.BestRa[self.nBody], self.BestZ[self.nBody], color='C3', linewidth=0.5)
+                self.SubplotXZ.plot(self.BestRa[self.nBody], self.BestZ[self.nBody], color='r', linewidth=1, label='Best fit')
 
         # Set axis
         self.SubplotXZ.set_xlabel(r'$\delta$RA [mas]')
@@ -372,13 +403,17 @@ class SpaceView(GeneralToolClass):
 
         if self.nBody == 'all':
             for k in range(self.NbBodies):
+                if self.CheckLMFit.CheckParam.isChecked():
+                    self.SubplotXYZ.plot(self.LMRa[k], self.LMDec[k], self.LMZ[k], color='orange', linewidth=0.5, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXYZ.plot(self.BestRa[k], self.BestDec[k], self.BestZ[k], color='r', linewidth=0.5)
+                    self.SubplotXYZ.plot(self.BestRa[k], self.BestDec[k], self.BestZ[k], color='r', linewidth=0.5, label='Best fit' if k==0 else None)
                 for n in range(self.NbShownOrbits):
                     self.SubplotXYZ.plot(self.SelectRa[k][n], self.SelectDec[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
         else:
+            if self.CheckLMFit.CheckParam.isChecked():
+                self.SubplotXYZ.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], self.LMZ[self.nBody], color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXYZ.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r', linewidth=0.5)
+                self.SubplotXYZ.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r', linewidth=1, label='Best fit')
             for n in range(self.NbShownOrbits):
                 self.SubplotXYZ.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
@@ -414,8 +449,8 @@ class SpaceView(GeneralToolClass):
             
 
 class TempoView(GeneralToolClass):
-    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitsEllipses):
-        super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitsEllipses)
+    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse):
+        super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitEllipse, None, LMOrbitEllipse)
 
         # Window plots initialisation
         VertLayoutPlots = QVBoxLayout()
@@ -454,6 +489,12 @@ class TempoView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
         self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
+        # Choice of reference solution for temporal model and residuals
+        ListReference = ['Best fit', 'LM fit']
+        self.ReferenceWidget = ComboBox('Reference orbit', 'Reference solution used for residuals', ListReference)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.ReferenceWidget)
+        self.ReferenceWidget.ComboParam.currentIndexChanged.connect(self.refresh_plots)
+
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -470,6 +511,7 @@ class TempoView(GeneralToolClass):
             self.Coordinate = 'RV'
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
+        self.Reference = self.ReferenceWidget.ComboParam.currentText()
 
     def general_plot(self):
         """Plot the temporal view based on the selected parameters."""
@@ -479,40 +521,57 @@ class TempoView(GeneralToolClass):
         if self.CoordinateIndex == 0:
             self.YplotOutput = self.SelectRa 
             self.BestYplotOutput = self.BestRa
+            self.LMYplotOutput = self.LMRa
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
                 self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
         elif self.CoordinateIndex == 1:
             self.YplotOutput = self.SelectDec
             self.BestYplotOutput = self.BestDec
+            self.LMYplotOutput = self.LMDec
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Dec'][self.nBody]
                 self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
         elif self.CoordinateIndex == 2:
             self.YplotOutput = self.SelectSep
             self.BestYplotOutput = self.BestSep
+            self.LMYplotOutput = self.LMSep
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Sep'][self.nBody]
                 self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dSep'][self.nBody]
         elif self.CoordinateIndex == 3:
             self.YplotOutput = self.SelectPa
             self.BestYplotOutput = self.BestPa
+            self.LMYplotOutput = self.LMPa
             if self.InputData is not None: 
                 self.YplotInput = self.InputData['Planets']['DataAstrom']['Pa'][self.nBody]
                 self.YplotInputErr = self.InputData['Planets']['DataAstrom']['dPa'][self.nBody]
         elif self.CoordinateIndex == 4:
             self.YplotOutput = self.SelectRV
             self.BestYplotOutput = self.BestRV
+            self.LMYplotOutput = self.LMRV
             if self.InputData is not None:
                 if self.InputData['Planets']['NbDataRV'][self.nBody] != 0:
                     self.YplotInput = self.InputData['Planets']['DataRV']['RV'][self.nBody]
                     self.YplotInputErr = self.InputData['Planets']['DataRV']['dRV'][self.nBody]
 
-                print(self.YplotInput)
+        # Selected reference orbit (Best or LM)
+        self.ReferenceLabel = 'Best fit'
+        self.ReferenceColor = 'r'
+        self.Reft = self.Bestt[self.nBody]
+        self.RefP = self.BestP[self.nBody]
+        self.RefYplotOutput = self.BestYplotOutput[self.nBody]
 
-        # 3 periods of best fit
-        self.Bestt3P = np.concatenate((self.Bestt[self.nBody] - self.BestP[self.nBody] * 365.25, self.Bestt[self.nBody], self.Bestt[self.nBody] + self.BestP[self.nBody] * 365.25))
-        self.BestYplotOutput3P = np.concatenate((self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody], self.BestYplotOutput[self.nBody]))
+        if self.Reference == 'LM fit':
+            self.ReferenceLabel = 'LM fit'
+            self.ReferenceColor = 'orange'
+            self.Reft = self.LMt[self.nBody]
+            self.RefP = self.LMP[self.nBody]
+            self.RefYplotOutput = self.LMYplotOutput[self.nBody]
+
+        # 3 periods of selected reference fit
+        self.Reft3P = np.concatenate((self.Reft - self.RefP * 365.25, self.Reft, self.Reft + self.RefP * 365.25))
+        self.RefYplotOutput3P = np.concatenate((self.RefYplotOutput, self.RefYplotOutput, self.RefYplotOutput))
 
         # Range of dates
         if len(self.YplotInput) != 0: 
@@ -556,7 +615,7 @@ class TempoView(GeneralToolClass):
                 for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
                     self.Subplot1.errorbar(self.InputData['Planets']['DataRV']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
 
-        self.Subplot1.plot(self.Bestt3P, self.BestYplotOutput3P, linestyle='-', linewidth=0.5, color='r')
+        self.Subplot1.plot(self.Reft3P, self.RefYplotOutput3P, linestyle='-', linewidth=1, color=self.ReferenceColor)
 
         # Plot features
         if self.CoordinateIndex == 3:
@@ -584,24 +643,24 @@ class TempoView(GeneralToolClass):
         if len(self.YplotInput) != 0: 
             if self.CoordinateIndex != 4:
                 for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
-                    indext = np.argmin(np.abs(self.Bestt3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
-                    Res = self.BestYplotOutput3P[indext] - self.YplotInput[k]  # Residual
-                    self.Subplot2.errorbar(self.Bestt3P[indext], Res, self.YplotInputErr[k], color='b')
+                    indext = np.argmin(np.abs(self.Reft3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
+                    Res = self.RefYplotOutput3P[indext] - self.YplotInput[k]  # Residual
+                    self.Subplot2.errorbar(self.Reft3P[indext], Res, self.YplotInputErr[k], color='b')
             else:
                 for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
-                    indext = np.argmin(np.abs(self.Bestt3P - self.InputData['Planets']['DataRV']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
-                    Res = self.BestYplotOutput3P[indext] - self.YplotInput[k]  # Residual
-                    self.Subplot2.errorbar(self.Bestt3P[indext], Res, self.YplotInputErr[k], color='b')
+                    indext = np.argmin(np.abs(self.Reft3P - self.InputData['Planets']['DataRV']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
+                    Res = self.RefYplotOutput3P[indext] - self.YplotInput[k]  # Residual
+                    self.Subplot2.errorbar(self.Reft3P[indext], Res, self.YplotInputErr[k], color='b')
 
-        self.Subplot2.hlines(0, np.min(self.Bestt3P), np.max(self.Bestt3P), color='red', linewidth=0.5)
+        self.Subplot2.hlines(0, np.min(self.Reft3P), np.max(self.Reft3P), color=self.ReferenceColor, linewidth=1)
 
         # Plot features
         if self.CoordinateIndex == 3:
-            self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [°]')
+            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [°]')
         elif self.CoordinateIndex == 4:
-            self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [km/s]')
+            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [km/s]')
         else:
-            self.Subplot2.set_ylabel(self.Coordinate + ' - Bestfit [mas]')
+            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')
         self.Subplot2.set_xlim(self.Subplot1.get_xlim())
         self.Subplot2.grid()
@@ -609,7 +668,7 @@ class TempoView(GeneralToolClass):
 
 class Conv(GeneralToolClass):
     def __init__(self, OutputParams):
-        super().__init__('Convergence', 'Convergence of the fit orbit parameters', None, OutputParams, None, None, None, None)
+        super().__init__('Convergence', 'Convergence of the fit orbit parameters', None, OutputParams, None, None, None, None, None, None)
 
         # Parameters initialisation
         self.InitParams()
@@ -663,8 +722,8 @@ class Conv(GeneralToolClass):
 
 
 class Hist(GeneralToolClass):
-    def __init__(self, OutputParams, BestOrbitsParams):
-        super().__init__('Histogram', "Histogram of orbital parameters", None, OutputParams, None, None, BestOrbitsParams, None)
+    def __init__(self, OutputParams, BestOrbitParams, LMOrbitParams):
+        super().__init__('Histogram', "Histogram of orbital parameters", None, OutputParams, None, None, BestOrbitParams, None, LMOrbitParams, None)
 
         # Parameters initialisation
         self.InitParams()
@@ -725,13 +784,20 @@ class Hist(GeneralToolClass):
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
+        # Show LM fit
+        self.CheckLMFit = CheckBox('LM fit', 'Show the LM fit')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckLMFit)
+        self.CheckLMFit.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
+        self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Show confidence interval
         self.CheckMedian = CheckBox('Median :', 'Show the median and the 1 sigma confidence interval')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMedian)
+        self.CheckMedian.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Confidence interval
         self.IntConf = 68
@@ -739,7 +805,7 @@ class Hist(GeneralToolClass):
         self.CheckMedian.Layout.addWidget(self.IntConfWidget)
         self.IntConfWidget.setEnabled(self.CheckMedian.CheckParam.isChecked())
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.IntConfWidget.setEnabled(state))
-        self.PercentLbl = QLabel(' %')
+        self.PercentLbl = QLabel('%')
         self.CheckMedian.Layout.addWidget(self.PercentLbl)
         self.PercentLbl.setEnabled(self.CheckMedian.CheckParam.isChecked())
         self.CheckMedian.CheckParam.stateChanged.connect(lambda state: self.PercentLbl.setEnabled(state))
@@ -805,6 +871,12 @@ class Hist(GeneralToolClass):
         # Plot histogram
         self.Subplot.hist(self.EvalParamOrbit, self.NbBins, xlim)
 
+        # Plot LM fit
+        if self.CheckLMFit.CheckParam.isChecked():
+            LMParam = self.evaluate_ParamOrbit('self.LM')
+            self.Subplot.axvline(LMParam, color='orange')
+            self.Subplot.text(LMParam, 0.25 * self.Subplot.get_ylim()[1], s='{}'.format(np.around(LMParam, 3)), color='orange', bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='orange'), fontsize=9, horizontalalignment='center', verticalalignment='center', rotation=0)
+
         # Plot best fit
         if self.CheckBestFit.CheckParam.isChecked():
             BestParam = self.evaluate_ParamOrbit('self.Best')
@@ -857,8 +929,8 @@ class Hist(GeneralToolClass):
 
         
 class Hist2D(GeneralToolClass):
-    def __init__(self, OutputParams, BestOrbitsParams):
-        super().__init__('Histogram 2D', 'Histogram of an orbital parameter as function of another', None, OutputParams, None, None, BestOrbitsParams, None)
+    def __init__(self, OutputParams, BestOrbitParams, LMOrbitParams):
+        super().__init__('Histogram 2D', 'Histogram of an orbital parameter as function of another', None, OutputParams, None, None, BestOrbitParams, None, LMOrbitParams, None)
 
         # Parameters initialisation
         self.InitParams()
@@ -871,6 +943,7 @@ class Hist2D(GeneralToolClass):
         # Equal aspect ratio
         self.CheckEqualAspect = CheckBox('Equal aspect ratio', 'Force equal aspect ratio for the plot')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckEqualAspect)
+        self.CheckEqualAspect.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Abscissa orbit parameters
         self.XParamOrbitWidget = ComboBox('X variable', 'Abscissa variable studied in histogram', ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'Chi2', 'irel', 'other'])
@@ -946,9 +1019,15 @@ class Hist2D(GeneralToolClass):
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
+        # Show LM fit
+        self.CheckLMFit = CheckBox('LM fit', 'Show the Levenberg-Marquardt fit')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckLMFit)
+        self.CheckLMFit.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
+        self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
     def ToggleXFormulaTextEdit(self):
         """Toggle the visibility of the X formula text edit and orbit number ComboBox based on the ComboBox selection."""
@@ -1028,11 +1107,17 @@ class Hist2D(GeneralToolClass):
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
         self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Count number')
 
+        # LM fit
+        if self.CheckLMFit.CheckParam.isChecked():
+            LMXParam = self.evaluate_ParamOrbit('self.LM', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBody, self.XnBodyRel)
+            LMYParam = self.evaluate_ParamOrbit('self.LM', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBody, self.YnBodyRel)
+            self.Subplot.plot(LMXParam, LMYParam, color='orange', marker='x', markersize=8, markeredgewidth=2)
+
         # Best fit
         if self.CheckBestFit.CheckParam.isChecked():
             BestXParam = self.evaluate_ParamOrbit('self.Best', self.XParamOrbitWidget, self.XFormulaTextEdit, self.XnBody, self.XnBodyRel)
             BestYParam = self.evaluate_ParamOrbit('self.Best', self.YParamOrbitWidget, self.YFormulaTextEdit, self.YnBody, self.YnBodyRel)
-            self.Subplot.plot(BestXParam, BestYParam, color='red', marker='x')
+            self.Subplot.plot(BestXParam, BestYParam, color='red', marker='x', markersize=8, markeredgewidth=2)
 
         # Plot features
         # about X axis
@@ -1052,8 +1137,8 @@ class Hist2D(GeneralToolClass):
 
 
 class Corner(GeneralToolClass):
-    def __init__(self, SelectOrbitsParams, BestOrbitsParams):
-        super().__init__('Corner', 'Corner plot of parameters', None, None, SelectOrbitsParams, None, BestOrbitsParams, None)
+    def __init__(self, SelectOrbitsParams, BestOrbitParams, LMOrbitParams):
+        super().__init__('Corner', 'Corner plot of parameters', None, None, SelectOrbitsParams, None, BestOrbitParams, None, LMOrbitParams, None)
 
         # Parameters initialisation
         self.InitParams()
@@ -1070,6 +1155,7 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.nBodyWidget)
         # if self.NbBodies == 1:
         #     self.nBodyWidget.setEnabled(False)
+        self.nBodyWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
         # Parameters to include in the corner plot
         self.ParamContainer = QWidget()
@@ -1088,6 +1174,7 @@ class Corner(GeneralToolClass):
 
         for i in range(len(self.OrbitParams[0])):
             ParamCheckBox = CheckBox(self.OrbitParams[0][i], self.OrbitParams[1][i])
+            ParamCheckBox.CheckParam.stateChanged.connect(self.refresh_plots)
 
             # Check the first three parameters by default
             if i in (0,1,2):
@@ -1113,21 +1200,30 @@ class Corner(GeneralToolClass):
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
+        # Show LM fit
+        self.CheckLMFit = CheckBox('LM fit', 'Show the Levenberg-Marquardt fit')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckLMFit)
+        self.CheckLMFit.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
+        self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Cosmetic options
         self.WindowPlot.WidgetParam.Layout.addWidget(Delimiter(Title='Cosmetic :'))
 
         self.CheckShortLabels = CheckBox('Short labels', 'Show short labels')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckShortLabels)
-        
+        self.CheckShortLabels.CheckParam.stateChanged.connect(self.refresh_plots)
+
         self.CheckContour = CheckBox('Contours', 'Show contours')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckContour)
+        self.CheckContour.CheckParam.stateChanged.connect(self.refresh_plots)
 
         self.CheckDensity = CheckBox('Density', 'Show density representation')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckDensity)
+        self.CheckDensity.CheckParam.stateChanged.connect(self.refresh_plots)
 
 
     def CheckParamsVar(self):
@@ -1185,6 +1281,21 @@ class Corner(GeneralToolClass):
             ax.xaxis.labelpad = 15
             ax.yaxis.labelpad = 15
 
+            # LM fit
+            if self.CheckLMFit.CheckParam.isChecked():
+
+                if k % (len(DataLabels) + 1) == 0:
+                    param_index = k // (len(DataLabels) + 1)
+                    BestParam = eval(f'self.LM{DataNames[param_index]}')[self.nBody]
+                    ax.axvline(BestParam, color='orange', linestyle='-', linewidth=0.75)
+                else:
+                    row = k // len(DataLabels)
+                    col = k % len(DataLabels)
+                    if row > col:
+                        BestXParam = eval(f'self.LM{DataNames[col]}')[self.nBody]
+                        BestYParam = eval(f'self.LM{DataNames[row]}')[self.nBody]
+                        ax.plot(BestXParam, BestYParam, color='orange', marker='x')
+
             # Best fit
             if self.CheckBestFit.CheckParam.isChecked():
 
@@ -1203,8 +1314,8 @@ class Corner(GeneralToolClass):
         self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.1, hspace=0.1)
 
 class PosAtDate(GeneralToolClass):
-    def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses, SystDist):
-        super().__init__('Position at date', 'Position of bodies at a given date', InputData, OutputParams, None, SelectOrbitsEllipses, BestOrbitsParams, BestOrbitsEllipses)
+    def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse, SystDist):
+        super().__init__('Position at date', 'Position of bodies at a given date', InputData, OutputParams, None, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse)
 
         # Parameters initialisation
         self.InitParams()
@@ -1237,15 +1348,22 @@ class PosAtDate(GeneralToolClass):
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
 
+        # Show LM fit
+        self.CheckLMFit = CheckBox('LM fit', 'Show the Levenberg-Marquardt fit')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckLMFit)
+        self.CheckLMFit.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Show best fit
         self.CheckBestFit = CheckBox('Best fit', 'Show the fit with the best Chi2')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
+        self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
         # Show observations points
         self.CheckObs = CheckBox('Observations', 'Show the observations points with its error bar')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckObs)
         if self.InputData is None:
             self.CheckObs.CheckParam.setEnabled(False)
+        self.CheckObs.CheckParam.stateChanged.connect(self.refresh_plots)
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
@@ -1300,8 +1418,23 @@ class PosAtDate(GeneralToolClass):
 
         self.Subplot.plot(0, 0, marker='*', color='orange', markersize=10)
 
+        if self.CheckLMFit.CheckParam.isChecked():
+            self.Subplot.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], color='orange', lw=1)
+
+            LMPeriod = np.max(self.LMt[self.nBody]) - np.min(self.LMt[self.nBody])
+            LMDate = self.Date
+
+            while LMDate < np.min(self.LMt[self.nBody]):
+                LMDate += LMPeriod
+
+            while LMDate > np.max(self.LMt[self.nBody]):
+                LMDate -= LMPeriod
+
+            indexLMDate = np.argmin(np.abs(self.LMt[self.nBody] - LMDate))
+            self.Subplot.plot(self.LMRa[self.nBody][indexLMDate], self.LMDec[self.nBody][indexLMDate], marker='x', color='orange', markersize=8, markeredgewidth=2)
+
         if self.CheckBestFit.CheckParam.isChecked():
-            self.Subplot.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='r', lw=0.5)
+            self.Subplot.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='r', lw=1)
 
             BestPeriod = np.max(self.Bestt[self.nBody]) - np.min(self.Bestt[self.nBody])
             BestDate = self.Date
@@ -1313,7 +1446,8 @@ class PosAtDate(GeneralToolClass):
                 BestDate -= BestPeriod
 
             indexBestDate = np.argmin(np.abs(self.Bestt[self.nBody] - BestDate))
-            self.Subplot.plot(self.BestRa[self.nBody][indexBestDate], self.BestDec[self.nBody][indexBestDate], marker='x', color='red')
+            self.Subplot.plot(self.BestRa[self.nBody][indexBestDate], self.BestDec[self.nBody][indexBestDate], marker='x', color='red', markersize=8, markeredgewidth=2)
+            
 
         if self.CheckObs.CheckParam.isChecked():
             ra = self.InputData['Planets']['DataAstrom']['Ra'][self.nBody]
@@ -1321,7 +1455,7 @@ class PosAtDate(GeneralToolClass):
             dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='white')
+            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$RA [mas]')

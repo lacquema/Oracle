@@ -1,10 +1,11 @@
 ### --- Packages --- ###
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFontMetrics
 import numpy as np
 import Utils as ut
 
-class BestOrbitsClass(QWidget):
+class BestOrbitClass(QWidget):
     def __init__(self, NbBodies, NbOrbits, PlanetsMassUnit, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, map, NbPtsEllipse, StarDist, NbInputData):
         super().__init__()
 
@@ -50,7 +51,7 @@ class BestOrbitsClass(QWidget):
         # Disable focus (no keyboard/mouse interaction)
         TblBestFit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        # Set column width to fit content
+        # Set column width mode
         TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # Add a stylesheet for better aesthetics with extra padding
@@ -72,10 +73,10 @@ class BestOrbitsClass(QWidget):
         # Center align row numbers (vertical header)
         TblBestFit.verticalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Adjust table size dynamically based on content
-        TblBestFit.setSizeAdjustPolicy(QTableWidget.SizeAdjustPolicy.AdjustToContents)
-        TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        TblBestFit.horizontalHeader().setStretchLastSection(False)
+        # Keep a fixed, consistent dimension policy across analysis tables
+        TblBestFit.setSizeAdjustPolicy(QTableWidget.SizeAdjustPolicy.AdjustIgnored)
+        TblBestFit.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        TblBestFit.horizontalHeader().setStretchLastSection(True)
 
         # Fill table with best fit parameters and center align values
         for j in range(NbBodies):
@@ -84,14 +85,53 @@ class BestOrbitsClass(QWidget):
                 if np.var(self.Params[k][j]) == 0 or self.Params[k][j][0] == float('inf'):
                     value = "/"
                 else:
-                    value = '{}'.format(np.around(self.BestParams[k+2][j], 3))
+                    if k == 6:  # tp [MJD]
+                        value = '{:.0f}'.format(np.around(self.BestParams[k+2][j], 0))
+                    else:
+                        value = '{}'.format(np.around(self.BestParams[k+2][j], 3))
                 # value = '...'
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)  # Center align text
                 TblBestFit.setItem(j, k, item)
 
+        # Ensure initial width shows all columns (max of header and values)
+        table_width = (
+            TblBestFit.verticalHeader().width()
+            + 2 * TblBestFit.frameWidth()
+            + TblBestFit.verticalScrollBar().sizeHint().width()
+        )
+        cell_metrics = QFontMetrics(TblBestFit.font())
+        header_metrics = QFontMetrics(TblBestFit.horizontalHeader().font())
+        for col in range(TblBestFit.columnCount()):
+            value_width = 0
+            for row in range(TblBestFit.rowCount()):
+                item = TblBestFit.item(row, col)
+                if item is None:
+                    continue
+                value_width = max(value_width, cell_metrics.horizontalAdvance(item.text()))
+            header_item = TblBestFit.horizontalHeaderItem(col)
+            header_text = header_item.text() if header_item is not None else ''
+            header_width = header_metrics.horizontalAdvance(header_text)
+            col_width = max(value_width, header_width)
+            col_width += 24
+            table_width += col_width
+        self.TableMinWidth = table_width
+        TblBestFit.setMinimumWidth(table_width)
+
+        # Limit table height to header + filled rows only
+        TblBestFit.resizeRowsToContents()
+        table_height = TblBestFit.horizontalHeader().height() + 2 * TblBestFit.frameWidth()
+        for row in range(TblBestFit.rowCount()):
+            table_height += TblBestFit.rowHeight(row)
+        TblBestFit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        TblBestFit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        TblBestFit.setFixedHeight(table_height)
+
         Layout.addWidget(TblBestFit)
         self.Widget.setLayout(Layout)
+        widget_margins = Layout.contentsMargins()
+        self.WidgetMinWidth = self.TableMinWidth + widget_margins.left() + widget_margins.right()
+        self.Widget.setMinimumWidth(self.WidgetMinWidth)
 
         # Ellipse calculations
         self.Bestt, self.BestX, self.BestY, self.BestZ, self.BestRa, self.BestDec, self.BestSep, self.BestPa, self.BestRV = [np.zeros((NbBodies, NbPtsEllipse)) for _ in range(9)]
@@ -110,4 +150,4 @@ class BestOrbitsClass(QWidget):
             self.BestSep[j] = np.sqrt(self.BestRa[j]**2+self.BestDec[j]**2)
             self.BestPa[j] = np.rad2deg(np.arctan2(self.BestRa[j], self.BestDec[j]))
 
-        self.BestEllipses = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV]
+        self.BestEllipse = [NbBodies, NbPtsEllipse, self.BestP, self.Bestt, self.BestRa, self.BestDec, self.BestZ, self.BestSep, self.BestPa, self.BestRV]

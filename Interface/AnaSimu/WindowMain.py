@@ -12,7 +12,8 @@ from PyQt6.QtGui import QGuiApplication, QCursor
 
 # My packages
 from Tools import Delimiter, SpaceView, TempoView, Conv, Hist, Hist2D, Corner, PosAtDate
-from BestOrbits import BestOrbitsClass
+from LMOrbit import LMOrbitClass
+from BestOrbit import BestOrbitClass
 from SelectOrbits import SelectOrbitsClass
 from TransferData import TransfertSimu
 
@@ -44,9 +45,13 @@ class WindowMainClass(QMainWindow):
         else:
             NbInputData = 1
 
+        # LM orbit
+        LMOrbit = LMOrbitClass(*OutputParams, NbPtsEllipse, SystDist, NbInputData)
+        Layout.addWidget(LMOrbit.Widget)
+
         # Best orbits
-        BestOrbits = BestOrbitsClass(*OutputParams, NbPtsEllipse, SystDist, NbInputData)
-        Layout.addWidget(BestOrbits.Widget)
+        BestOrbit = BestOrbitClass(*OutputParams, NbPtsEllipse, SystDist, NbInputData)
+        Layout.addWidget(BestOrbit.Widget)
         # print("Best orbits done")
 
         # Select orbits
@@ -60,11 +65,11 @@ class WindowMainClass(QMainWindow):
         GridLayout = QGridLayout()
 
         # Space view
-        GridLayout.addWidget(SpaceView(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 0, 0, 1, 3)
+        GridLayout.addWidget(SpaceView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse), 0, 0, 1, 3)
         # print("Space view done")
 
         # Temporal study
-        GridLayout.addWidget(TempoView(InputData, SelectOrbits.SelectEllipses, BestOrbits.BestEllipses), 1, 0)
+        GridLayout.addWidget(TempoView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse), 1, 0)
         # print("Temporal view done")
 
         # Convergence of orbit parameters
@@ -72,19 +77,19 @@ class WindowMainClass(QMainWindow):
         # print("Convergence done")
 
         # Histogram of orbit parameters
-        GridLayout.addWidget(Hist(OutputParams, BestOrbits.BestParams), 1, 2)
+        GridLayout.addWidget(Hist(OutputParams, BestOrbit.BestParams, LMOrbit.LMParams), 1, 2)
         # print("Histogram done")
 
         # Histogram 2D of orbit parameters
-        GridLayout.addWidget(Hist2D(OutputParams, BestOrbits.BestParams), 2, 0)
+        GridLayout.addWidget(Hist2D(OutputParams, BestOrbit.BestParams, LMOrbit.LMParams), 2, 0)
         # print("2D Histogram done")
 
         # Corner plot
-        GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbits.BestParams), 2, 1)
+        GridLayout.addWidget(Corner(SelectOrbits.SelectParams, BestOrbit.BestParams, LMOrbit.LMParams), 2, 1)
         # print("Corner plot done")
 
         # Position at date
-        GridLayout.addWidget(PosAtDate(InputData, OutputParams, SelectOrbits.SelectEllipses, BestOrbits.BestParams, BestOrbits.BestEllipses, SystDist), 2, 2)
+        GridLayout.addWidget(PosAtDate(InputData, OutputParams, SelectOrbits.SelectEllipses, BestOrbit.BestParams, BestOrbit.BestEllipse, LMOrbit.LMParams, LMOrbit.LMEllipse, SystDist), 2, 2)
         # print("Position at date done")
 
         # Add grid layout to layout
@@ -94,6 +99,13 @@ class WindowMainClass(QMainWindow):
         Container = QWidget()
         Container.setLayout(Layout)
         self.setCentralWidget(Container)
+
+        # Initial window width: ensure both top tables are fully visible
+        top_tables_width = max(LMOrbit.WidgetMinWidth, BestOrbit.WidgetMinWidth)
+        layout_margins = Layout.contentsMargins()
+        required_width = top_tables_width + layout_margins.left() + layout_margins.right() + 30
+        self.setMinimumWidth(required_width)
+        self.resize(required_width, self.sizeHint().height())
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
