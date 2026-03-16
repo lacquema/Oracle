@@ -367,9 +367,12 @@ class WindowSetNewSimu(WindowWithFinder):
             file.write(self.TabGuessSet.RefTime.MJDWidget.SpinParam.text())
             file.write(' # Reference of time')
             file.write('\n')
-            if self.TabDataSet.CheckJitter.CheckParam.isChecked(): 
-                file.write(self.TabDataSet.Jitter.SpinParam.text()+' '+self.TabDataSet.V0.SpinParam.text())
-                file.write(' # Jitter and V0 [km/s]')
+            if self.TabDataSet.AbsRV.CheckParam.isChecked():
+                # Fortran expects: V0 then jitter, even when jitter is not fitted.
+                v0_text = self.TabDataSet.V0.SpinParam.text()
+                jitter_text = self.TabDataSet.Jitter.SpinParam.text() if self.TabDataSet.CheckJitter.CheckParam.isChecked() else '0.0'
+                file.write(v0_text+' '+jitter_text)
+                file.write(' # V0 and Jitter [km/s]')
                 file.write('\n')
             for i in range(0, self.NbBodiesValue-1):
                 for j in range(len(self.TabGuessSet.LabelParams)):

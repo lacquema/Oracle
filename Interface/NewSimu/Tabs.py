@@ -201,26 +201,37 @@ class TabDataSet(GeneralTab):
         self.CheckJitter.setEnabled(False)
         self.LayoutRVV.addWidget(self.CheckJitter)
         self.CheckJitter.Layout.insertSpacing(0, 20)
-        self.Jitter = DoubleSpinBox(None, 'Jitter [m/s]', 0, 0, 2147483647, None, 2)
+        self.Jitter = DoubleSpinBox(None, 'Jitter [km/s]', 0, 0, 2147483647, None, 2)
         self.Jitter.setEnabled(False)
         self.CheckJitter.Layout.addWidget(self.Jitter)
-        self.LblPlusV0 = QLabel('+')
-        self.LblPlusV0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.LblPlusV0)
-        self.V0 = DoubleSpinBox(None, 'Systematic error V0 [m/s]', 0, 0, 2147483647, None, 2)
+        self.V0 = DoubleSpinBox('V0', 'Systematic error V0 [km/s]', 0, 0, 2147483647, None, 2)
         self.V0.setEnabled(False)
-        self.CheckJitter.Layout.addWidget(self.V0)
+        self.V0.Layout.insertSpacing(0, 20)
+        self.LayoutRVV.addWidget(self.V0)
 
-        self.AbsRV.CheckParam.stateChanged.connect(self.CheckJitter.setEnabled)
-        self.CheckJitter.CheckParam.stateChanged.connect(self.Jitter.setEnabled)
-        self.CheckJitter.CheckParam.stateChanged.connect(self.LblPlusV0.setEnabled)
-        self.CheckJitter.CheckParam.stateChanged.connect(self.V0.setEnabled)
+        self.AbsRV.CheckParam.stateChanged.connect(self.UpdateRVFields)
+        self.CheckJitter.CheckParam.stateChanged.connect(self.UpdateRVFields)
 
         self.LayoutDataTypeH.addSpacing(50)
         self.LayoutDataTypeH.addLayout(self.LayoutRVV)
 
         self.WidgetDataType.setLayout(self.LayoutDataTypeH)
         self.Layout.addWidget(self.WidgetDataType)
+
+        self.LayoutAstroV.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # Initialize state of RV-dependent fields.
+        self.UpdateRVFields()
+
+    def UpdateRVFields(self):
+        abs_rv_enabled = self.AbsRV.CheckParam.isChecked()
+        self.CheckJitter.setEnabled(abs_rv_enabled)
+        self.V0.setEnabled(abs_rv_enabled)
+
+        if not abs_rv_enabled:
+            self.CheckJitter.CheckParam.setChecked(False)
+
+        self.Jitter.setEnabled(abs_rv_enabled and self.CheckJitter.CheckParam.isChecked())
 
         # self.LayoutAstroV.setAlignment(Qt.AlignmentFlag.AlignTop)
         # self.LayoutRVV.setAlignment(Qt.AlignmentFlag.AlignTop)

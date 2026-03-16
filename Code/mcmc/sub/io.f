@@ -1159,7 +1159,6 @@ C
 
         REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
         INTEGER*4       I,J,DNPLA,IC
- 1      FORMAT("gzip -9 ",'(a)')
         
         DNPLA = 2**NPLA
         NSAV = NEL+4
@@ -1220,7 +1219,7 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)DNPLA*(NMOD+1),NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        WRITE(LINE,1,IOSTAT=ERROR)TRIM(DEV)
+        LINE = 'gzip -9 '//TRIM(DEV)
         CALL SYSTEM(LINE)
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
@@ -1314,7 +1313,6 @@ C
      &                  SIGMA         ! Cumulative mass
         REAL*4, DIMENSION(:,:,:), ALLOCATABLE :: DATA4
         INTEGER*4       I,J
- 1      FORMAT("gzip -9 ",'(a)')
 
         STAR%SIGJV = 0.d0
         NSAV = NEL+6
@@ -1373,7 +1371,7 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)NMOD+1,NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        WRITE(LINE,1,IOSTAT=ERROR)TRIM(DEV)
+        LINE = 'gzip -9 '//TRIM(DEV)
         CALL SYSTEM(LINE)
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
