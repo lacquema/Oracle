@@ -166,11 +166,17 @@ class WindowSetAnaSimu(WindowWithFinder):
 
         self.Layout.addWidget(Delimiter(Title='Options :'))
 
+        self.CondW = LineEdit('Filter condition', 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n>0] for body number and usual mathematical functions in boolean python expressions', '')
+        self.Layout.addWidget(self.CondW)
+
         self.NbSelectOrbits = SpinBox('Number of orbits', 'Number of ramdom selected orbits to analyse', 10000, 1, None, 1)
         self.Layout.addWidget(self.NbSelectOrbits, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # self.NbPtsEllipse = SpinBox('Points by ellipse', 'Number of points by computed ellipse', 500, 1, None, 1)
         # self.Layout.addWidget(self.NbPtsEllipse, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        
+
 
         self.BtnStart = QPushButton('Analyse the simulation')
         self.Layout.addWidget(self.BtnStart, alignment=Qt.AlignmentFlag.AlignRight)
@@ -275,7 +281,10 @@ class WindowSetAnaSimu(WindowWithFinder):
         if PathSimu.endswith('.gz'):
             PathSimu = self.decompressed_file if self.decompressed_file else PathSimu[:-3] # Use the decompressed file if available
         SimuName = PathSimu.split('/')[-1]
-        InputData, OutputParams = TransfertSimu(PathSimu, self.UnivYN)
+        condition = self.CondW.EditParam.text().strip()
+        if len(condition) == 0:
+            condition = None
+        InputData, OutputParams = TransfertSimu(PathSimu, self.UnivYN, condition)
         if InputData != None:
             self.SystDistValue = InputData['SystDist']['pc']
         else:

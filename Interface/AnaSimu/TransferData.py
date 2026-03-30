@@ -3,6 +3,8 @@
 ### --- Packages --- ###
 
 # Transverse packages
+import ast
+import re
 import numpy as np
 from Utils import *
 from PyQt6.QtWidgets import QWidget
@@ -13,10 +15,78 @@ def HeaderDataIn(PathOutputData):
     with open(PathOutputData, 'r') as file:
         lines = file.readlines()
         return len(lines) > 2
+
+
+def BuildOrbitFilterMask(condition, variables, nb_orbits):
+    if condition is None or len(condition.strip()) == 0:
+        return np.ones(nb_orbits, dtype=bool)
+
+    # User input uses 1-based body indices; convert to Python 0-based indexing.
+    variable_pattern = '|'.join(map(re.escape, variables.keys()))
+    pattern = re.compile(rf"\b({variable_pattern})\s*\[\s*(\d+)\s*\]")
+    normalized_condition = pattern.sub(
+        lambda m: f"{m.group(1)}[{max(int(m.group(2)) - 1, 0)}]",
+        condition,
+    )
+
+    def vectorize(node):
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
+            values = [vectorize(v) for v in node.values]
+            op = ast.BitAnd if isinstance(node.op, ast.And) else ast.BitOr
+            expr = values[0]
+            for value in values[1:]:
+                expr = ast.BinOp(left=expr, op=op(), right=value)
+            return ast.copy_location(expr, node)
+
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            operand = vectorize(node.operand)
+            return ast.copy_location(ast.UnaryOp(op=ast.Invert(), operand=operand), node)
+
+        if isinstance(node, ast.Compare) and len(node.ops) > 1:
+            parts = []
+            left = vectorize(node.left)
+            for op, comparator in zip(node.ops, node.comparators):
+                right = vectorize(comparator)
+                parts.append(ast.Compare(left=left, ops=[op], comparators=[right]))
+                left = right
+
+            expr = parts[0]
+            for part in parts[1:]:
+                expr = ast.BinOp(left=expr, op=ast.BitAnd(), right=part)
+            return ast.copy_location(expr, node)
+
+        for field, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                setattr(node, field, [vectorize(v) if isinstance(v, ast.AST) else v for v in value])
+            elif isinstance(value, ast.AST):
+                setattr(node, field, vectorize(value))
+        return node
+
+    try:
+        expression_tree = ast.parse(normalized_condition, mode='eval')
+        expression_tree = vectorize(expression_tree)
+        expression_tree = ast.fix_missing_locations(expression_tree)
+        compiled_expression = compile(expression_tree, '<condition>', 'eval')
+        result = eval(compiled_expression, {"__builtins__": {}, "np": np}, variables)
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid condition '{condition}' (interpreted as '{normalized_condition}'): {exc}"
+        ) from exc
+
+    mask = np.asarray(result)
+    if mask.ndim == 0:
+        return np.full(nb_orbits, bool(mask), dtype=bool)
+
+    if mask.shape != (nb_orbits,):
+        raise ValueError(
+            f"Condition must return a scalar or a 1D boolean array of length {nb_orbits}."
+        )
+
+    return mask.astype(bool)
     
 
 # Open output data
-def TransfertSimu(PathOutputData, UnivYN):
+def TransfertSimu(PathOutputData, UnivYN, condition=None):
 
     with open(PathOutputData, 'r') as file:
         lines = file.readlines()
@@ -267,6 +337,41 @@ def TransfertSimu(PathOutputData, UnivYN):
         if UnivYN == 2:
             a = a/(1-e) 
             P = P/((1-e)**(3/2))
+
+        filter_variables = {
+            "a": a,
+            "P": P,
+            "e": e,
+            "w": w,
+            "i": i,
+            "W": W,
+            "tp": tp,
+            "m": m,
+            "V0": V0,
+            "Jitter": Jitter,
+            "m0": m0,
+            "Chi2": Chi2,
+            "Map": Map,
+        }
+        mask = BuildOrbitFilterMask(condition, filter_variables, NbOrbits)
+
+        if not np.any(mask):
+            raise ValueError("Condition removed all orbits.")
+
+        a = a[:, mask]
+        P = P[:, mask]
+        e = e[:, mask]
+        i = i[:, mask]
+        w = w[:, mask]
+        W = W[:, mask]
+        tp = tp[:, mask]
+        m = m[:, mask]
+        m0 = m0[:, mask]
+        V0 = V0[:, mask]
+        Jitter = Jitter[:, mask]
+        Chi2 = Chi2[:, mask]
+        Map = Map[:, mask]
+        NbOrbits = int(np.sum(mask))
 
         OutputParams = [NbBodies, NbOrbits, PlanetsMassUnit, P, a, e, i, w, W, tp, m, m0, V0, Jitter, Chi2, Map]
 

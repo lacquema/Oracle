@@ -1219,7 +1219,7 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)DNPLA*(NMOD+1),NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        LINE = 'gzip -9 '//TRIM(DEV)
+        LINE = 'gzip -9f '//TRIM(DEV)
         CALL SYSTEM(LINE)
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
@@ -1371,7 +1371,7 @@ c... Only store relevant priors #n+1..nprior / #0..n just tell masses are >0
         WRITE(18,*)NMOD+1,NSAV,NPLA
         WRITE(18,*)DATA4
         CLOSE(18)
-        LINE = 'gzip -9 '//TRIM(DEV)
+        LINE = 'gzip -9f '//TRIM(DEV)
         CALL SYSTEM(LINE)
         DEALLOCATE(DATA4)
         DEALLOCATE(NN)
