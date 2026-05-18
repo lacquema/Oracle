@@ -1225,6 +1225,11 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckDensity)
         self.CheckDensity.CheckParam.stateChanged.connect(self.refresh_plots)
 
+        self.CheckMask = CheckBox('Mask', 'Show the masked subset overlay')
+        self.CheckMask.CheckParam.setChecked(True)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMask)
+        self.CheckMask.CheckParam.stateChanged.connect(self.refresh_plots)
+
 
     def CheckParamsVar(self):
         """Check if the parameter has variance."""
@@ -1270,8 +1275,53 @@ class Corner(GeneralToolClass):
             self.WidgetPlot.Canvas.fig.canvas.draw()
             return
 
-        # Create corner plot
-        grid = corner.corner(Data, labels=DataLabels, bins=self.NbBins, fig=self.WidgetPlot.Canvas.fig, plot_contours=self.CheckContour.CheckParam.isChecked(), fill_contours=self.CheckContour.CheckParam.isChecked() and not self.CheckDensity.CheckParam.isChecked(), plot_density=self.CheckDensity.CheckParam.isChecked())
+        mask = self.SelectP[self.nBody] < 8
+        weights = mask.astype(float)
+
+        show_contours = self.CheckContour.CheckParam.isChecked()
+        show_density = self.CheckDensity.CheckParam.isChecked()
+        show_mask = self.CheckMask.CheckParam.isChecked()
+
+        # Create global corner plot without automatic datapoints. Points are
+        # added afterwards so they remain visible above density/contour layers.
+        grid = corner.corner(
+            Data,
+            labels=DataLabels,
+            bins=self.NbBins,
+            fig=self.WidgetPlot.Canvas.fig,
+            plot_contours=show_contours,
+            fill_contours=show_contours and not show_density,
+            plot_density=show_density,
+            plot_datapoints=False,
+            contour_kwargs={'linewidths': 1.0},
+        )
+
+        # Create weighted corner plot on top of the global one.
+        if show_mask:
+            grid = corner.corner(
+                Data,
+                labels=DataLabels,
+                bins=self.NbBins,
+                fig=self.WidgetPlot.Canvas.fig,
+                plot_contours=show_contours,
+                fill_contours=show_contours and not show_density,
+                plot_density=show_density,
+                plot_datapoints=False,
+                weights=weights,
+                color='#007B5A',
+                contour_kwargs={'linewidths': 1.3},
+            )
+
+        # When contours or density are enabled, keep points very faint so the
+        # structure remains readable.
+        point_alpha = 0.025 if (show_contours or show_density) else 0.15
+        point_size = 0.8 if (show_contours or show_density) else 2
+        masked_point_alpha = 0.08 if (show_contours or show_density) else 0.35
+        masked_point_size = 1.0 if (show_contours or show_density) else 2
+
+        corner.overplot_points(self.WidgetPlot.Canvas.fig, Data, marker='.', color='black', alpha=point_alpha, ms=point_size)
+        if show_mask:
+            corner.overplot_points(self.WidgetPlot.Canvas.fig, Data[mask], marker='.', color='#007B5A', alpha=masked_point_alpha, ms=masked_point_size)
 
         # Adjust the labels to not be slanted
         for k in range(len(grid.get_axes())):

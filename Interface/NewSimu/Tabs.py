@@ -272,7 +272,7 @@ class TabGuessSet(GeneralTab):
 
         self.TablePriors = QTableWidget()
 
-        self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'w [°]', 'W [°]', 'tp [MJD]']
+        self.LabelParams = ['m [Mjup]', 'a [AU]', 'e', 'i [°]', 'W [°]', 'w [°]', 'tp [MJD]']
 
         self.TablePriors.setStatusTip('First guess of orbits parameters of each bodies.')
         self.TablePriors.setRowCount(self.NbBodiesValue-1)
