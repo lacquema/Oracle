@@ -22,7 +22,7 @@ from TransferData import TransfertSimu
 class WindowMainClass(QMainWindow):
     SignalCloseWindowMain = pyqtSignal()
 
-    def __init__(self, SimuName, InputData, OutputParams, NbSelectOrbits, SystDist, NbPtsEllipse=1000):
+    def __init__(self, SimuName, InputData, OutputParams, NbSelectOrbits, SystDist, NbPtsEllipse=1000, condition=None):
         super().__init__()
 
         # Window settings

@@ -21,6 +21,7 @@ from Utils import date_to_jd, jd_to_mjd, mjd_to_jd, jd_to_date
 # My packages
 from Parameters import *
 from SelectOrbits import SelectOrbitsClass
+from TransferData import BuildOrbitFilterMask
 
 from WindowPlot import WindowPlot
 import itertools
@@ -68,7 +69,25 @@ class GeneralToolClass(QWidget):
             (self.NbBodies, self.NbOrbits, self.PlanetsMassUnit, self.P, self.a, self.e, self.i, self.w, self.W, self.tp, self.m, self.m0, self.V0, self.Jitter, self.Chi2, self.map) = OutputParams
 
         if SelectOrbitsParams is not None:
-            (self.NbBodies, self.NbSelectOrbits, self.PlanetsMassUnit, self.SelectP, self.Selecta, self.Selecte, self.Selecti, self.Selectw, self.SelectW, self.Selecttp, self.Selectm, self.Selectm0, self.SelectChi2) = SelectOrbitsParams
+            (
+                self.NbBodies,
+                self.NbSelectOrbits,
+                self.PlanetsMassUnit,
+                self.SelectP,
+                self.Selecta,
+                self.Selecte,
+                self.Selecti,
+                self.Selectw,
+                self.SelectW,
+                self.Selecttp,
+                self.Selectm,
+                self.Selectm0,
+                self.SelectChi2,
+                *SelectExtraParams,
+            ) = SelectOrbitsParams
+            self.SelectV0 = SelectExtraParams[0] if len(SelectExtraParams) > 0 else None
+            self.SelectJitter = SelectExtraParams[1] if len(SelectExtraParams) > 1 else None
+            self.SelectMap = SelectExtraParams[2] if len(SelectExtraParams) > 2 else None
 
         if SelectOrbitsEllipses is not None:
             (self.NbBodies, self.NbSelectOrbits, self.NbPtsEllipse, self.SelectP, self.Selectt, self.SelectRa, self.SelectDec, self.SelectZ, self.SelectSep, self.SelectPa, self.SelectRV) = SelectOrbitsEllipses
@@ -147,11 +166,11 @@ class GeneralToolClass(QWidget):
         """Return the unit for a given variable."""
         units = {
             'P': '[yr]',
-            'a': '[AU]',
+            'a': '[au]',
             'e': '',
-            'i': '[°]',
-            'w': '[°]',
-            'W': '[°]',
+            'i': '[deg]',
+            'w': '[deg]',
+            'W': '[deg]',
             'tp': '[MJD]',
             'm': f'[{self.PlanetsMassUnit}]',
             'm0': '[Msun]',
@@ -159,24 +178,61 @@ class GeneralToolClass(QWidget):
         }
         return units.get(var, 'Unknown variable')
         
+    @staticmethod
+    def _replace_params_in_expression(expression, prefixe, nOrbitDefault, convert_angles_to_radians):
+        """Translate user parameters to Python expressions understood by the code."""
+        if expression is None:
+            return None
+
+        default_index = max(int(nOrbitDefault), 0)
+        linear_params = ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'm0']
+        angular_params = ['i', 'w', 'W']
+        all_params = sorted(linear_params + angular_params, key=len, reverse=True)
+        parameter_pattern = '|'.join(map(re.escape, all_params))
+
+        def replace_parameter(match):
+            param = match.group('param')
+            raw_index = match.group('index')
+            if raw_index is None or len(raw_index.strip()) == 0:
+                index = default_index
+            else:
+                index = max(int(raw_index.strip()) - 1, 0)
+
+            replacement = f'{prefixe}{param}[{index}]'
+            if convert_angles_to_radians and param in angular_params:
+                replacement = f'np.radians({replacement})'
+            return replacement
+
+        expression = re.sub(
+            rf'\b(?P<param>{parameter_pattern})\b(?:\[\s*(?P<index>\d*)\s*\])?',
+            replace_parameter,
+            expression,
+        )
+
+        for fonction in ['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'arctan2', 'hypot', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p', 'sqrt', 'square', 'cbrt', 'power', 'erf', 'erfc', 'gamma', 'lgamma', 'digamma', 'beta', 'radians', 'degrees']:
+            expression = re.sub(rf'(?<![\w.]){re.escape(fonction)}\b', f'np.{fonction}', expression)
+
+        for const, replacement in {
+            'G': '6.67430e-11',
+            'Msun': '1.98847e30',
+            'Mjup': '1.89818e27',
+            'pi': 'np.pi',
+            'e': 'np.e'
+        }.items():
+            expression = re.sub(rf'(?<![\w.]){re.escape(const)}\b', replacement, expression)
+
+        if convert_angles_to_radians and any(f'np.{angle_func}' in expression for angle_func in ['arcsin', 'arccos', 'arctan', 'arctan2']):
+            expression = f'np.degrees({expression})'
+
+        return expression
+
     def replace_params_in_formula(self, formula, prefixe, nOrbitDefault):
         """Replace parameters and functions in the formula with their corresponding values."""
-        # print(formula)
-        for num in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
-            formula = formula.replace(f'[{num}]', f'[{str(int(num)-1)}]') # Replace [n] by [n-1]
-        for param in ['Chi2', 'P', 'a', 'e', 'tp', 'm', 'm0']:
-            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbitDefault}]', formula) # Add [nOrbitDefault] to the parameter
-            formula = re.sub(r'\b' + param + r'\b', f'{prefixe}{param}', formula) # Replace the parameter by its value
-        for param in ['i', 'w', 'W']:
-            formula = re.sub(r'\b' + param + r'\b(?!\[)', f'{param}[{nOrbitDefault}]', formula) # add [nOrbitDefault]
-            formula = re.sub(rf'\b{param}\[(\d+)\]', rf'np.radians({prefixe}{param}[\1])', formula)
-        for fonction in ['sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'arctan2', 'hypot', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p', 'sqrt', 'square', 'cbrt', 'power', 'erf', 'erfc', 'gamma', 'lgamma', 'digamma', 'beta']:
-            formula = re.sub(r'\b' + fonction + r'\b', f'np.{fonction}', formula) # Replace the function by its numpy equivalent
-        # Convert the result to degrees if it is an angle in radians
-        if any(f'np.{angle_func}' in formula for angle_func in ['arcsin', 'arccos', 'arctan', 'arctan2']):
-            formula = f'np.degrees({formula})'
-        # print('Formula is: '+formula)
-        return formula
+        return self._replace_params_in_expression(formula, prefixe, nOrbitDefault, convert_angles_to_radians=True)
+
+    def replace_params_in_condition(self, condition, prefixe, nOrbitDefault):
+        """Translate a boolean mask condition to the local data notation."""
+        return self._replace_params_in_expression(condition, prefixe, nOrbitDefault, convert_angles_to_radians=False)
     
     def evaluate_formula(self, formula, prefix, nOrbitDefault):
         """Evaluate a formula."""
@@ -332,7 +388,7 @@ class SpaceView(GeneralToolClass):
                     dra = self.InputData['Planets']['DataAstrom']['dRA'][k]
                     ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
                     dates = self.InputData['Planets']['DataAstrom']['Date'][k]
-                    self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
+                    self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=0.7)
                     if self.CheckDateObs.CheckParam.isChecked():
                         if Xmin!=None and Ymin!=None: 
                             self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
@@ -343,7 +399,7 @@ class SpaceView(GeneralToolClass):
                 dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
                 ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
                 dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-                self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
+                self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=1)
                 if self.CheckDateObs.CheckParam.isChecked():
                     if Xmin!=None and Ymin!=None: 
                         self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
@@ -452,6 +508,8 @@ class TempoView(GeneralToolClass):
     def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse):
         super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitEllipse, None, LMOrbitEllipse)
 
+        self._tempo_xlim_sync_in_progress = False
+
         # Window plots initialisation
         VertLayoutPlots = QVBoxLayout()
         VertLayoutPlots.setContentsMargins(0, 0, 0, 0)
@@ -513,6 +571,91 @@ class TempoView(GeneralToolClass):
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
         self.Reference = self.ReferenceWidget.ComboParam.currentText()
 
+    def _get_input_dates(self):
+        if self.InputData is None:
+            return np.array([])
+        if self.CoordinateIndex != 4:
+            return np.asarray(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
+        if self.InputData['Planets']['NbDataRV'][self.nBody] == 0:
+            return np.array([])
+        return np.asarray(self.InputData['Planets']['DataRV']['Date'][self.nBody])
+
+    def _build_periodic_series(self, times, values, period_years, window_min=None, window_max=None):
+        times = np.asarray(times)
+        values = np.asarray(values)
+
+        if times.size == 0:
+            return np.array([]), np.array([])
+
+        period_days = float(period_years) * 365.25
+        if not np.isfinite(period_days) or period_days <= 0:
+            order = np.argsort(times)
+            return times[order], values[order]
+
+        if window_min is None or window_max is None:
+            window_min = np.min(times) - period_days/2
+            window_max = np.max(times) + period_days/2
+
+        shift_min = int(np.ceil((window_min - np.max(times)) / period_days))
+        shift_max = int(np.floor((window_max - np.min(times)) / period_days))
+
+        if shift_min > shift_max:
+            shift_min, shift_max = 0, 0
+
+        time_chunks = []
+        value_chunks = []
+        for shift in range(shift_min, shift_max + 1):
+            shifted_times = times + shift * period_days
+            mask = (shifted_times >= window_min) & (shifted_times <= window_max)
+            if np.any(mask):
+                time_chunks.append(shifted_times[mask])
+                value_chunks.append(values[mask])
+
+        if len(time_chunks) == 0:
+            return np.array([]), np.array([])
+
+        expanded_times = np.concatenate(time_chunks)
+        expanded_values = np.concatenate(value_chunks)
+        order = np.argsort(expanded_times)
+        expanded_times = expanded_times[order]
+        expanded_values = expanded_values[order]
+        unique_times, unique_indices = np.unique(expanded_times, return_index=True)
+        return unique_times, expanded_values[unique_indices]
+
+    def _reference_values_at(self, times):
+        if len(self.RefTimesWindow) == 0:
+            return np.array([])
+        return np.interp(times, self.RefTimesWindow, self.RefValuesWindow)
+
+    def _sync_widget_history_xlim(self, widget_plot, xlim):
+        if len(widget_plot.history) == 0:
+            return
+        synced_state = dict(widget_plot.history[widget_plot.history_index])
+        synced_state['xlim'] = tuple(xlim)
+        widget_plot.history[widget_plot.history_index] = synced_state
+
+    def _sync_tempo_xlim(self, source_widget, target_widget):
+        if self._tempo_xlim_sync_in_progress:
+            return
+        if not source_widget.Canvas.fig.axes or not target_widget.Canvas.fig.axes:
+            return
+
+        source_xlim = tuple(source_widget.Canvas.fig.axes[0].get_xlim())
+        target_xlim = tuple(target_widget.Canvas.fig.axes[0].get_xlim())
+        if np.allclose(source_xlim, target_xlim):
+            return
+
+        self._tempo_xlim_sync_in_progress = True
+        try:
+            self._sync_widget_history_xlim(target_widget, source_xlim)
+            target_widget.Canvas.fig.axes[0].set_xlim(source_xlim)
+            target_widget.Canvas.draw_idle()
+        finally:
+            self._tempo_xlim_sync_in_progress = False
+
+    def _connect_tempo_xlim_sync(self, subplot, source_widget, target_widget):
+        subplot.callbacks.connect('xlim_changed', lambda ax: self._sync_tempo_xlim(source_widget, target_widget))
+
     def general_plot(self):
         """Plot the temporal view based on the selected parameters."""
         self.YplotInput = []
@@ -569,16 +712,22 @@ class TempoView(GeneralToolClass):
             self.RefP = self.LMP[self.nBody]
             self.RefYplotOutput = self.LMYplotOutput[self.nBody]
 
-        # 3 periods of selected reference fit
-        self.Reft3P = np.concatenate((self.Reft - self.RefP * 365.25, self.Reft, self.Reft + self.RefP * 365.25))
-        self.RefYplotOutput3P = np.concatenate((self.RefYplotOutput, self.RefYplotOutput, self.RefYplotOutput))
+        self.InputDates = self._get_input_dates()
+        self.TimeMargin = self.RefP * 365.25
+        if len(self.InputDates) != 0:
+            self.TimeWindowMin = np.min(self.InputDates) - self.TimeMargin
+            self.TimeWindowMax = np.max(self.InputDates) + self.TimeMargin
+        else:
+            self.TimeWindowMin = np.min(self.Reft) - self.TimeMargin
+            self.TimeWindowMax = np.max(self.Reft) + self.TimeMargin
 
-        # Range of dates
-        if len(self.YplotInput) != 0: 
-            if self.CoordinateIndex != 4:
-                self.DateRange = np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody])
-            else:
-                self.DateRange = np.max(self.InputData['Planets']['DataRV']['Date'][self.nBody]) - np.min(self.InputData['Planets']['DataRV']['Date'][self.nBody])
+        self.RefTimesWindow, self.RefValuesWindow = self._build_periodic_series(
+            self.Reft,
+            self.RefYplotOutput,
+            self.RefP,
+            self.TimeWindowMin,
+            self.TimeWindowMax,
+        )
 
     def Plot1(self):
 
@@ -592,40 +741,37 @@ class TempoView(GeneralToolClass):
         self.general_plot()
 
         # X current limits
-        if len(self.YplotInput) != 0: 
-            if self.CoordinateIndex != 4:
-                xlim_init = (np.min(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataAstrom']['Date'][self.nBody]) + 0.1 * self.DateRange)
-            else:
-                xlim_init = (np.min(self.InputData['Planets']['DataRV']['Date'][self.nBody]) - 0.1 * self.DateRange, np.max(self.InputData['Planets']['DataRV']['Date'][self.nBody]) + 0.1 * self.DateRange)
-        else:
-            xlim_init = (None, None)
+        xlim_init = (self.TimeWindowMin, self.TimeWindowMax)
         xlim = self.WidgetPlot1.history[self.WidgetPlot1.history_index]['xlim'] if len(self.WidgetPlot1.history)!=0 else xlim_init
 
         # Plot output data
         for n in range(self.NbShownOrbits):
-            Selectt3P = np.concatenate((self.Selectt[self.nBody][n] - self.SelectP[self.nBody][n] * 365.25, self.Selectt[self.nBody][n], self.Selectt[self.nBody][n] + self.SelectP[self.nBody][n] * 365.25))
-            YplotOutput3P = np.concatenate((self.YplotOutput[self.nBody][n], self.YplotOutput[self.nBody][n], self.YplotOutput[self.nBody][n]))
-            self.Subplot1.plot(Selectt3P, YplotOutput3P, color=self.colorList[0], linestyle='-', linewidth=0.2, alpha=0.1)
+            SelectTimesWindow, SelectValuesWindow = self._build_periodic_series(
+                self.Selectt[self.nBody][n],
+                self.YplotOutput[self.nBody][n],
+                self.SelectP[self.nBody][n],
+                xlim[0],
+                xlim[1],
+            )
+            if len(SelectTimesWindow) != 0:
+                self.Subplot1.plot(SelectTimesWindow, SelectValuesWindow, color=self.colorList[self.nBody], linestyle='-', linewidth=0.2, alpha=0.1)
         
         if len(self.YplotInput) != 0: 
-            if self.CoordinateIndex != 4:
-                for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
-                    self.Subplot1.errorbar(self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
-            else:
-                for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
-                    self.Subplot1.errorbar(self.InputData['Planets']['DataRV']['Date'][self.nBody][k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
+            for k in range(len(self.InputDates)):
+                self.Subplot1.errorbar(self.InputDates[k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
 
-        self.Subplot1.plot(self.Reft3P, self.RefYplotOutput3P, linestyle='-', linewidth=1, color=self.ReferenceColor)
+        self.Subplot1.plot(self.RefTimesWindow, self.RefValuesWindow, linestyle='-', linewidth=1, color=self.ReferenceColor)
 
         # Plot features
         if self.CoordinateIndex == 3:
-            self.Subplot1.set_ylabel(self.Coordinate + ' [°]')
+            self.Subplot1.set_ylabel(self.Coordinate + ' [deg]')
         elif self.CoordinateIndex == 4:
             self.Subplot1.set_ylabel(self.Coordinate + ' [km/s]')
         else:
             self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
         self.Subplot1.grid()
-        self.Subplot1.set_xlim(xlim_init)
+        self.Subplot1.set_xlim(xlim)
+        self._connect_tempo_xlim_sync(self.Subplot1, self.WidgetPlot1, self.WidgetPlot2)
 
 
     def Plot2(self):
@@ -639,31 +785,41 @@ class TempoView(GeneralToolClass):
         # General plot
         self.general_plot()
 
+        xlim = self.Subplot1.get_xlim() if hasattr(self, 'Subplot1') else (self.TimeWindowMin, self.TimeWindowMax)
+
+        for n in range(self.NbShownOrbits):
+            SelectTimesWindow, SelectValuesWindow = self._build_periodic_series(
+                self.Selectt[self.nBody][n],
+                self.YplotOutput[self.nBody][n],
+                self.SelectP[self.nBody][n],
+                xlim[0],
+                xlim[1],
+            )
+            if len(SelectTimesWindow) == 0:
+                continue
+            ReferenceValues = self._reference_values_at(SelectTimesWindow)
+            self.Subplot2.plot(SelectTimesWindow, ReferenceValues - SelectValuesWindow, color=self.colorList[self.nBody], linestyle='-', linewidth=0.2, alpha=0.1)
+
         # Plot input data and residuals
         if len(self.YplotInput) != 0: 
-            if self.CoordinateIndex != 4:
-                for k in range(self.InputData['Planets']['NbDataAstrom'][self.nBody]):
-                    indext = np.argmin(np.abs(self.Reft3P - self.InputData['Planets']['DataAstrom']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
-                    Res = self.RefYplotOutput3P[indext] - self.YplotInput[k]  # Residual
-                    self.Subplot2.errorbar(self.Reft3P[indext], Res, self.YplotInputErr[k], color='b')
-            else:
-                for k in range(self.InputData['Planets']['NbDataRV'][self.nBody]):
-                    indext = np.argmin(np.abs(self.Reft3P - self.InputData['Planets']['DataRV']['Date'][self.nBody][k]))  # index of time of output data closer than time of input data
-                    Res = self.RefYplotOutput3P[indext] - self.YplotInput[k]  # Residual
-                    self.Subplot2.errorbar(self.Reft3P[indext], Res, self.YplotInputErr[k], color='b')
+            ReferenceAtInputDates = self._reference_values_at(self.InputDates)
+            for k in range(len(self.InputDates)):
+                Res = ReferenceAtInputDates[k] - self.YplotInput[k]
+                self.Subplot2.errorbar(self.InputDates[k], Res, self.YplotInputErr[k], color='b', linestyle='')
 
-        self.Subplot2.hlines(0, np.min(self.Reft3P), np.max(self.Reft3P), color=self.ReferenceColor, linewidth=1)
+        self.Subplot2.hlines(0, xlim[0], xlim[1], color=self.ReferenceColor, linewidth=1)
 
         # Plot features
         if self.CoordinateIndex == 3:
-            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [°]')
+            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [deg]')
         elif self.CoordinateIndex == 4:
             self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [km/s]')
         else:
             self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [mas]')
         self.Subplot2.set_xlabel('Time [MJD]')
-        self.Subplot2.set_xlim(self.Subplot1.get_xlim())
+        self.Subplot2.set_xlim(xlim)
         self.Subplot2.grid()
+        self._connect_tempo_xlim_sync(self.Subplot2, self.WidgetPlot2, self.WidgetPlot1)
 
 
 class Conv(GeneralToolClass):
@@ -762,7 +918,7 @@ class Hist(GeneralToolClass):
         self.IrelWidget.setVisible(False)
 
         # TextEdit for general formula
-        self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.FormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with optional [n>0] for body number. Use [] or omit the index to use the current orbit.', None)
         self.FormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.FormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.FormulaTextEdit)
@@ -919,7 +1075,7 @@ class Hist(GeneralToolClass):
         # Initial X and Y labels
         # Overwritten if modified by the user
         if self.ParamOrbitWidget.ComboParam.currentText() == 'irel':
-            xlabel_init = r'i$_{rel}$ between '+self.nBodyWidget.ComboParam.currentText()+' and '+self.nBodyRelWidget.ComboParam.currentText()+' [°]'
+            xlabel_init = r'i$_{rel}$ between '+self.nBodyWidget.ComboParam.currentText()+' and '+self.nBodyRelWidget.ComboParam.currentText()+' [deg]'
         elif self.ParamOrbitWidget.ComboParam.currentText() == 'other':
             xlabel_init = self.FormulaTextEdit.EditParam.text()
         else:
@@ -971,7 +1127,7 @@ class Hist2D(GeneralToolClass):
         self.XIrelWidget.setVisible(False)
 
         # TextEdit for general x formula
-        self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.XFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with optional [n>0] for body number. Use [] or omit the index to use the current orbit.', None)
         self.XFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.XFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.XFormulaTextEdit)
@@ -1002,7 +1158,7 @@ class Hist2D(GeneralToolClass):
         self.YIrelWidget.setVisible(False)
 
         # TextEdit for general y formula
-        self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n] for orbit number and usual mathematical functions', None)
+        self.YFormulaTextEdit = LineEdit(None, 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with optional [n>0] for body number. Use [] or omit the index to use the current orbit.', None)
         self.YFormulaTextEdit.EditParam.setPlaceholderText("Enter your formula here")
         self.YFormulaTextEdit.setVisible(False)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.YFormulaTextEdit)
@@ -1124,14 +1280,14 @@ class Hist2D(GeneralToolClass):
         if self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 1: # 'other' selected
             self.Subplot.set_xlabel(self.XFormulaTextEdit.EditParam.text())
         elif self.XParamOrbitWidget.ComboParam.currentIndex() == self.XParamOrbitWidget.ComboParam.count() - 2: # 'irel' selected
-            self.Subplot.set_xlabel(r'i$_{rel}$ between '+self.XnBodyWidget.ComboParam.currentText()+' and '+self.XnBodyRelWidget.ComboParam.currentText()+' [°]')
+            self.Subplot.set_xlabel(r'i$_{rel}$ between '+self.XnBodyWidget.ComboParam.currentText()+' and '+self.XnBodyRelWidget.ComboParam.currentText()+' [deg]')
         else:
             self.Subplot.set_xlabel(self.LabelOf(self.XParamOrbit)+' of '+self.XnBodyWidget.ComboParam.currentText()+' '+self.UnitOf(self.XParamOrbit))
         # about Y axis
         if self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 1: # 'other' selected
             self.Subplot.set_ylabel(self.YFormulaTextEdit.EditParam.text())
         elif self.YParamOrbitWidget.ComboParam.currentIndex() == self.YParamOrbitWidget.ComboParam.count() - 2: # 'irel' selected
-            self.Subplot.set_ylabel(r'i$_{rel}$ between '+self.YnBodyWidget.ComboParam.currentText()+' and '+self.YnBodyRelWidget.ComboParam.currentText()+' [°]')
+            self.Subplot.set_ylabel(r'i$_{rel}$ between '+self.YnBodyWidget.ComboParam.currentText()+' and '+self.YnBodyRelWidget.ComboParam.currentText()+' [deg]')
         else:
             self.Subplot.set_ylabel(self.LabelOf(self.YParamOrbit)+' of '+self.YnBodyWidget.ComboParam.currentText()+' '+self.UnitOf(self.YParamOrbit))
 
@@ -1139,12 +1295,175 @@ class Hist2D(GeneralToolClass):
 class Corner(GeneralToolClass):
     def __init__(self, SelectOrbitsParams, BestOrbitParams, LMOrbitParams):
         super().__init__('Corner', 'Corner plot of parameters', None, None, SelectOrbitsParams, None, BestOrbitParams, None, LMOrbitParams, None)
+        self.MaskCondition = None
+        self._corner_sync_in_progress = False
+        self._corner_limit_sync_pending = False
+        self._corner_axis_sync_ready = False
+        self._corner_param_limits = {}
+        self._corner_param_names = []
+        self._corner_default_limits = {}
 
         # Parameters initialisation
         self.InitParams()
 
         # Plot initialization
         self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
+        self.WidgetPlot.Canvas.mpl_connect('button_release_event', self.on_corner_button_release)
+        self.WidgetPlot.Toolbar._actions['home'].triggered.connect(self.queue_corner_limit_reset)
+
+    @staticmethod
+    def normalize_corner_limit(limit):
+        if limit is None or len(limit) != 2:
+            return None
+        lower = float(min(limit))
+        upper = float(max(limit))
+        if not np.isfinite(lower) or not np.isfinite(upper):
+            return None
+        if np.isclose(lower, upper, rtol=1e-9, atol=1e-12):
+            return None
+        return (lower, upper)
+
+    @staticmethod
+    def corner_limits_equal(limit1, limit2):
+        if limit1 is None and limit2 is None:
+            return True
+        if limit1 is None or limit2 is None:
+            return False
+        return np.allclose(limit1, limit2, rtol=1e-9, atol=1e-9)
+
+    @staticmethod
+    def finite_range(values, fallback=None):
+        values = np.asarray(values)
+        values = values[np.isfinite(values)]
+        if values.size == 0:
+            return fallback
+        lower = float(np.min(values))
+        upper = float(np.max(values))
+        if np.isclose(lower, upper):
+            return fallback
+        return (lower, upper)
+
+    def active_corner_limits(self, data_names):
+        return {name: self._corner_param_limits[name] for name in data_names if name in self._corner_param_limits}
+
+    def build_corner_interactive_mask(self, data, data_names, active_limits):
+        interactive_mask = np.ones(len(data), dtype=bool)
+        for index, name in enumerate(data_names):
+            if name not in active_limits:
+                continue
+            lower, upper = active_limits[name]
+            interactive_mask &= (data[:, index] >= lower) & (data[:, index] <= upper)
+        return interactive_mask
+
+    def build_corner_ranges(self, data, data_names, interactive_mask, active_limits):
+        if np.any(interactive_mask):
+            filtered_data = data[interactive_mask]
+        else:
+            filtered_data = data
+
+        ranges = []
+        for index, name in enumerate(data_names):
+            default_range = self._corner_default_limits.get(name)
+            if name in active_limits:
+                ranges.append(active_limits[name])
+                continue
+            filtered_range = self.finite_range(filtered_data[:, index], default_range)
+            ranges.append(filtered_range)
+        return ranges
+
+    def set_corner_param_limit(self, name, limit):
+        normalized_limit = self.normalize_corner_limit(limit)
+        if normalized_limit is None:
+            return False
+        default_limit = self._corner_default_limits.get(name)
+
+        if default_limit is not None and self.corner_limits_equal(normalized_limit, default_limit):
+            if name in self._corner_param_limits:
+                del self._corner_param_limits[name]
+                return True
+            return False
+
+        current_limit = self._corner_param_limits.get(name)
+        if self.corner_limits_equal(current_limit, normalized_limit):
+            return False
+
+        self._corner_param_limits[name] = normalized_limit
+        return True
+
+    def queue_corner_limit_reset(self):
+        QTimer.singleShot(0, self.reset_corner_limits)
+
+    def reset_corner_limits(self):
+        if len(self._corner_param_limits) == 0:
+            return
+        self._corner_param_limits = {}
+        self.WidgetPlot.refresh_plot()
+
+    def get_corner_axis_position(self, axis):
+        nb_params = len(self._corner_param_names)
+        if nb_params == 0 or axis is None:
+            return None
+
+        subplot_spec = axis.get_subplotspec() if hasattr(axis, 'get_subplotspec') else None
+        if subplot_spec is None:
+            return None
+
+        row = subplot_spec.rowspan.start
+        col = subplot_spec.colspan.start
+        if row >= nb_params or col >= nb_params:
+            return None
+        return row, col
+
+    def connect_corner_axis_limit_sync(self):
+        for axis in self.WidgetPlot.Canvas.fig.axes:
+            axis.callbacks.connect('xlim_changed', self.on_corner_axis_limit_changed)
+            axis.callbacks.connect('ylim_changed', self.on_corner_axis_limit_changed)
+
+    def on_corner_axis_limit_changed(self, axis):
+        if not self._corner_axis_sync_ready or self._corner_sync_in_progress:
+            return
+        self.queue_corner_limit_sync(axis)
+
+    def queue_corner_limit_sync(self, axis):
+        if self._corner_limit_sync_pending:
+            return
+        self._corner_limit_sync_pending = True
+        QTimer.singleShot(0, lambda current_axis=axis: self.apply_corner_axis_limits(current_axis))
+
+    def apply_corner_axis_limits(self, axis):
+        self._corner_limit_sync_pending = False
+        if self._corner_sync_in_progress or not self._corner_axis_sync_ready or axis is None:
+            return
+
+        axis_position = self.get_corner_axis_position(axis)
+        if axis_position is None:
+            return
+
+        row, col = axis_position
+        if row < col:
+            return
+
+        changed = self.set_corner_param_limit(self._corner_param_names[col], axis.get_xlim())
+        if row > col:
+            changed = self.set_corner_param_limit(self._corner_param_names[row], axis.get_ylim()) or changed
+
+        if not changed:
+            return
+
+        self._corner_sync_in_progress = True
+        try:
+            self.WidgetPlot.refresh_plot()
+        finally:
+            self._corner_sync_in_progress = False
+
+    def on_corner_button_release(self, event):
+        if self._corner_sync_in_progress or not self._corner_axis_sync_ready or event.inaxes is None:
+            return
+        if len(self._corner_param_names) == 0:
+            return
+        if event.inaxes not in self.WidgetPlot.Canvas.fig.axes:
+            return
+        self.queue_corner_limit_sync(event.inaxes)
 
     def InitParams(self):
         """Initialize parameters for the Corner plot tool."""
@@ -1167,8 +1486,8 @@ class Corner(GeneralToolClass):
         self.ParamCheckLayout = QGridLayout()
 
         self.OrbitParams = [
-            ['P', 'a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0'],
-            ['Period', 'Semi-major axis', 'Eccentricity', 'Inclination', 'Argument of periastron', 'Longitude of ascending node', 'Periastron time passage', 'Body mass', 'Central body mass']
+            ['a', 'e', 'i', 'w', 'W', 'tp', 'm', 'm0', 'P'],
+            ['Semi-major axis', 'Eccentricity', 'Inclination', 'Argument of periastron', 'Longitude of ascending node', 'Periastron time passage', 'Body mass', 'Central body mass', 'Period']
         ]
         self.WidgetOrbitParams = []
 
@@ -1176,8 +1495,8 @@ class Corner(GeneralToolClass):
             ParamCheckBox = CheckBox(self.OrbitParams[0][i], self.OrbitParams[1][i])
             ParamCheckBox.CheckParam.stateChanged.connect(self.refresh_plots)
 
-            # Check the first three parameters by default
-            if i in (0,1,2):
+            # Keep the default selection independent from the display order.
+            if self.OrbitParams[0][i] in ('P', 'a', 'e'):
                 ParamCheckBox.CheckParam.setChecked(True)
             else:
                 ParamCheckBox.CheckParam.setChecked(False)
@@ -1210,8 +1529,24 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckBestFit)
         self.CheckBestFit.CheckParam.stateChanged.connect(self.refresh_plots)
 
+        # Mask overlay
+        self.CheckMask = CheckBox('Mask', 'Show the masked subset overlay')
+        self.CheckMask.CheckParam.setChecked(False)
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMask)
+        self.MaskConditionWidget = LineEdit(
+            '   Condition',
+            'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with optional [n>0] for body number. Use [] or omit the index to use the current orbit.',
+            '',
+        )
+        self.MaskConditionWidget.EditParam.setPlaceholderText('Examples: P<3, P[]<3, P[1]<3 and Chi2<2')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.MaskConditionWidget)
+        self.MaskConditionWidget.EditParam.textChanged.connect(self.refresh_plots)
+        self.CheckMask.CheckParam.stateChanged.connect(self.ToggleMaskConditionWidget)
+        self.ToggleMaskConditionWidget(self.CheckMask.CheckParam.isChecked())
+        self.CheckMask.CheckParam.stateChanged.connect(self.refresh_plots)
+
         # Cosmetic options
-        self.WindowPlot.WidgetParam.Layout.addWidget(Delimiter(Title='Cosmetic :'))
+        self.WindowPlot.WidgetParam.Layout.addWidget(Delimiter(Title='Options :'))
 
         self.CheckShortLabels = CheckBox('Short labels', 'Show short labels')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckShortLabels)
@@ -1225,10 +1560,41 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckDensity)
         self.CheckDensity.CheckParam.stateChanged.connect(self.refresh_plots)
 
-        self.CheckMask = CheckBox('Mask', 'Show the masked subset overlay')
-        self.CheckMask.CheckParam.setChecked(True)
-        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckMask)
-        self.CheckMask.CheckParam.stateChanged.connect(self.refresh_plots)
+
+    def ToggleMaskConditionWidget(self, state):
+        """Show the mask condition field only when the mask overlay is enabled."""
+        self.MaskConditionWidget.setVisible(bool(state))
+
+
+    def build_selected_mask(self):
+        """Build the overlay mask from the general analysis condition."""
+        if self.MaskCondition is None:
+            return None
+
+        filter_variables = {
+            'a': self.Selecta,
+            'P': self.SelectP,
+            'e': self.Selecte,
+            'w': self.Selectw,
+            'i': self.Selecti,
+            'W': self.SelectW,
+            'tp': self.Selecttp,
+            'm': self.Selectm,
+            'V0': self.SelectV0,
+            'Jitter': self.SelectJitter,
+            'm0': self.Selectm0,
+            'Chi2': self.SelectChi2,
+            'Map': self.SelectMap,
+        }
+        filter_variables = {name: values for name, values in filter_variables.items() if values is not None}
+
+        translated_condition = self.replace_params_in_condition(self.MaskCondition, '', self.nBody)
+
+        try:
+            return BuildOrbitFilterMask(translated_condition, filter_variables, self.NbSelectOrbits, normalize_indices=False)
+        except Exception as exc:
+            print(f'Error evaluating corner mask condition: {exc}')
+            return None
 
 
     def CheckParamsVar(self):
@@ -1246,9 +1612,13 @@ class Corner(GeneralToolClass):
         """Update parameters based on the current widget values."""
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.NbBins = self.NbBinsWidget.SpinParam.value()
+        mask_condition = self.MaskConditionWidget.EditParam.text().strip()
+        self.MaskCondition = mask_condition if len(mask_condition) != 0 else None
 
     def Plot(self):
         """Plot the corner plot based on the selected parameters."""
+
+        self._corner_axis_sync_ready = False
 
         # Update parameters
         self.try_UpdateParams(self.WidgetPlot)
@@ -1259,14 +1629,24 @@ class Corner(GeneralToolClass):
         Data = []
         DataNames = []
         DataLabels = []
+        DataDefaultRanges = []
         for x in self.WidgetOrbitParams:
-            if x.CheckParam.isChecked():
-                Data.append(eval(f'self.Select{x.CheckParam.text()}')[self.nBody])
-                DataNames.append(x.CheckParam.text())
-                if self.CheckShortLabels.CheckParam.isChecked():
-                    DataLabels.append(x.CheckParam.text()+' '+self.UnitOf(x.CheckParam.text()))
-                else:
-                    DataLabels.append(self.LabelOf(x.CheckParam.text())+' '+self.UnitOf(x.CheckParam.text()))
+            if not x.CheckParam.isChecked() or not x.CheckParam.isEnabled():
+                continue
+
+            param_name = x.CheckParam.text()
+            param_values = np.asarray(eval(f'self.Select{param_name}')[self.nBody])
+            default_range = self.finite_range(param_values)
+            if default_range is None:
+                continue
+
+            Data.append(param_values)
+            DataNames.append(param_name)
+            DataDefaultRanges.append(default_range)
+            if self.CheckShortLabels.CheckParam.isChecked():
+                DataLabels.append(param_name+' '+self.UnitOf(param_name))
+            else:
+                DataLabels.append(self.LabelOf(param_name)+' '+self.UnitOf(param_name))
         Data = np.array(Data).T
 
         # Check if there is data to plot
@@ -1275,12 +1655,48 @@ class Corner(GeneralToolClass):
             self.WidgetPlot.Canvas.fig.canvas.draw()
             return
 
-        mask = self.SelectP[self.nBody] < 8
-        weights = mask.astype(float)
+        self._corner_param_names = list(DataNames)
+        self._corner_default_limits = {
+            DataNames[index]: DataDefaultRanges[index]
+            for index in range(len(DataNames))
+        }
+        self._corner_param_limits = {
+            name: limit
+            for name, limit in self._corner_param_limits.items()
+            if name in self._corner_default_limits and not self.corner_limits_equal(limit, self._corner_default_limits[name])
+        }
+
+        active_limits = self.active_corner_limits(DataNames)
+        interactive_mask = self.build_corner_interactive_mask(Data, DataNames, active_limits)
+        corner_ranges = self.build_corner_ranges(Data, DataNames, interactive_mask, active_limits)
+        has_interactive_limits = len(active_limits) != 0
+        has_interactive_selection = has_interactive_limits and np.any(interactive_mask)
+
+        if has_interactive_limits and not has_interactive_selection:
+            self._corner_param_limits = {}
+            active_limits = {}
+            interactive_mask = np.ones(len(Data), dtype=bool)
+            corner_ranges = self.build_corner_ranges(Data, DataNames, interactive_mask, active_limits)
+            has_interactive_limits = False
+            has_interactive_selection = False
+
+        mask = self.build_selected_mask()
+        weights = mask.astype(float) if mask is not None else None
+        if weights is not None and has_interactive_limits:
+            weights = weights * interactive_mask.astype(float)
+
+        if has_interactive_limits:
+            main_weights = interactive_mask.astype(float)
+        else:
+            main_weights = None
 
         show_contours = self.CheckContour.CheckParam.isChecked()
         show_density = self.CheckDensity.CheckParam.isChecked()
-        show_mask = self.CheckMask.CheckParam.isChecked()
+        show_mask = self.CheckMask.CheckParam.isChecked() and weights is not None and np.any(weights)
+
+        if has_interactive_limits and not np.any(main_weights):
+            show_contours = False
+            show_density = False
 
         # Create global corner plot without automatic datapoints. Points are
         # added afterwards so they remain visible above density/contour layers.
@@ -1289,10 +1705,12 @@ class Corner(GeneralToolClass):
             labels=DataLabels,
             bins=self.NbBins,
             fig=self.WidgetPlot.Canvas.fig,
+            range=corner_ranges,
             plot_contours=show_contours,
             fill_contours=show_contours and not show_density,
             plot_density=show_density,
             plot_datapoints=False,
+            weights=main_weights,
             contour_kwargs={'linewidths': 1.0},
         )
 
@@ -1303,12 +1721,13 @@ class Corner(GeneralToolClass):
                 labels=DataLabels,
                 bins=self.NbBins,
                 fig=self.WidgetPlot.Canvas.fig,
+                range=corner_ranges,
                 plot_contours=show_contours,
                 fill_contours=show_contours and not show_density,
                 plot_density=show_density,
                 plot_datapoints=False,
                 weights=weights,
-                color='#007B5A',
+                color='C0',
                 contour_kwargs={'linewidths': 1.3},
             )
 
@@ -1319,9 +1738,10 @@ class Corner(GeneralToolClass):
         masked_point_alpha = 0.08 if (show_contours or show_density) else 0.35
         masked_point_size = 1.0 if (show_contours or show_density) else 2
 
-        corner.overplot_points(self.WidgetPlot.Canvas.fig, Data, marker='.', color='black', alpha=point_alpha, ms=point_size)
+        point_data = Data[interactive_mask] if has_interactive_selection else Data
+        corner.overplot_points(self.WidgetPlot.Canvas.fig, point_data, marker='.', color='black', alpha=point_alpha, ms=point_size)
         if show_mask:
-            corner.overplot_points(self.WidgetPlot.Canvas.fig, Data[mask], marker='.', color='#007B5A', alpha=masked_point_alpha, ms=masked_point_size)
+            corner.overplot_points(self.WidgetPlot.Canvas.fig, Data[weights > 0], marker='.', color='C0', alpha=masked_point_alpha, ms=masked_point_size)
 
         # Adjust the labels to not be slanted
         for k in range(len(grid.get_axes())):
@@ -1362,6 +1782,8 @@ class Corner(GeneralToolClass):
                         ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
         self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.1, hspace=0.1)
+        self.connect_corner_axis_limit_sync()
+        self._corner_axis_sync_ready = True
 
 class PosAtDate(GeneralToolClass):
     def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse, SystDist):
@@ -1505,7 +1927,7 @@ class PosAtDate(GeneralToolClass):
             dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='blue')
+            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=1)
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$RA [mas]')

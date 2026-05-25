@@ -166,7 +166,7 @@ class WindowSetAnaSimu(WindowWithFinder):
 
         self.Layout.addWidget(Delimiter(Title='Options :'))
 
-        self.CondW = LineEdit('Filter condition', 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with [n>0] for body number and usual mathematical functions in boolean python expressions', '')
+        self.CondW = LineEdit('Filter condition', 'Only variables P, a, e, i, w, W, tp, m, m0, Chi2 with optional [n>0] for body number. Use [] or omit the index to use the current orbit.', '')
         self.Layout.addWidget(self.CondW)
 
         self.NbSelectOrbits = SpinBox('Number of orbits', 'Number of ramdom selected orbits to analyse', 10000, 1, None, 1)
@@ -295,7 +295,8 @@ class WindowSetAnaSimu(WindowWithFinder):
 
         self.WinMain = WindowMainClass(SimuName, InputData, OutputParams,
                                        self.NbSelectOrbits.SpinParam.value(), 
-                                       self.SystDistValue)
+                                       self.SystDistValue,
+                                       condition=condition)
         
         self.WinMain.SignalCloseWindowMain.connect(self.ReSignalCloseWindowMain.emit)
         self.WinMain.show()

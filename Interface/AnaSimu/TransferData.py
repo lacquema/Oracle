@@ -17,17 +17,19 @@ def HeaderDataIn(PathOutputData):
         return len(lines) > 2
 
 
-def BuildOrbitFilterMask(condition, variables, nb_orbits):
+def BuildOrbitFilterMask(condition, variables, nb_orbits, normalize_indices=True):
     if condition is None or len(condition.strip()) == 0:
         return np.ones(nb_orbits, dtype=bool)
 
-    # User input uses 1-based body indices; convert to Python 0-based indexing.
-    variable_pattern = '|'.join(map(re.escape, variables.keys()))
-    pattern = re.compile(rf"\b({variable_pattern})\s*\[\s*(\d+)\s*\]")
-    normalized_condition = pattern.sub(
-        lambda m: f"{m.group(1)}[{max(int(m.group(2)) - 1, 0)}]",
-        condition,
-    )
+    normalized_condition = condition
+    if normalize_indices:
+        # User input uses 1-based body indices; convert to Python 0-based indexing.
+        variable_pattern = '|'.join(map(re.escape, variables.keys()))
+        pattern = re.compile(rf"\b({variable_pattern})\s*\[\s*(\d+)\s*\]")
+        normalized_condition = pattern.sub(
+            lambda m: f"{m.group(1)}[{max(int(m.group(2)) - 1, 0)}]",
+            condition,
+        )
 
     def vectorize(node):
         if isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
