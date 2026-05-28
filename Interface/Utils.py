@@ -37,7 +37,6 @@ def Ellipse(P, a, e, i, w, W, tp, NbPtsEllipse=100, Period=False, Time=False, An
     # Convertion
     i = np.deg2rad(i)
     w = np.deg2rad(w)
-    # W = np.deg2rad(W)+np.pi/2 # to have PA=0 at North and increasing Eastward
     W = np.deg2rad(W)
     P*=365.25
 
@@ -67,7 +66,9 @@ def Ellipse(P, a, e, i, w, W, tp, NbPtsEllipse=100, Period=False, Time=False, An
     z = np.zeros(NbPtsEllipse)
 
     # Change of referential
-    Mp = RotMatrix(w, 'z')@RotMatrix(i, 'x')@RotMatrix(W, 'z')
+    Mp = RotMatrix(w, 'z')@RotMatrix(i, 'x')@RotMatrix(W, 'z')@RotMatrix(np.pi/2, 'z')
+
+    # @RotMatrix(np.pi/2, 'z') to have PA=0 at North and increasing Eastward, without it PA=0 at East and increasing counterclockwise
     
     xR = x*Mp[0,0] + y*Mp[1,0] + z*Mp[2,0]
     Output.append(xR)

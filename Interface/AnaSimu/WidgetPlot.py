@@ -208,8 +208,10 @@ class WidgetPlot(QWidget):
             self.refresh_plot()
 
     def look_plot_labels(self):
-        ax = self.Canvas.fig.axes[0]
         self.current_labels = {}
+        if not self.Canvas.fig.axes:
+            return self.current_labels
+        ax = self.Canvas.fig.axes[0]
         if self.title:
             self.current_labels['title'] = ax.get_title()
         if self.xlabel:
@@ -244,8 +246,10 @@ class WidgetPlot(QWidget):
         return False
             
     def look_plot_state(self):
-        ax = self.Canvas.fig.axes[0]
         self.current_state = {}
+        if not self.Canvas.fig.axes:
+            return self.current_state
+        ax = self.Canvas.fig.axes[0]
         if self.xlim:
             self.current_state['xlim'] = ax.get_xlim()
         if self.ylim:
@@ -352,6 +356,9 @@ class WidgetPlot(QWidget):
         """
         Restore the plot and toolbar to the initial state (home action).
         """
+        if not self.history:
+            self.refresh_plot()
+            return
         self.remove_undone_states()
         if self.history[0]!= self.history[-1]:
             self.history.append(self.history[0])

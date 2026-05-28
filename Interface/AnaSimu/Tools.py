@@ -12,6 +12,7 @@ from random import random, randint
 import corner
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import re
+from matplotlib.transforms import Bbox
 
 # PyQt packages
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QDateEdit, QGroupBox, QGridLayout
@@ -145,6 +146,53 @@ class GeneralToolClass(QWidget):
             WidgetToRemove.setParent(None)
         self.InitParams()
         self.reset_plots()
+
+    @staticmethod
+    def _format_short_label_index(index_label):
+        if index_label is None:
+            return None
+
+        cleaned_label = str(index_label).strip()
+        if len(cleaned_label) == 0:
+            return None
+
+        cleaned_label = cleaned_label.replace('\\', r'\backslash ')
+        cleaned_label = cleaned_label.replace('{', r'\{').replace('}', r'\}')
+        cleaned_label = cleaned_label.replace('_', r'\_').replace(' ', r'\ ')
+        return cleaned_label
+
+    def ShortLabelOf(self, var=str, index_label=None):
+        """Return the short label for a given variable."""
+        formatted_index = self._format_short_label_index(index_label)
+
+        if formatted_index is None:
+            labels = {
+                'P': r'$P$',
+                'a': r'$a$',
+                'e': r'$e$',
+                'i': r'$i$',
+                'w': r'$\omega$',
+                'W': r'$\Omega$',
+                'tp': r'$T_\mathrm{p}$',
+                'm': r'$m$',
+                'm0': r'$m_0$',
+                'Chi2': r'$\chi^2$'
+            }
+            return labels.get(var, 'Unknown variable')
+
+        labels = {
+            'P': rf'$P_\mathrm{{{formatted_index}}}$',
+            'a': rf'$a_\mathrm{{{formatted_index}}}$',
+            'e': rf'$e_\mathrm{{{formatted_index}}}$',
+            'i': rf'$i_\mathrm{{{formatted_index}}}$',
+            'w': rf'$\omega_\mathrm{{{formatted_index}}}$',
+            'W': rf'$\Omega_\mathrm{{{formatted_index}}}$',
+            'tp': rf'$T_{{p,\mathrm{{{formatted_index}}}}}$',
+            'm': rf'$m_\mathrm{{{formatted_index}}}$',
+            'm0': rf'$m_{{0,\mathrm{{{formatted_index}}}}}$',
+            'Chi2': rf'$\chi^2_\mathrm{{{formatted_index}}}$'
+        }
+        return labels.get(var, 'Unknown variable')
 
     def LabelOf(self, var=str):
         """Return the label for a given variable."""
@@ -1299,9 +1347,20 @@ class Corner(GeneralToolClass):
         self._corner_sync_in_progress = False
         self._corner_limit_sync_pending = False
         self._corner_axis_sync_ready = False
+        self._corner_layout_refresh_pending = False
+        self._corner_layout_refresh_in_progress = False
+        self._corner_layout_reference = None
         self._corner_param_limits = {}
         self._corner_param_names = []
         self._corner_default_limits = {}
+        self.corner_label_fontsize = 11
+        self.corner_tick_fontsize = 9
+        self.corner_tick_fractions = np.array([0.10, 0.30, 0.50, 0.70, 0.90])
+        self.corner_min_significant_digits = 3
+        self.corner_bottom_tick_rotation = 35
+        self.corner_tick_pad = 2.5
+        self.corner_label_min_gap_px = 8.0
+        self.corner_left_label_extra_gap_px = 8.0
 
         # Parameters initialisation
         self.InitParams()
@@ -1309,7 +1368,31 @@ class Corner(GeneralToolClass):
         # Plot initialization
         self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot)
         self.WidgetPlot.Canvas.mpl_connect('button_release_event', self.on_corner_button_release)
+        self.WidgetPlot.Canvas.mpl_connect('resize_event', self.on_corner_resize_event)
         self.WidgetPlot.Toolbar._actions['home'].triggered.connect(self.queue_corner_limit_reset)
+
+    def queue_corner_layout_refresh(self):
+        if self._corner_layout_refresh_pending:
+            return
+        self._corner_layout_refresh_pending = True
+        QTimer.singleShot(0, self.refresh_corner_layout)
+
+    def refresh_corner_layout(self):
+        self._corner_layout_refresh_pending = False
+        if self._corner_layout_refresh_in_progress or not self._corner_axis_sync_ready:
+            return
+        if len(self._corner_param_names) == 0 or len(self.WidgetPlot.Canvas.fig.axes) == 0:
+            return
+
+        self._corner_layout_refresh_in_progress = True
+        try:
+            self.apply_corner_square_layout()
+            self.apply_corner_uniform_label_padding()
+        finally:
+            self._corner_layout_refresh_in_progress = False
+
+    def on_corner_resize_event(self, event):
+        self.queue_corner_layout_refresh()
 
     @staticmethod
     def normalize_corner_limit(limit):
@@ -1342,6 +1425,195 @@ class Corner(GeneralToolClass):
         if np.isclose(lower, upper):
             return fallback
         return (lower, upper)
+
+    @staticmethod
+    def decimals_for_significant_digits(value, minimum_significant_digits):
+        value = abs(float(value))
+
+        if not np.isfinite(value):
+            return 0
+
+        if np.isclose(value, 0.0):
+            return max(0, minimum_significant_digits - 1)
+
+        magnitude = int(np.floor(np.log10(value)))
+        return max(0, minimum_significant_digits - 1 - magnitude)
+
+    def axis_decimals_for_ticks(self, ticks):
+        ticks = np.asarray(ticks, dtype=float)
+        finite_ticks = ticks[np.isfinite(ticks)]
+
+        if finite_ticks.size == 0:
+            return 0
+
+        max_abs_tick = np.max(np.abs(finite_ticks))
+        return self.decimals_for_significant_digits(max_abs_tick, self.corner_min_significant_digits)
+
+    @staticmethod
+    def corner_tick_labels_are_distinct(labels):
+        previous_label = None
+        for label in labels:
+            if previous_label is not None and label == previous_label:
+                return False
+            previous_label = label
+        return True
+
+    def format_corner_ticks(self, ticks, decimals_override=None):
+        axis_decimals = self.axis_decimals_for_ticks(ticks) if decimals_override is None else int(decimals_override)
+        max_decimals = max(axis_decimals, 12)
+
+        for decimals in range(axis_decimals, max_decimals + 1):
+            labels = [f'{tick:.{decimals}f}' for tick in ticks]
+            if self.corner_tick_labels_are_distinct(labels):
+                return labels
+
+        return [f'{tick:.{max_decimals}f}' for tick in ticks]
+
+    def set_corner_fraction_ticks(self, axis, axis_name, decimals_override=None):
+        fractions = np.asarray(self.corner_tick_fractions, dtype=float)
+
+        if axis_name == 'x':
+            axis_min, axis_max = axis.get_xlim()
+            set_ticks = axis.set_xticks
+            set_labels = axis.set_xticklabels
+        elif axis_name == 'y':
+            axis_min, axis_max = axis.get_ylim()
+            set_ticks = axis.set_yticks
+            set_labels = axis.set_yticklabels
+        else:
+            raise ValueError("axis_name must be 'x' or 'y'.")
+
+        if not np.isfinite(axis_min) or not np.isfinite(axis_max) or np.isclose(axis_min, axis_max):
+            return
+
+        ticks = axis_min + (axis_max - axis_min) * fractions
+        set_ticks(ticks)
+        set_labels(self.format_corner_ticks(ticks, decimals_override=decimals_override))
+
+    @staticmethod
+    def normalize_histogram(histogram_values):
+        peak = np.max(histogram_values) if histogram_values.size != 0 else 0.0
+        return histogram_values / peak if peak > 0 else histogram_values
+
+    def compute_corner_normalized_histogram(self, values, value_range, weights=None):
+        lower, upper = value_range
+        edges = np.linspace(lower, upper, self.NbBins + 1)
+        if not np.isfinite(lower) or not np.isfinite(upper) or np.isclose(lower, upper):
+            return np.zeros(self.NbBins), edges
+
+        values = np.asarray(values, dtype=float)
+        finite_mask = np.isfinite(values)
+
+        histogram_weights = None
+        if weights is not None:
+            histogram_weights = np.asarray(weights, dtype=float)
+            finite_mask &= np.isfinite(histogram_weights)
+
+        values = values[finite_mask]
+        if histogram_weights is not None:
+            histogram_weights = histogram_weights[finite_mask]
+
+        if values.size == 0:
+            return np.zeros(self.NbBins), edges
+
+        if histogram_weights is not None and np.allclose(histogram_weights, 0.0):
+            return np.zeros(self.NbBins), edges
+
+        histogram, edges = np.histogram(
+            values,
+            bins=self.NbBins,
+            range=value_range,
+            density=True,
+            weights=histogram_weights,
+        )
+        histogram = np.nan_to_num(histogram, nan=0.0, posinf=0.0, neginf=0.0)
+        return self.normalize_histogram(histogram), edges
+
+    def redraw_corner_diagonal_histograms(self, grid, data, corner_ranges, main_weights, overlay_weights=None):
+        for axis in grid.get_axes():
+            axis_position = self.get_corner_axis_position(axis)
+            if axis_position is None:
+                continue
+
+            row, col = axis_position
+            if row != col:
+                continue
+
+            value_range = corner_ranges[col]
+            if value_range is None:
+                continue
+
+            axis.clear()
+            base_histogram, edges = self.compute_corner_normalized_histogram(
+                data[:, col],
+                value_range,
+                weights=main_weights,
+            )
+            axis.stairs(base_histogram, edges, color='black', linewidth=1.5)
+            histogram_peak = float(np.max(base_histogram)) if base_histogram.size != 0 else 0.0
+
+            if overlay_weights is not None and np.any(np.asarray(overlay_weights, dtype=float) > 0):
+                overlay_histogram, _ = self.compute_corner_normalized_histogram(
+                    data[:, col],
+                    value_range,
+                    weights=overlay_weights,
+                )
+                axis.stairs(overlay_histogram, edges, color='C0', linewidth=1.7)
+                if overlay_histogram.size != 0:
+                    histogram_peak = max(histogram_peak, float(np.max(overlay_histogram)))
+
+            axis.set_xlim(value_range)
+            if histogram_peak > 0:
+                axis.set_ylim(0.0, 1.05 * histogram_peak)
+            else:
+                axis.set_ylim(0.0, 1.0)
+
+    def style_corner_axis(self, axis, row, col, nb_params, data_labels):
+        axis.set_box_aspect(1)
+        axis.tick_params(axis='both', labelsize=self.corner_tick_fontsize, pad=self.corner_tick_pad)
+        axis.xaxis.labelpad = 0.0
+        axis.yaxis.labelpad = 0.0
+
+        if row < col:
+            axis.axis('off')
+            return
+
+        self.set_corner_fraction_ticks(axis, 'x')
+
+        if row == col:
+            self.set_corner_fraction_ticks(axis, 'y', decimals_override=1 if col == 0 else None)
+            if col == 0:
+                axis.set_ylabel('Normalized density', fontsize=self.corner_label_fontsize)
+                axis.tick_params(axis='y', labelleft=True)
+                for label in axis.get_yticklabels():
+                    label.set_rotation(0)
+                    label.set_ha('right')
+                    label.set_rotation_mode('anchor')
+            else:
+                axis.set_ylabel('')
+                axis.tick_params(axis='y', labelleft=False)
+        else:
+            self.set_corner_fraction_ticks(axis, 'y')
+            if col == 0:
+                axis.set_ylabel(data_labels[row], fontsize=self.corner_label_fontsize)
+                axis.tick_params(axis='y', labelleft=True)
+                for label in axis.get_yticklabels():
+                    label.set_rotation(0)
+                    label.set_ha('right')
+                    label.set_rotation_mode('anchor')
+            else:
+                axis.set_ylabel('')
+                axis.tick_params(axis='y', labelleft=False)
+
+        if row == nb_params - 1:
+            axis.set_xlabel(data_labels[col], fontsize=self.corner_label_fontsize)
+            axis.tick_params(axis='x', labelbottom=True, labelrotation=self.corner_bottom_tick_rotation)
+            for label in axis.get_xticklabels():
+                label.set_ha('right')
+                label.set_rotation_mode('anchor')
+        else:
+            axis.set_xlabel('')
+            axis.tick_params(axis='x', labelbottom=False)
 
     def active_corner_limits(self, data_names):
         return {name: self._corner_param_limits[name] for name in data_names if name in self._corner_param_limits}
@@ -1413,6 +1685,201 @@ class Corner(GeneralToolClass):
         if row >= nb_params or col >= nb_params:
             return None
         return row, col
+
+    def get_corner_axes_by_position(self):
+        axes_by_position = {}
+        for axis in self.WidgetPlot.Canvas.fig.axes:
+            axis_position = self.get_corner_axis_position(axis)
+            if axis_position is None:
+                continue
+            axes_by_position[axis_position] = axis
+        return axes_by_position
+
+    def capture_corner_layout_reference(self):
+        nb_params = len(self._corner_param_names)
+        if nb_params == 0:
+            self._corner_layout_reference = None
+            return
+
+        axes_by_position = self.get_corner_axes_by_position()
+        if len(axes_by_position) != nb_params * nb_params:
+            self._corner_layout_reference = None
+            return
+
+        axis_boxes = [axis.get_position() for axis in axes_by_position.values()]
+        left = min(box.x0 for box in axis_boxes)
+        right = max(box.x1 for box in axis_boxes)
+        bottom = min(box.y0 for box in axis_boxes)
+        top = max(box.y1 for box in axis_boxes)
+
+        fig_width, fig_height = self.WidgetPlot.Canvas.fig.get_size_inches()
+        if fig_width <= 0 or fig_height <= 0:
+            self._corner_layout_reference = None
+            return
+
+        horizontal_gaps_in = []
+        for row in range(nb_params):
+            for col in range(nb_params - 1):
+                left_axis = axes_by_position[(row, col)].get_position()
+                right_axis = axes_by_position[(row, col + 1)].get_position()
+                gap_in = (right_axis.x0 - left_axis.x1) * fig_width
+                if np.isfinite(gap_in):
+                    horizontal_gaps_in.append(max(float(gap_in), 0.0))
+
+        vertical_gaps_in = []
+        for row in range(nb_params - 1):
+            for col in range(nb_params):
+                top_axis = axes_by_position[(row, col)].get_position()
+                bottom_axis = axes_by_position[(row + 1, col)].get_position()
+                gap_in = (top_axis.y0 - bottom_axis.y1) * fig_height
+                if np.isfinite(gap_in):
+                    vertical_gaps_in.append(max(float(gap_in), 0.0))
+
+        self._corner_layout_reference = {
+            'nb_params': nb_params,
+            'bounds': (left, right, bottom, top),
+            'gap_x_in': float(np.mean(horizontal_gaps_in)) if len(horizontal_gaps_in) != 0 else 0.0,
+            'gap_y_in': float(np.mean(vertical_gaps_in)) if len(vertical_gaps_in) != 0 else 0.0,
+        }
+
+    def apply_corner_uniform_label_padding(self):
+        nb_params = len(self._corner_param_names)
+        if nb_params == 0:
+            return
+
+        axes_by_position = self.get_corner_axes_by_position()
+        if len(axes_by_position) != nb_params * nb_params:
+            return
+
+        bottom_row_axes = [axes_by_position[(nb_params - 1, col)] for col in range(nb_params) if (nb_params - 1, col) in axes_by_position]
+        left_column_axes = [axes_by_position[(row, 0)] for row in range(nb_params) if (row, 0) in axes_by_position]
+
+        for axis in bottom_row_axes:
+            if axis.get_xlabel():
+                axis.xaxis.label.set_transform(axis.transAxes)
+                axis.xaxis.label.set_horizontalalignment('center')
+                axis.xaxis.label.set_verticalalignment('center')
+                axis.xaxis.label.set_rotation_mode('anchor')
+                axis.xaxis.set_label_coords(0.5, 0.0)
+
+        for axis in left_column_axes:
+            if axis.get_ylabel():
+                axis.yaxis.label.set_transform(axis.transAxes)
+                axis.yaxis.label.set_horizontalalignment('center')
+                axis.yaxis.label.set_verticalalignment('center')
+                axis.yaxis.label.set_rotation_mode('anchor')
+                axis.yaxis.set_label_coords(0.0, 0.5)
+
+        self.WidgetPlot.Canvas.draw()
+        renderer = self.WidgetPlot.Canvas.fig.canvas.get_renderer()
+
+        common_x_label_center_px = None
+        for axis in bottom_row_axes:
+            if not axis.get_xlabel():
+                continue
+            tick_bboxes = [
+                tick.get_window_extent(renderer)
+                for tick in axis.get_xticklabels()
+                if tick.get_visible() and len(tick.get_text()) != 0
+            ]
+            if len(tick_bboxes) == 0:
+                continue
+            tick_bbox = Bbox.union(tick_bboxes)
+            label_bbox = axis.xaxis.label.get_window_extent(renderer)
+            candidate_center_px = tick_bbox.y0 - self.corner_label_min_gap_px - 0.5 * label_bbox.height
+            common_x_label_center_px = candidate_center_px if common_x_label_center_px is None else min(common_x_label_center_px, candidate_center_px)
+
+        common_y_label_center_px = None
+        for axis in left_column_axes:
+            if not axis.get_ylabel():
+                continue
+            tick_bboxes = [
+                tick.get_window_extent(renderer)
+                for tick in axis.get_yticklabels()
+                if tick.get_visible() and len(tick.get_text()) != 0
+            ]
+            if len(tick_bboxes) == 0:
+                continue
+            tick_bbox = Bbox.union(tick_bboxes)
+            label_bbox = axis.yaxis.label.get_window_extent(renderer)
+            candidate_center_px = tick_bbox.x0 - self.corner_label_min_gap_px - self.corner_left_label_extra_gap_px - 0.5 * label_bbox.width
+            common_y_label_center_px = candidate_center_px if common_y_label_center_px is None else min(common_y_label_center_px, candidate_center_px)
+
+        for axis in bottom_row_axes:
+            if axis.get_xlabel():
+                axis_bbox = axis.get_window_extent(renderer)
+                if common_x_label_center_px is not None and axis_bbox.height > 0:
+                    label_y = (common_x_label_center_px - axis_bbox.y0) / axis_bbox.height
+                    axis.xaxis.set_label_coords(0.5, label_y)
+
+        for axis in left_column_axes:
+            if axis.get_ylabel():
+                axis_bbox = axis.get_window_extent(renderer)
+                if common_y_label_center_px is not None and axis_bbox.width > 0:
+                    label_x = (common_y_label_center_px - axis_bbox.x0) / axis_bbox.width
+                    axis.yaxis.set_label_coords(label_x, 0.5)
+
+        self.WidgetPlot.Canvas.draw()
+
+        self.WidgetPlot.Canvas.draw()
+
+    def apply_corner_square_layout(self):
+        nb_params = len(self._corner_param_names)
+        if nb_params == 0:
+            return
+
+        axes_by_position = self.get_corner_axes_by_position()
+
+        if len(axes_by_position) != nb_params * nb_params:
+            return
+
+        layout_reference = self._corner_layout_reference
+        if layout_reference is None or layout_reference.get('nb_params') != nb_params:
+            self.capture_corner_layout_reference()
+            layout_reference = self._corner_layout_reference
+        if layout_reference is None:
+            return
+
+        left, right, bottom, top = layout_reference['bounds']
+        available_width = right - left
+        available_height = top - bottom
+        if available_width <= 0 or available_height <= 0:
+            return
+
+        fig_width, fig_height = self.WidgetPlot.Canvas.fig.get_size_inches()
+        if fig_width <= 0 or fig_height <= 0:
+            return
+
+        available_width_in = available_width * fig_width
+        available_height_in = available_height * fig_height
+        gap_x_in = layout_reference.get('gap_x_in', 0.0)
+        gap_y_in = layout_reference.get('gap_y_in', 0.0)
+        box_size_in = min(
+            max((available_width_in - (nb_params - 1) * gap_x_in) / nb_params, 0.0),
+            max((available_height_in - (nb_params - 1) * gap_y_in) / nb_params, 0.0),
+        )
+        if box_size_in <= 0:
+            gap_x_in = 0.0
+            gap_y_in = 0.0
+            box_size_in = min(available_width_in / nb_params, available_height_in / nb_params)
+        if box_size_in <= 0:
+            return
+
+        box_width = box_size_in / fig_width
+        box_height = box_size_in / fig_height
+        horizontal_gap = gap_x_in / fig_width
+        vertical_gap = gap_y_in / fig_height
+
+        total_width = nb_params * box_width + (nb_params - 1) * horizontal_gap
+        total_height = nb_params * box_height + (nb_params - 1) * vertical_gap
+        x_offset = left + 0.5 * max(available_width - total_width, 0.0)
+        y_offset = bottom + 0.5 * max(available_height - total_height, 0.0)
+
+        for (row, col), axis in axes_by_position.items():
+            x0 = x_offset + col * (box_width + horizontal_gap)
+            y0 = y_offset + (nb_params - 1 - row) * (box_height + vertical_gap)
+            axis.set_position([x0, y0, box_width, box_height])
+            axis.set_box_aspect(1)
 
     def connect_corner_axis_limit_sync(self):
         for axis in self.WidgetPlot.Canvas.fig.axes:
@@ -1552,6 +2019,13 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckShortLabels)
         self.CheckShortLabels.CheckParam.stateChanged.connect(self.refresh_plots)
 
+        self.ShortLabelIndexWidget = LineEdit('Short label index', 'Optional index appended to corner short labels', '')
+        self.ShortLabelIndexWidget.EditParam.setPlaceholderText('Examples: in, out, b, 1')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.ShortLabelIndexWidget)
+        self.ShortLabelIndexWidget.EditParam.textChanged.connect(self.refresh_plots)
+        self.ShortLabelIndexWidget.setVisible(self.CheckShortLabels.CheckParam.isChecked())
+        self.CheckShortLabels.CheckParam.stateChanged.connect(lambda state: self.ShortLabelIndexWidget.setVisible(bool(state)))
+
         self.CheckContour = CheckBox('Contours', 'Show contours')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckContour)
         self.CheckContour.CheckParam.stateChanged.connect(self.refresh_plots)
@@ -1614,6 +2088,8 @@ class Corner(GeneralToolClass):
         self.NbBins = self.NbBinsWidget.SpinParam.value()
         mask_condition = self.MaskConditionWidget.EditParam.text().strip()
         self.MaskCondition = mask_condition if len(mask_condition) != 0 else None
+        short_label_index = self.ShortLabelIndexWidget.EditParam.text().strip()
+        self.ShortLabelIndex = short_label_index if len(short_label_index) != 0 else None
 
     def Plot(self):
         """Plot the corner plot based on the selected parameters."""
@@ -1644,9 +2120,9 @@ class Corner(GeneralToolClass):
             DataNames.append(param_name)
             DataDefaultRanges.append(default_range)
             if self.CheckShortLabels.CheckParam.isChecked():
-                DataLabels.append(param_name+' '+self.UnitOf(param_name))
+                DataLabels.append(f'{self.ShortLabelOf(param_name, self.ShortLabelIndex)} {self.UnitOf(param_name)}')
             else:
-                DataLabels.append(self.LabelOf(param_name)+' '+self.UnitOf(param_name))
+                DataLabels.append(f'{self.LabelOf(param_name)} {self.UnitOf(param_name)}')
         Data = np.array(Data).T
 
         # Check if there is data to plot
@@ -1733,7 +2209,7 @@ class Corner(GeneralToolClass):
 
         # When contours or density are enabled, keep points very faint so the
         # structure remains readable.
-        point_alpha = 0.025 if (show_contours or show_density) else 0.15
+        point_alpha = 0.05 if (show_contours or show_density) else 0.15
         point_size = 0.8 if (show_contours or show_density) else 2
         masked_point_alpha = 0.08 if (show_contours or show_density) else 0.35
         masked_point_size = 1.0 if (show_contours or show_density) else 2
@@ -1743,45 +2219,47 @@ class Corner(GeneralToolClass):
         if show_mask:
             corner.overplot_points(self.WidgetPlot.Canvas.fig, Data[weights > 0], marker='.', color='C0', alpha=masked_point_alpha, ms=masked_point_size)
 
-        # Adjust the labels to not be slanted
-        for k in range(len(grid.get_axes())):
-            ax = grid.get_axes()[k]
-            ax.tick_params(axis='x', labelsize=7, pad=0.2)
-            ax.tick_params(axis='y', labelsize=7, pad=0.2)
-            ax.xaxis.labelpad = 15
-            ax.yaxis.labelpad = 15
+        self.redraw_corner_diagonal_histograms(
+            grid,
+            Data,
+            corner_ranges,
+            main_weights,
+            weights if show_mask else None,
+        )
+
+        nb_params = len(DataLabels)
+        for ax in grid.get_axes():
+            axis_position = self.get_corner_axis_position(ax)
+            if axis_position is None:
+                continue
+
+            row, col = axis_position
+            self.style_corner_axis(ax, row, col, nb_params, DataLabels)
 
             # LM fit
             if self.CheckLMFit.CheckParam.isChecked():
-
-                if k % (len(DataLabels) + 1) == 0:
-                    param_index = k // (len(DataLabels) + 1)
-                    BestParam = eval(f'self.LM{DataNames[param_index]}')[self.nBody]
+                if row == col:
+                    BestParam = eval(f'self.LM{DataNames[col]}')[self.nBody]
                     ax.axvline(BestParam, color='orange', linestyle='-', linewidth=0.75)
-                else:
-                    row = k // len(DataLabels)
-                    col = k % len(DataLabels)
-                    if row > col:
-                        BestXParam = eval(f'self.LM{DataNames[col]}')[self.nBody]
-                        BestYParam = eval(f'self.LM{DataNames[row]}')[self.nBody]
-                        ax.plot(BestXParam, BestYParam, color='orange', marker='x')
+                elif row > col:
+                    BestXParam = eval(f'self.LM{DataNames[col]}')[self.nBody]
+                    BestYParam = eval(f'self.LM{DataNames[row]}')[self.nBody]
+                    ax.plot(BestXParam, BestYParam, color='orange', marker='x')
 
             # Best fit
             if self.CheckBestFit.CheckParam.isChecked():
-
-                if k % (len(DataLabels) + 1) == 0:
-                    param_index = k // (len(DataLabels) + 1)
-                    BestParam = eval(f'self.Best{DataNames[param_index]}')[self.nBody]
+                if row == col:
+                    BestParam = eval(f'self.Best{DataNames[col]}')[self.nBody]
                     ax.axvline(BestParam, color='red', linestyle='-', linewidth=0.75)
-                else:
-                    row = k // len(DataLabels)
-                    col = k % len(DataLabels)
-                    if row > col:
-                        BestXParam = eval(f'self.Best{DataNames[col]}')[self.nBody]
-                        BestYParam = eval(f'self.Best{DataNames[row]}')[self.nBody]
-                        ax.plot(BestXParam, BestYParam, color='red', marker='x')
+                elif row > col:
+                    BestXParam = eval(f'self.Best{DataNames[col]}')[self.nBody]
+                    BestYParam = eval(f'self.Best{DataNames[row]}')[self.nBody]
+                    ax.plot(BestXParam, BestYParam, color='red', marker='x')
 
-        self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.02, bottom=0.02, right=0.98, top=0.98, wspace=0.1, hspace=0.1)
+        self.WidgetPlot.Canvas.fig.subplots_adjust(left=0.10, bottom=0.13, right=0.94, top=0.95, wspace=0.05, hspace=0.07)
+        self.capture_corner_layout_reference()
+        self.apply_corner_square_layout()
+        self.apply_corner_uniform_label_padding()
         self.connect_corner_axis_limit_sync()
         self._corner_axis_sync_ready = True
 

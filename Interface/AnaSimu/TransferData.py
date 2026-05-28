@@ -329,7 +329,7 @@ def TransfertSimu(PathOutputData, UnivYN, condition=None):
         i = np.rad2deg(i)
         w = np.rad2deg(w+np.pi)
         W = np.rad2deg(W+np.pi)
-        W += 90.0 # to have PA=0 at North and increasing Eastward (observer's point of view)
+        # W += 90.0 # to have PA=0 at North and increasing Eastward (observer's point of view)
         W = W % 360.0 # keep W between 0 and 360 degrees
         if np.mean(tp) > 2400000.5: tp = jd_to_mjd(tp)
         # tp = np.round(tp) # round tp to avoid very long numbers
