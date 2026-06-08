@@ -2405,7 +2405,7 @@ class PosAtDate(GeneralToolClass):
             dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=1)
+            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='white', linewidth=1)
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$RA [mas]')

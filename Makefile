@@ -14,6 +14,17 @@ LIB_FLAGS = -O3 -c
 ALG_FLAGS = -O3
 DIR = .
 
+# On macOS, force an explicit deployment target to keep gfortran and the
+# active Apple SDK aligned, while still allowing users to override it from
+# the environment if they need a different minimum macOS version.
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+MACOSX_DEPLOYMENT_TARGET ?= $(shell xcrun --show-sdk-version 2>/dev/null | awk -F. '{print $$1 ".0"}')
+ifneq ($(strip $(MACOSX_DEPLOYMENT_TARGET)),)
+ADD_FLAGS += -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+endif
+endif
+
 # Induced directories
 CODE_DIR = $(DIR)/Code
 
@@ -38,11 +49,11 @@ endif
 # Utilities
 mod: 
 	test ! -f $(SUB_DIR)/data.mod || rm $(SUB_DIR)/data.mod
-	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(SUB_DIR)
+	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(SUB_DIR)
 	test ! -f $(MAIN_DIR)/data.mod || rm $(MAIN_DIR)/data.mod
-	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(MAIN_DIR)
+	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(MAIN_DIR)
 	test ! -f $(MAIN_DIR)/data.mod || rm $(DIR)/data.mod
-	$(COMPILF) -c $(MAIN_DIR)/astrom_mcmco.f -J$(DIR)
+	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(DIR)
 
 library_for:
 	test ! -f $(LIB_DIR)/lib$(LIB).a || rm $(LIB_DIR)/lib$(LIB).a
