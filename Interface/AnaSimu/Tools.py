@@ -804,11 +804,19 @@ class TempoView(GeneralToolClass):
             if len(SelectTimesWindow) != 0:
                 self.Subplot1.plot(SelectTimesWindow, SelectValuesWindow, color=self.colorList[self.nBody], linestyle='-', linewidth=0.2, alpha=0.1)
         
-        if len(self.YplotInput) != 0: 
-            for k in range(len(self.InputDates)):
-                self.Subplot1.errorbar(self.InputDates[k], self.YplotInput[k], self.YplotInputErr[k], linestyle='', color='b')
-
         self.Subplot1.plot(self.RefTimesWindow, self.RefValuesWindow, linestyle='-', linewidth=1, color=self.ReferenceColor)
+
+        # Draw observed points last so they stay visible above model curves.
+        if len(self.YplotInput) != 0:
+            for k in range(len(self.InputDates)):
+                self.Subplot1.errorbar(
+                    self.InputDates[k],
+                    self.YplotInput[k],
+                    self.YplotInputErr[k],
+                    linestyle='',
+                    color='b',
+                    zorder=10,
+                )
 
         # Plot features
         if self.CoordinateIndex == 3:
@@ -848,14 +856,21 @@ class TempoView(GeneralToolClass):
             ReferenceValues = self._reference_values_at(SelectTimesWindow)
             self.Subplot2.plot(SelectTimesWindow, ReferenceValues - SelectValuesWindow, color=self.colorList[self.nBody], linestyle='-', linewidth=0.2, alpha=0.1)
 
-        # Plot input data and residuals
-        if len(self.YplotInput) != 0: 
+        self.Subplot2.hlines(0, xlim[0], xlim[1], color=self.ReferenceColor, linewidth=1)
+
+        # Draw observed residual points last so they stay visible above all layers.
+        if len(self.YplotInput) != 0:
             ReferenceAtInputDates = self._reference_values_at(self.InputDates)
             for k in range(len(self.InputDates)):
                 Res = ReferenceAtInputDates[k] - self.YplotInput[k]
-                self.Subplot2.errorbar(self.InputDates[k], Res, self.YplotInputErr[k], color='b', linestyle='')
-
-        self.Subplot2.hlines(0, xlim[0], xlim[1], color=self.ReferenceColor, linewidth=1)
+                self.Subplot2.errorbar(
+                    self.InputDates[k],
+                    Res,
+                    self.YplotInputErr[k],
+                    color='b',
+                    linestyle='',
+                    zorder=10,
+                )
 
         # Plot features
         if self.CoordinateIndex == 3:
