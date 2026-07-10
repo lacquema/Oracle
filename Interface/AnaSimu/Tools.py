@@ -173,7 +173,7 @@ class GeneralToolClass(QWidget):
                 'i': r'$i$',
                 'w': r'$\omega$',
                 'W': r'$\Omega$',
-                'tp': r'$T_\mathrm{p}$',
+                'tp': r'$t_\mathrm{p}$',
                 'm': r'$m$',
                 'm0': r'$m_0$',
                 'Chi2': r'$\chi^2$'
@@ -187,7 +187,7 @@ class GeneralToolClass(QWidget):
             'i': rf'$i_\mathrm{{{formatted_index}}}$',
             'w': rf'$\omega_\mathrm{{{formatted_index}}}$',
             'W': rf'$\Omega_\mathrm{{{formatted_index}}}$',
-            'tp': rf'$T_{{p,\mathrm{{{formatted_index}}}}}$',
+            'tp': rf'$t_\mathrm{{p,{formatted_index}}}$',
             'm': rf'$m_\mathrm{{{formatted_index}}}$',
             'm0': rf'$m_{{0,\mathrm{{{formatted_index}}}}}$',
             'Chi2': rf'$\chi^2_\mathrm{{{formatted_index}}}$'
@@ -1368,8 +1368,8 @@ class Corner(GeneralToolClass):
         self._corner_param_limits = {}
         self._corner_param_names = []
         self._corner_default_limits = {}
-        self.corner_label_fontsize = 11
-        self.corner_tick_fontsize = 9
+        self.corner_label_fontsize = 10
+        self.corner_tick_fontsize = 8
         self.corner_tick_fractions = np.array([0.10, 0.30, 0.50, 0.70, 0.90])
         self.corner_min_significant_digits = 3
         self.corner_bottom_tick_rotation = 35
@@ -2034,7 +2034,7 @@ class Corner(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckShortLabels)
         self.CheckShortLabels.CheckParam.stateChanged.connect(self.refresh_plots)
 
-        self.ShortLabelIndexWidget = LineEdit('Short label index', 'Optional index appended to corner short labels', '')
+        self.ShortLabelIndexWidget = LineEdit('   Short label index', 'Optional index appended to corner short labels', '')
         self.ShortLabelIndexWidget.EditParam.setPlaceholderText('Examples: in, out, b, 1')
         self.WindowPlot.WidgetParam.Layout.addWidget(self.ShortLabelIndexWidget)
         self.ShortLabelIndexWidget.EditParam.textChanged.connect(self.refresh_plots)
@@ -2202,7 +2202,7 @@ class Corner(GeneralToolClass):
             plot_density=show_density,
             plot_datapoints=False,
             weights=main_weights,
-            contour_kwargs={'linewidths': 1.0},
+            contour_kwargs={'linewidths': 1.7, 'alpha': 0.1},
         )
 
         # Create weighted corner plot on top of the global one.
@@ -2219,7 +2219,7 @@ class Corner(GeneralToolClass):
                 plot_datapoints=False,
                 weights=weights,
                 color='C0',
-                contour_kwargs={'linewidths': 1.3},
+                contour_kwargs={'linewidths': 1.7, 'alpha': 0.1},
             )
 
         # When contours or density are enabled, keep points very faint so the
@@ -2330,6 +2330,13 @@ class PosAtDate(GeneralToolClass):
             self.CheckObs.CheckParam.setEnabled(False)
         self.CheckObs.CheckParam.stateChanged.connect(self.refresh_plots)
 
+        self.WindowPlot.WidgetParam.Layout.addWidget(Delimiter(Title='Options :'))
+
+        # Optional style close to Space view
+        self.CheckSpaceViewStyle = CheckBox('White background', 'White background, Greys density map and blue observations points')
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.CheckSpaceViewStyle)
+        self.CheckSpaceViewStyle.CheckParam.stateChanged.connect(self.refresh_plots)
+
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
@@ -2377,9 +2384,27 @@ class PosAtDate(GeneralToolClass):
         self.range = ((Xmax, Xmin), ylim) # Inverted X axis for Ra
 
         # Plot with current parameters
-        hist = self.Subplot.hist2d(SelectRaAtDate, SelectDecAtDate, bins=(self.NbBins, self.NbBins), range=self.range)
+        use_space_view_style = self.CheckSpaceViewStyle.CheckParam.isChecked()
+        hist_kwargs = {'cmap': 'Greys'} if use_space_view_style else {}
+        hist = self.Subplot.hist2d(
+            SelectRaAtDate,
+            SelectDecAtDate,
+            bins=(self.NbBins, self.NbBins),
+            range=self.range,
+            **hist_kwargs,
+        )
         ColorbarAx = make_axes_locatable(self.Subplot).append_axes('right', size='5%', pad=0.1)
-        self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Count number')
+        cbar = self.WidgetPlot.Canvas.fig.colorbar(hist[3], ColorbarAx, ticks=[], label='Count number')
+
+        if use_space_view_style:
+            self.WidgetPlot.Canvas.fig.patch.set_facecolor('white')
+            self.Subplot.set_facecolor('white')
+            ColorbarAx.set_facecolor('white')
+            self.Subplot.tick_params(axis='both', colors='black')
+            for spine in self.Subplot.spines.values():
+                spine.set_color('black')
+            cbar.ax.yaxis.label.set_color('black')
+            cbar.ax.tick_params(colors='black')
 
         self.Subplot.plot(0, 0, marker='*', color='orange', markersize=10)
 
@@ -2420,7 +2445,22 @@ class PosAtDate(GeneralToolClass):
             dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
-            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color='white', linewidth=1)
+            obs_color = 'blue' if use_space_view_style else 'white'
+            self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color=obs_color, linewidth=1)
+
+        # Display selected date in the top-right corner
+        year, month, day = jd_to_date(mjd_to_jd(self.Date))
+        date_label = f'{int(year):04d}-{int(month):02d}-{int(day):02d} (MJD {self.Date:.0f})'
+        self.Subplot.text(
+            0.98,
+            1.02,
+            date_label,
+            transform=self.Subplot.transAxes,
+            ha='right',
+            va='bottom',
+            color='black',
+            clip_on=False,
+        )
 
         # Plot features
         self.Subplot.set_xlabel(r'$\delta$RA [mas]')
