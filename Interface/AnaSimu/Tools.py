@@ -225,6 +225,37 @@ class GeneralToolClass(QWidget):
             'Chi2': ''
         }
         return units.get(var, 'Unknown variable')
+
+    def display_length(self, values):
+        """Convert angular astrometric values to the selected display unit."""
+        return np.asarray(values) * self.LengthScale
+
+    def astrometric_coordinate_label(self, coordinate):
+        """Return the appropriate coordinate nomenclature for the display unit."""
+        if self.LengthUnit == 'AU':
+            return {'ra': r'$\delta$x', 'dec': r'$\delta$y', 'sep': r'$\delta$r'}.get(coordinate, coordinate)
+        return {'ra': r'$\delta$RA', 'dec': r'$\delta$Dec'}.get(coordinate, coordinate)
+
+    def change_length_unit(self, axis_limits):
+        """Rescale saved spatial limits before redrawing in the selected unit."""
+        new_scale = self.SystDist / 1000 if self.LengthUnitWidget.ComboParam.currentText() == 'AU' else 1
+        old_scale = getattr(self, 'LengthScale', 1)
+        scale_ratio = new_scale / old_scale
+
+        for widget_plot in self.WindowPlot.WidgetPlots:
+            for state in widget_plot.history:
+                for axis_limit in axis_limits:
+                    if axis_limit in state:
+                        state[axis_limit] = tuple(value * scale_ratio for value in state[axis_limit])
+            widget_plot.labels = {}
+
+        self.LengthScale = new_scale
+        self.LengthUnit = self.LengthUnitWidget.ComboParam.currentText()
+        if hasattr(self, 'CoordinateWidget'):
+            self.CoordinateWidget.ComboParam.setItemText(0, 'dx' if self.LengthUnit == 'AU' else 'dRA')
+            self.CoordinateWidget.ComboParam.setItemText(1, 'dy' if self.LengthUnit == 'AU' else 'dDec')
+            self.CoordinateWidget.ComboParam.setItemText(2, 'dr' if self.LengthUnit == 'AU' else 'Sep')
+        self.refresh_plots()
         
     @staticmethod
     def _replace_params_in_expression(expression, prefixe, nOrbitDefault, convert_angles_to_radians):
@@ -311,8 +342,9 @@ class GeneralToolClass(QWidget):
     
 
 class SpaceView(GeneralToolClass):
-    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse):
+    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse, SystDist):
         super().__init__('Space view', 'Space view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitEllipse, None, LMOrbitEllipse)
+        self.SystDist = SystDist
 
         # Window plots initialisation
         self.WidgetPlotXY = self.WindowPlot.add_WidgetPlot(self.PlotXY, xlim=True, ylim=True)
@@ -337,6 +369,12 @@ class SpaceView(GeneralToolClass):
         self.NbShownOrbits = 500
         self.NbShownOrbitsWidget = SpinBox('Number of orbits', 'Number of shown orbits', ParamDefault=self.NbShownOrbits, ParamMin=0, ParamMax=self.NbSelectOrbits)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbShownOrbitsWidget)
+
+        self.LengthUnitWidget = ComboBox('Astrometric unit', 'Unit for astrometric coordinates', ['mas', 'AU'])
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.LengthUnitWidget)
+        self.LengthUnitWidget.ComboParam.currentIndexChanged.connect(
+            lambda: self.change_length_unit(('xlim', 'ylim', 'zlim'))
+        )
 
         # Type of view
         self.ViewWidget = ComboBox('View', 'Dimension', ['2D XY', '2D XZ', '3D'])
@@ -392,6 +430,8 @@ class SpaceView(GeneralToolClass):
         self.nBody = 'all' if self.nBodyWidget.ComboParam.currentText() == 'all' else int(self.nBodyWidget.ComboParam.currentText()) - 1
         # self.indexView = self.ViewWidget.ComboParam.currentIndex()
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
+        self.LengthScale = self.SystDist / 1000 if self.LengthUnitWidget.ComboParam.currentText() == 'AU' else 1
+        self.LengthUnit = self.LengthUnitWidget.ComboParam.currentText()
 
     def PlotXY(self):
         """Plot the 2D view of the orbits in the XY plane."""
@@ -414,18 +454,18 @@ class SpaceView(GeneralToolClass):
         if self.nBody == 'all':
             for k in range(self.NbBodies):
                 for n in range(self.NbShownOrbits):
-                    self.SubplotXY.plot(self.SelectRa[k][n], self.SelectDec[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                    self.SubplotXY.plot(self.display_length(self.SelectRa[k][n]), self.display_length(self.SelectDec[k][n]), color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
                 if self.CheckLMFit.CheckParam.isChecked():
-                    self.SubplotXY.plot(self.LMRa[k], self.LMDec[k], color='orange', linewidth=1, label='LM fit' if k==0 else None)
+                    self.SubplotXY.plot(self.display_length(self.LMRa[k]), self.display_length(self.LMDec[k]), color='orange', linewidth=1, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXY.plot(self.BestRa[k], self.BestDec[k], color='r', linewidth=1, label='Best fit' if k==0 else None)
+                    self.SubplotXY.plot(self.display_length(self.BestRa[k]), self.display_length(self.BestDec[k]), color='r', linewidth=1, label='Best fit' if k==0 else None)
         else:
             for n in range(self.NbShownOrbits):
-                self.SubplotXY.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+                self.SubplotXY.plot(self.display_length(self.SelectRa[self.nBody][n]), self.display_length(self.SelectDec[self.nBody][n]), color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
             if self.CheckLMFit.CheckParam.isChecked():
-                self.SubplotXY.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], color='orange', linewidth=1, label='LM fit')
+                self.SubplotXY.plot(self.display_length(self.LMRa[self.nBody]), self.display_length(self.LMDec[self.nBody]), color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXY.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='r', linewidth=1, label='Best fit')
+                self.SubplotXY.plot(self.display_length(self.BestRa[self.nBody]), self.display_length(self.BestDec[self.nBody]), color='r', linewidth=1, label='Best fit')
 
         # Add observations points if available
         if self.CheckObs.CheckParam.isChecked() and self.indexView == 0:
@@ -436,6 +476,7 @@ class SpaceView(GeneralToolClass):
                     dra = self.InputData['Planets']['DataAstrom']['dRA'][k]
                     ddec = self.InputData['Planets']['DataAstrom']['dDec'][k]
                     dates = self.InputData['Planets']['DataAstrom']['Date'][k]
+                    ra, dec, dra, ddec = (self.display_length(values) for values in (ra, dec, dra, ddec))
                     self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=0.7)
                     if self.CheckDateObs.CheckParam.isChecked():
                         if Xmin!=None and Ymin!=None: 
@@ -447,14 +488,15 @@ class SpaceView(GeneralToolClass):
                 dra = self.InputData['Planets']['DataAstrom']['dRA'][self.nBody]
                 ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
                 dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
+                ra, dec, dra, ddec = (self.display_length(values) for values in (ra, dec, dra, ddec))
                 self.SubplotXY.errorbar(ra, dec, ddec, dra, linestyle='', color='blue', linewidth=1)
                 if self.CheckDateObs.CheckParam.isChecked():
                     if Xmin!=None and Ymin!=None: 
                         self.annotate_dates(dates, ra, dec, Xmin, Xmax, Ymin, Ymax)
         
         # Set axis
-        self.SubplotXY.set_xlabel(r'$\delta$RA [mas]')
-        self.SubplotXY.set_ylabel(r'$\delta$Dec [mas]')
+        self.SubplotXY.set_xlabel(self.astrometric_coordinate_label('ra') + ' [' + self.LengthUnit + ']')
+        self.SubplotXY.set_ylabel(self.astrometric_coordinate_label('dec') + ' [' + self.LengthUnit + ']')
         self.SubplotXY.invert_xaxis()
         self.SubplotXY.set_aspect('equal', adjustable='box')
 
@@ -474,22 +516,22 @@ class SpaceView(GeneralToolClass):
         if self.nBody == 'all':
             for k in range(self.NbBodies):
                 for n in range(self.NbShownOrbits):
-                    self.SubplotXZ.plot(self.SelectRa[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                    self.SubplotXZ.plot(self.display_length(self.SelectRa[k][n]), self.display_length(self.SelectZ[k][n]), color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
                 if self.CheckLMFit.CheckParam.isChecked():
-                    self.SubplotXZ.plot(self.LMRa[k], self.LMZ[k], color='orange', linewidth=1, label='LM fit' if k==0 else None)
+                    self.SubplotXZ.plot(self.display_length(self.LMRa[k]), self.display_length(self.LMZ[k]), color='orange', linewidth=1, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXZ.plot(self.BestRa[k], self.BestZ[k], color='r', linewidth=1, label='Best fit' if k==0 else None)
+                    self.SubplotXZ.plot(self.display_length(self.BestRa[k]), self.display_length(self.BestZ[k]), color='r', linewidth=1, label='Best fit' if k==0 else None)
         else:
             for n in range(self.NbShownOrbits):
-                self.SubplotXZ.plot(self.SelectRa[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+                self.SubplotXZ.plot(self.display_length(self.SelectRa[self.nBody][n]), self.display_length(self.SelectZ[self.nBody][n]), color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
             if self.CheckLMFit.CheckParam.isChecked():
-                self.SubplotXZ.plot(self.LMRa[self.nBody], self.LMZ[self.nBody], color='orange', linewidth=1, label='LM fit')
+                self.SubplotXZ.plot(self.display_length(self.LMRa[self.nBody]), self.display_length(self.LMZ[self.nBody]), color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXZ.plot(self.BestRa[self.nBody], self.BestZ[self.nBody], color='r', linewidth=1, label='Best fit')
+                self.SubplotXZ.plot(self.display_length(self.BestRa[self.nBody]), self.display_length(self.BestZ[self.nBody]), color='r', linewidth=1, label='Best fit')
 
         # Set axis
-        self.SubplotXZ.set_xlabel(r'$\delta$RA [mas]')
-        self.SubplotXZ.set_ylabel('Depth [mas]')
+        self.SubplotXZ.set_xlabel(self.astrometric_coordinate_label('ra') + ' [' + self.LengthUnit + ']')
+        self.SubplotXZ.set_ylabel('Depth [' + self.LengthUnit + ']')
         self.SubplotXZ.invert_xaxis()
         self.SubplotXZ.set_aspect('equal', adjustable='box')
 
@@ -508,22 +550,26 @@ class SpaceView(GeneralToolClass):
         if self.nBody == 'all':
             for k in range(self.NbBodies):
                 if self.CheckLMFit.CheckParam.isChecked():
-                    self.SubplotXYZ.plot(self.LMRa[k], self.LMDec[k], self.LMZ[k], color='orange', linewidth=0.5, label='LM fit' if k==0 else None)
+                    self.SubplotXYZ.plot(self.display_length(self.LMRa[k]), self.display_length(self.LMDec[k]), self.display_length(self.LMZ[k]), color='orange', linewidth=0.5, label='LM fit' if k==0 else None)
                 if self.CheckBestFit.CheckParam.isChecked():
-                    self.SubplotXYZ.plot(self.BestRa[k], self.BestDec[k], self.BestZ[k], color='r', linewidth=0.5, label='Best fit' if k==0 else None)
+                    self.SubplotXYZ.plot(self.display_length(self.BestRa[k]), self.display_length(self.BestDec[k]), self.display_length(self.BestZ[k]), color='r', linewidth=0.5, label='Best fit' if k==0 else None)
                 for n in range(self.NbShownOrbits):
-                    self.SubplotXYZ.plot(self.SelectRa[k][n], self.SelectDec[k][n], self.SelectZ[k][n], color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
+                    self.SubplotXYZ.plot(self.display_length(self.SelectRa[k][n]), self.display_length(self.SelectDec[k][n]), self.display_length(self.SelectZ[k][n]), color=self.colorList[k], linestyle='-', linewidth=0.3, alpha=0.1)
         else:
             if self.CheckLMFit.CheckParam.isChecked():
-                self.SubplotXYZ.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], self.LMZ[self.nBody], color='orange', linewidth=1, label='LM fit')
+                self.SubplotXYZ.plot(self.display_length(self.LMRa[self.nBody]), self.display_length(self.LMDec[self.nBody]), self.display_length(self.LMZ[self.nBody]), color='orange', linewidth=1, label='LM fit')
             if self.CheckBestFit.CheckParam.isChecked():
-                self.SubplotXYZ.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], self.BestZ[self.nBody], color='r', linewidth=1, label='Best fit')
+                self.SubplotXYZ.plot(self.display_length(self.BestRa[self.nBody]), self.display_length(self.BestDec[self.nBody]), self.display_length(self.BestZ[self.nBody]), color='r', linewidth=1, label='Best fit')
             for n in range(self.NbShownOrbits):
-                self.SubplotXYZ.plot(self.SelectRa[self.nBody][n], self.SelectDec[self.nBody][n], self.SelectZ[self.nBody][n], color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
+                self.SubplotXYZ.plot(self.display_length(self.SelectRa[self.nBody][n]), self.display_length(self.SelectDec[self.nBody][n]), self.display_length(self.SelectZ[self.nBody][n]), color=self.colorList[self.nBody], linestyle='-', linewidth=0.3, alpha=0.1)
 
-        self.SubplotXYZ.set_xlabel(r'$\delta$RA [mas]')
-        self.SubplotXYZ.set_ylabel(r'$\delta$Dec [mas]')
-        self.SubplotXYZ.set_zlabel('Depth [mas]')
+        self.SubplotXYZ.set_xlabel(self.astrometric_coordinate_label('ra') + ' [' + self.LengthUnit + ']', labelpad=12)
+        self.SubplotXYZ.set_ylabel(self.astrometric_coordinate_label('dec') + ' [' + self.LengthUnit + ']', labelpad=12)
+        self.SubplotXYZ.set_zlabel('Depth [' + self.LengthUnit + ']', labelpad=12)
+        self.SubplotXYZ.tick_params(axis='x', labelsize=8, pad=2)
+        self.SubplotXYZ.tick_params(axis='y', labelsize=8, pad=2)
+        self.SubplotXYZ.tick_params(axis='z', labelsize=8, pad=2)
+        self.SubplotXYZ.set_box_aspect((1, 1, 1), zoom=0.88)
         self.SubplotXYZ.invert_xaxis()
         self.SubplotXYZ.set_aspect('equal', adjustable='box')
 
@@ -553,8 +599,9 @@ class SpaceView(GeneralToolClass):
             
 
 class TempoView(GeneralToolClass):
-    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse):
+    def __init__(self, InputData, SelectOrbitsEllipses, BestOrbitEllipse, LMOrbitEllipse, SystDist):
         super().__init__('Temporal view', 'Temporal view of fit orbits', InputData, None, None, SelectOrbitsEllipses, None, BestOrbitEllipse, None, LMOrbitEllipse)
+        self.SystDist = SystDist
 
         self._tempo_xlim_sync_in_progress = False
 
@@ -595,6 +642,10 @@ class TempoView(GeneralToolClass):
         self.WindowPlot.WidgetParam.Layout.addWidget(self.CoordinateWidget)
         self.CoordinateWidget.ComboParam.currentIndexChanged.connect(self.reset_plots)
 
+        self.LengthUnitWidget = ComboBox('Astrometric unit', 'Unit for astrometric coordinates and separation', ['mas', 'AU'])
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.LengthUnitWidget)
+        self.LengthUnitWidget.ComboParam.currentIndexChanged.connect(self.change_tempo_length_unit)
+
         # Choice of reference solution for temporal model and residuals
         ListReference = ['Best fit', 'LM fit']
         self.ReferenceWidget = ComboBox('Reference orbit', 'Reference solution used for residuals', ListReference)
@@ -604,13 +655,15 @@ class TempoView(GeneralToolClass):
 
     def UpdateParams(self):
         """Update parameters based on the current widget values."""
+        self.LengthScale = self.SystDist / 1000 if self.LengthUnitWidget.ComboParam.currentText() == 'AU' else 1
+        self.LengthUnit = self.LengthUnitWidget.ComboParam.currentText()
         self.CoordinateIndex = self.CoordinateWidget.ComboParam.currentIndex()
         if self.CoordinateIndex == 0:
-            self.Coordinate = r'$\delta$RA'
+            self.Coordinate = self.astrometric_coordinate_label('ra')
         elif self.CoordinateIndex == 1:
-            self.Coordinate = r'$\delta$Dec'
+            self.Coordinate = self.astrometric_coordinate_label('dec')
         elif self.CoordinateIndex == 2:
-            self.Coordinate = 'Sep'
+            self.Coordinate = self.astrometric_coordinate_label('sep') if self.LengthUnit == 'AU' else 'Sep'
         elif self.CoordinateIndex == 3:
             self.Coordinate = 'Pa'
         elif self.CoordinateIndex == 4:
@@ -618,6 +671,11 @@ class TempoView(GeneralToolClass):
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.NbShownOrbits = self.NbShownOrbitsWidget.SpinParam.value()
         self.Reference = self.ReferenceWidget.ComboParam.currentText()
+
+    def change_tempo_length_unit(self):
+        """Rescale the ordinate only for temporal length coordinates."""
+        axis_limits = ('ylim',) if self.CoordinateWidget.ComboParam.currentIndex() < 3 else ()
+        self.change_length_unit(axis_limits)
 
     def _get_input_dates(self):
         if self.InputData is None:
@@ -746,6 +804,13 @@ class TempoView(GeneralToolClass):
                     self.YplotInput = self.InputData['Planets']['DataRV']['RV'][self.nBody]
                     self.YplotInputErr = self.InputData['Planets']['DataRV']['dRV'][self.nBody]
 
+        if self.CoordinateIndex < 3:
+            self.YplotOutput = self.display_length(self.YplotOutput)
+            self.BestYplotOutput = self.display_length(self.BestYplotOutput)
+            self.LMYplotOutput = self.display_length(self.LMYplotOutput)
+            self.YplotInput = self.display_length(self.YplotInput)
+            self.YplotInputErr = self.display_length(self.YplotInputErr)
+
         # Selected reference orbit (Best or LM)
         self.ReferenceLabel = 'Best fit'
         self.ReferenceColor = 'r'
@@ -824,7 +889,7 @@ class TempoView(GeneralToolClass):
         elif self.CoordinateIndex == 4:
             self.Subplot1.set_ylabel(self.Coordinate + ' [km/s]')
         else:
-            self.Subplot1.set_ylabel(self.Coordinate + ' [mas]')
+            self.Subplot1.set_ylabel(self.Coordinate + ' [' + self.LengthUnit + ']')
         self.Subplot1.grid()
         self.Subplot1.set_xlim(xlim)
         self._connect_tempo_xlim_sync(self.Subplot1, self.WidgetPlot1, self.WidgetPlot2)
@@ -878,7 +943,7 @@ class TempoView(GeneralToolClass):
         elif self.CoordinateIndex == 4:
             self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [km/s]')
         else:
-            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [mas]')
+            self.Subplot2.set_ylabel(self.Coordinate + ' - ' + self.ReferenceLabel + ' [' + self.LengthUnit + ']')
         self.Subplot2.set_xlabel('Time [MJD]')
         self.Subplot2.set_xlim(xlim)
         self.Subplot2.grid()
@@ -2281,10 +2346,10 @@ class Corner(GeneralToolClass):
 class PosAtDate(GeneralToolClass):
     def __init__(self, InputData, OutputParams, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse, SystDist):
         super().__init__('Position at date', 'Position of bodies at a given date', InputData, OutputParams, None, SelectOrbitsEllipses, BestOrbitParams, BestOrbitEllipse, LMOrbitParams, LMOrbitEllipse)
+        self.SystDist = SystDist
 
         # Parameters initialisation
         self.InitParams()
-        self.SystDist = SystDist
 
         # Plot initialization
         self.WidgetPlot = self.WindowPlot.add_WidgetPlot(self.Plot, xlim=True, ylim=True)
@@ -2312,6 +2377,12 @@ class PosAtDate(GeneralToolClass):
         self.NbBins = 100
         self.NbBinsWidget = SpinBox('Number of bins', 'Number of bins', ParamDefault=self.NbBins, ParamMin=1, ParamMax=1000000)
         self.WindowPlot.WidgetParam.Layout.addWidget(self.NbBinsWidget)
+
+        self.LengthUnitWidget = ComboBox('Astrometric unit', 'Unit for astrometric coordinates', ['mas', 'AU'])
+        self.WindowPlot.WidgetParam.Layout.addWidget(self.LengthUnitWidget)
+        self.LengthUnitWidget.ComboParam.currentIndexChanged.connect(
+            lambda: self.change_length_unit(('xlim', 'ylim'))
+        )
 
         # Show LM fit
         self.CheckLMFit = CheckBox('LM fit', 'Show the Levenberg-Marquardt fit')
@@ -2342,6 +2413,8 @@ class PosAtDate(GeneralToolClass):
         self.nBody = int(self.nBodyWidget.ComboParam.currentText()) - 1
         self.NbBins = self.NbBinsWidget.SpinParam.value()
         self.Date = self.DateWidget.MJDWidget.SpinParam.value()
+        self.LengthScale = self.SystDist / 1000 if self.LengthUnitWidget.ComboParam.currentText() == 'AU' else 1
+        self.LengthUnit = self.LengthUnitWidget.ComboParam.currentText()
 
     def Plot(self):
         """Plot the position at the given date based on the selected parameters."""
@@ -2367,8 +2440,8 @@ class PosAtDate(GeneralToolClass):
                 SelectDate -= SelectPeriod
 
             indexBestDate = np.argmin(np.abs(self.Selectt[self.nBody][k] - SelectDate))
-            SelectRaAtDate[k] = self.SelectRa[self.nBody][k][indexBestDate]
-            SelectDecAtDate[k] = self.SelectDec[self.nBody][k][indexBestDate]
+            SelectRaAtDate[k] = self.display_length(self.SelectRa[self.nBody][k][indexBestDate])
+            SelectDecAtDate[k] = self.display_length(self.SelectDec[self.nBody][k][indexBestDate])
         # print(self.Date)
         # xR, yR, zR = kepler_position(self.a[self.nBody], self.P[self.nBody], self.e[self.nBody], self.w[self.nBody], self.i[self.nBody], self.W[self.nBody], self.tp[self.nBody], self.Date, self.SystDist)
 
@@ -2376,8 +2449,8 @@ class PosAtDate(GeneralToolClass):
         # DecAtDate = yR/self.SystDist*1000
 
         # X and Y limits
-        xlim_init = (np.max(self.SelectRa[self.nBody]), np.min(self.SelectRa[self.nBody])) # Inverted X axis for Ra
-        ylim_init = (np.min(self.SelectDec[self.nBody]), np.max(self.SelectDec[self.nBody]))
+        xlim_init = (np.max(self.display_length(self.SelectRa[self.nBody])), np.min(self.display_length(self.SelectRa[self.nBody]))) # Inverted X axis for Ra
+        ylim_init = (np.min(self.display_length(self.SelectDec[self.nBody])), np.max(self.display_length(self.SelectDec[self.nBody])))
         (Xmin, Xmax) = self.WidgetPlot.history[self.WidgetPlot.history_index]['xlim'] if len(self.WidgetPlot.history) != 0 else xlim_init
         ylim = self.WidgetPlot.history[self.WidgetPlot.history_index]['ylim'] if len(self.WidgetPlot.history) != 0 else ylim_init
 
@@ -2409,7 +2482,7 @@ class PosAtDate(GeneralToolClass):
         self.Subplot.plot(0, 0, marker='*', color='orange', markersize=10)
 
         if self.CheckLMFit.CheckParam.isChecked():
-            self.Subplot.plot(self.LMRa[self.nBody], self.LMDec[self.nBody], color='orange', lw=1)
+            self.Subplot.plot(self.display_length(self.LMRa[self.nBody]), self.display_length(self.LMDec[self.nBody]), color='orange', lw=1)
 
             LMPeriod = np.max(self.LMt[self.nBody]) - np.min(self.LMt[self.nBody])
             LMDate = self.Date
@@ -2421,10 +2494,10 @@ class PosAtDate(GeneralToolClass):
                 LMDate -= LMPeriod
 
             indexLMDate = np.argmin(np.abs(self.LMt[self.nBody] - LMDate))
-            self.Subplot.plot(self.LMRa[self.nBody][indexLMDate], self.LMDec[self.nBody][indexLMDate], marker='x', color='orange', markersize=8, markeredgewidth=2)
+            self.Subplot.plot(self.display_length(self.LMRa[self.nBody][indexLMDate]), self.display_length(self.LMDec[self.nBody][indexLMDate]), marker='x', color='orange', markersize=8, markeredgewidth=2)
 
         if self.CheckBestFit.CheckParam.isChecked():
-            self.Subplot.plot(self.BestRa[self.nBody], self.BestDec[self.nBody], color='r', lw=1)
+            self.Subplot.plot(self.display_length(self.BestRa[self.nBody]), self.display_length(self.BestDec[self.nBody]), color='r', lw=1)
 
             BestPeriod = np.max(self.Bestt[self.nBody]) - np.min(self.Bestt[self.nBody])
             BestDate = self.Date
@@ -2436,7 +2509,7 @@ class PosAtDate(GeneralToolClass):
                 BestDate -= BestPeriod
 
             indexBestDate = np.argmin(np.abs(self.Bestt[self.nBody] - BestDate))
-            self.Subplot.plot(self.BestRa[self.nBody][indexBestDate], self.BestDec[self.nBody][indexBestDate], marker='x', color='red', markersize=8, markeredgewidth=2)
+            self.Subplot.plot(self.display_length(self.BestRa[self.nBody][indexBestDate]), self.display_length(self.BestDec[self.nBody][indexBestDate]), marker='x', color='red', markersize=8, markeredgewidth=2)
             
 
         if self.CheckObs.CheckParam.isChecked():
@@ -2446,6 +2519,7 @@ class PosAtDate(GeneralToolClass):
             ddec = self.InputData['Planets']['DataAstrom']['dDec'][self.nBody]
             dates = self.InputData['Planets']['DataAstrom']['Date'][self.nBody]
             obs_color = 'blue' if use_space_view_style else 'white'
+            ra, dec, dra, ddec = (self.display_length(values) for values in (ra, dec, dra, ddec))
             self.Subplot.errorbar(ra, dec, ddec, dra, linestyle='', color=obs_color, linewidth=1)
 
         # Display selected date in the top-right corner
@@ -2463,8 +2537,8 @@ class PosAtDate(GeneralToolClass):
         )
 
         # Plot features
-        self.Subplot.set_xlabel(r'$\delta$RA [mas]')
-        self.Subplot.set_ylabel(r'$\delta$Dec [mas]')
+        self.Subplot.set_xlabel(self.astrometric_coordinate_label('ra') + ' [' + self.LengthUnit + ']')
+        self.Subplot.set_ylabel(self.astrometric_coordinate_label('dec') + ' [' + self.LengthUnit + ']')
         self.Subplot.invert_xaxis()
         self.Subplot.set_aspect('equal', adjustable='box')
         self.Subplot.set_xlim(xlim_init)

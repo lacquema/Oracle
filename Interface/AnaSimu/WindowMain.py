@@ -65,11 +65,11 @@ class WindowMainClass(QMainWindow):
         GridLayout = QGridLayout()
 
         # Space view
-        GridLayout.addWidget(SpaceView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse), 0, 0, 1, 3)
+        GridLayout.addWidget(SpaceView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse, SystDist), 0, 0, 1, 3)
         # print("Space view done")
 
         # Temporal study
-        GridLayout.addWidget(TempoView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse), 1, 0)
+        GridLayout.addWidget(TempoView(InputData, SelectOrbits.SelectEllipses, BestOrbit.BestEllipse, LMOrbit.LMEllipse, SystDist), 1, 0)
         # print("Temporal view done")
 
         # Convergence of orbit parameters
