@@ -52,7 +52,10 @@ mod:
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(SUB_DIR)
 	test ! -f $(MAIN_DIR)/data.mod || rm $(MAIN_DIR)/data.mod
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(MAIN_DIR)
+# >>> [MOD M001] Le test portait sur $(MAIN_DIR)/data.mod : echec sur un clone neuf
+# AVANT : test ! -f $(MAIN_DIR)/data.mod || rm $(DIR)/data.mod
 	test ! -f $(DIR)/data.mod || rm $(DIR)/data.mod
+# <<< [MOD M001]
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(DIR)
 
 library_for:
@@ -105,6 +108,11 @@ all:
 	make compile
 	make library_py
 
+# >>> [MOD M002] Tests de verification, voir Tests/README.md
+test:
+	$(PYTHON3) $(DIR)/Tests/run_tests.py
+
+# <<< [MOD M002]
 clean:
 	rm *.o
 

@@ -13,6 +13,10 @@ Code/bin/*
 Code/lib/*
 !Code/lib/.gitkeep
 
+# Compilation des tests
+Tests/build/
+Tests/build_synthetic/
+
 # Copies de sauvegarde
 ~*
 *~
