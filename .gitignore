@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Fortran : tout est reconstruit par `make compile`
+*.o
+*.mod
+Code/bin/*
+!Code/bin/.gitkeep
+Code/lib/*
+!Code/lib/.gitkeep
+
+# Copies de sauvegarde
+~*
+*~
+*~.*
+
+# Etat local de l'interface
+Interface/AnaSimu/.last_path
+
+# Notes de travail locales
+CLAUDE.md

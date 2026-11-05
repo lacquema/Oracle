@@ -52,7 +52,7 @@ mod:
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(SUB_DIR)
 	test ! -f $(MAIN_DIR)/data.mod || rm $(MAIN_DIR)/data.mod
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(MAIN_DIR)
-	test ! -f $(MAIN_DIR)/data.mod || rm $(DIR)/data.mod
+	test ! -f $(DIR)/data.mod || rm $(DIR)/data.mod
 	$(COMPILF) $(ADD_FLAGS) -c $(MAIN_DIR)/astrom_mcmco.f -J$(DIR)
 
 library_for:
