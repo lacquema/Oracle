@@ -48,8 +48,7 @@ KNOWN_GRADIENT = {"rel_rvp/univ": "B7"}
 
 def known_memory(stderr):
     """Identifie un debordement de tableau deja liste."""
-    if "'dmudp'" in stderr:
-        return "B3"
+    # B3 corrigee par M008, B4 par M006 : plus aucun debordement connu
     return None
 
 

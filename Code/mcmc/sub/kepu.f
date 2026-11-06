@@ -2194,8 +2194,14 @@ c<<< [MOD M006]
      &                ERR_COMB(NPAR,DMUDP(1:NPAR),COV(1:NPAR,1:NPAR))
            END IF
            DMUDP(NPAR) = 0.d0
-           DMUDP(DKAL+1-NEL) = 0.d0
-           DMUDP(DKAL+6-NEL) = 0.d0           
+c>>> [MOD M008] B3 : pas d'orbite precedente pour I = 1 (indices -6 et -1)
+c    AVANT :      DMUDP(DKAL+1-NEL) = 0.d0
+c    AVANT :      DMUDP(DKAL+6-NEL) = 0.d0           
+           IF (I.GT.1) THEN
+              DMUDP(DKAL+1-NEL) = 0.d0
+              DMUDP(DKAL+6-NEL) = 0.d0
+           END IF
+c<<< [MOD M008]
 
            ALPHA = PLA(I)%MDYN/PLA(I)%Q*(1.d0-PLA(I)%EXC)
            XX = S*S*ALPHA

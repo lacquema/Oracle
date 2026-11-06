@@ -20,13 +20,13 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
 | B1 | `kepellip.f:1617`, `kepu.f:2161` | `IF (NPLA.GT.1)` au lieu de `IF (MULTIPLA)` | **Corrigée par M006.** Une orbite avec vitesses radiales : la masse de l'étoile est remplacée par la masse totale, et celle de la planète garde sa valeur d'entrée. Le MCMC démarre avec une planète de masse quasi nulle. Sur un cas simulé, χ² de départ 6227 au lieu de 38. |
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | **Corrigée par M006.** Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
-| B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
+| B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | **Corrigée par M008.** Précision : les indices négatifs viennent de la remise à zéro faite après le bloc `IF (I.EQ.1)`, pas du bloc `ELSE`. Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
 | B4 | `kepellip.f:1556`, `kepu.f:2120`, `STORE_SOLUTION` (`io.f:1406-1407`) | Lecture de `P(NEL*NPLA+1)` et `P(NPAR)` sans tester `ISDATA(2)` et `MULTIPLA` | **Corrigée par M006.** Types `1 0 1 0`, une orbite : lecture hors du tableau. Dans `results.dat`, `V0` contient en fait χ²/`MPS` et `m0` vaut environ 3379 : colonnes sans signification. Vérifié sur un run réel et sur un cas simulé. Les colonnes orbitales ne sont pas touchées. |
 | B5 | `kepu.f:592` | `GM` n'est rempli que si `MULTIPLA` | **Corrigée par M005.** Une orbite sans vitesses de l'étoile : `CHI2SEUL`, donc le MCMC universel, utilisait une masse non initialisée. Sur un cas simulé, χ² de 18659 au lieu de 279. |
 | B6 | `kepu.f:611-612` | `sin i` manque dans `AMX` et `AMY`, et `AMX` utilise `SIGMA` au lieu de `GM` | **Corrigée par M005.** `CHI2SEUL` universel : mauvaise amplitude des vitesses radiales. Sur un cas simulé, χ² de 735 au lieu de 377. |
@@ -47,6 +47,15 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² du modèle indépendant dans tous les cas de test. La correction de B1 a été essayée de la même façon, sur le cas simulé relatif + vitesses radiales.
 
 ## Modifications
+
+## M008 — Corrige B3 : écriture hors du tableau `DMUDP` dans `MRQELEMENTS` universel
+
+- **Date :** 2026-11-06
+- **Fichier :** `Code/mcmc/sub/kepu.f`, routine `MRQELEMENTS` (un bloc repéré `M008`).
+- **Changement :** après le calcul de l'erreur sur la masse, le code remet à zéro les cases `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)`, remplies pour l'orbite précédente. Il le faisait aussi pour la première orbite, où ces indices valent -6 et -1. La remise à zéro est maintenant faite seulement si `I.GT.1`. Elle reste nécessaire ensuite, car `DMUDP` sert au calcul de l'erreur sur `tp`.
+- **Pourquoi :** en compilation normale, deux zéros étaient écrits hors du tableau, dans une zone qui peut appartenir à une autre variable. `kepellip.f` n'est pas concerné : il ne fait pas cette remise à zéro et ne réutilise pas `DMUDP`.
+- **Vérification :** `make test` : 363 OK, 0 échec, référence inchangée. Le contrôle des tableaux (`-fcheck=all`) passe maintenant sur les 11 cas universels, qui s'arrêtaient tous sur cette ligne.
+- **Effet sur les résultats :** aucun χ² ni MAP ne change. Les erreurs affichées après le LM universel ne dépendent plus du contenu imprévisible de la mémoire.
 
 ## M007 — Corrige B8 : lecture des priors de masse log-normal, linéaire et fixe
 
