@@ -41,18 +41,8 @@ GFORTRAN = os.environ.get("COMPILF", "gfortran")
 # Anomalies connues (voir MODIFICATIONS.md). Tant qu'elles existent, le test
 # concerne est marque CONNU. S'il passe, il est marque ECHEC pour obliger a
 # retirer la ligne ici et a mettre le journal a jour.
-KNOWN_CHI2_UNIV = {
-    "rel": "B5",
-    "rel_corr": "B5",
-    "rel_seppa": "B5",
-    "rel_rvp": "B5+B6",
-    "rel_rv": "B6",
-    "rel_rv_jit": "B6",
-    "rel_rv_prior": "B6",
-    "rel_rv_rvp": "B6",
-    "rel_rv_2orb_jit": "B6",
-    "rv_seul": "B6",
-}
+# B5 et B6 corrigees par M005 : plus d'ecart connu sur le chi2 universel.
+KNOWN_CHI2_UNIV = {}
 KNOWN_GRADIENT = {"rel_rvp/univ": "B7"}
 
 
@@ -321,9 +311,7 @@ def test_cases(report, exes, update):
             if abs(value - expected - gap) > TOL_PRIOR * 0.1:
                 bad_known.append(f"point {k}: écart {value - expected:.6f} / identifié {gap:.6f}")
         codes = "+".join(c for c, on in (("B10", version == "univ"), ("B11", res["multipla"])) if on)
-        # En -O3, GM non initialise (B5) peut donner un chi2 enorme qui se compense mal.
-        report.check(not bad_known, f"rapport des priors, écart expliqué {label}", "; ".join(bad_known[:2]),
-                     known="B5" if label == "rel_rvp/univ" else None)
+        report.check(not bad_known, f"rapport des priors, écart expliqué {label}", "; ".join(bad_known[:2]))
         report.check(not bad_exact, f"rapport des priors {label}", "; ".join(bad_exact[:1]), known=codes or None)
 
     report.section("Dérivées du Levenberg-Marquardt contre différences finies")

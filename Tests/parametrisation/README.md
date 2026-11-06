@@ -43,14 +43,14 @@ Systèmes définis dans `Tests/synthetic.py`. Une planète de 3 Mjup autour d'un
 | `arc_court` (P = 26 ans, e = 0,55) | 10 ans, 39 % | vérité retrouvée, inférence à 0,9 M pas | retrouvée, 1,1 à 1,2 M pas | retrouvée, 1,1 M pas |
 | `arc_tres_court` (P = 47 ans, e = 0,75) | 6 ans, 13 %, autour de l'apoastre | retrouvée, 7,8 M pas | jamais d'inférence en 69 à 78 M pas (9 h) | jamais d'inférence en 86 M pas (9 h) |
 | `arc_periastre` (P = 206 ans, e = 0,95, q = 2 au) | 4 ans autour du périastre | retrouvée, 1,1 M pas | LM en échec, puis MCMC coincé à χ² ≈ 72 000 **et déclaré convergé** | retrouvée, 0,3 M pas |
-| `arc_parabole` (P = 816 ans, e = 0,98, q = 2 au) | 2 ans autour du périastre | 6,8 M pas, `e` coupé à 0,99 | non lancé | retrouvée, 0,7 M pas ; `e` de 0,94 à 1,04 (95 %), 36 % d'orbites hyperboliques |
+| `arc_parabole` (P = 816 ans, e = 0,98, q = 2 au) | 2 ans autour du périastre | 6,8 M pas ; **biaisée** : `e` = 0,955 (+0,012 / -0,017), vraie valeur 0,98 exclue, aucune orbite au-delà de 0,99 ; masse +1,8 sigma | non lancé | retrouvée, 0,7 M pas ; `e` de 0,94 à 1,04 (95 %), 36 % d'orbites hyperboliques |
 
 Sur les quatre arcs, les versions qui convergent donnent des distributions quasi identiques quand `e` reste loin de 1.
 
 ### Ce qu'on en retient
 
 - **Loin du périastre, l'universel n'aide pas.** Sur `arc_tres_court`, les données fixent la distance à l'apoastre `a(1+e)` (6 %) et `a` (9 %), mais `q` à 46 % et `P_q` à 84 %, avec une corrélation de -0,97 entre `ln q` et `e`. Les paramètres universels sont alors les plus mal déterminés. `s·f(e)` a en plus une distribution à queue très lourde (aplatissement 52).
-- **Autour du périastre, lambda est meilleure** : 4 à 10 fois moins de pas, et elle seule décrit `e ≥ 1`. La classique ne peut pas dépasser `e = 1` et coupe la distribution.
+- **Autour du périastre, lambda est meilleure** : 4 à 10 fois moins de pas, et elle seule décrit `e ≥ 1`. Quand `e` est proche de 1, la classique donne un résultat biaisé et trop précis (`arc_parabole`).
 - **La paramétrisation actuelle `s·f(e)` est à remplacer.** Elle échoue au périastre et peut se déclarer convergée sur une mauvaise orbite : Gelman-Rubin ne voit rien si toutes les chaînes sont coincées au même endroit. Toujours regarder le χ².
 - Par pas, l'universel est environ 3 fois plus lent que le classique (fonctions de Stumpff). Non optimisé.
 - Décision d'Antoine (2026-11-06) : utiliser lambda. À faire dans le vrai code, après avis d'Hervé et avec les corrections B5, B6 et B10.

@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Aucune n'est corrigée à ce jour.
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -28,8 +28,8 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
 | B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
 | B4 | `kepellip.f:1556`, `kepu.f:2120`, `STORE_SOLUTION` (`io.f:1406-1407`) | Lecture de `P(NEL*NPLA+1)` et `P(NPAR)` sans tester `ISDATA(2)` et `MULTIPLA` | Types `1 0 1 0`, une orbite : lecture hors du tableau. Dans `results.dat`, `V0` contient en fait χ²/`MPS` et `m0` vaut environ 3379 : colonnes sans signification. Vérifié sur un run réel et sur un cas simulé. Les colonnes orbitales ne sont pas touchées. |
-| B5 | `kepu.f:592` | `GM` n'est rempli que si `MULTIPLA` | Une orbite sans vitesses de l'étoile : `CHI2SEUL`, donc le MCMC universel, utilise une masse non initialisée. Sur un cas simulé, χ² de 18659 au lieu de 279. |
-| B6 | `kepu.f:611-612` | `sin i` manque dans `AMX` et `AMY`, et `AMX` utilise `SIGMA` au lieu de `GM` | `CHI2SEUL` universel : mauvaise amplitude des vitesses radiales. Sur un cas simulé, χ² de 735 au lieu de 377. |
+| B5 | `kepu.f:592` | `GM` n'est rempli que si `MULTIPLA` | **Corrigée par M005.** Une orbite sans vitesses de l'étoile : `CHI2SEUL`, donc le MCMC universel, utilisait une masse non initialisée. Sur un cas simulé, χ² de 18659 au lieu de 279. |
+| B6 | `kepu.f:611-612` | `sin i` manque dans `AMX` et `AMY`, et `AMX` utilise `SIGMA` au lieu de `GM` | **Corrigée par M005.** `CHI2SEUL` universel : mauvaise amplitude des vitesses radiales. Sur un cas simulé, χ² de 735 au lieu de 377. |
 | B7 | `MRQVFITP` de `kepu.f`, cause non analysée | Dérivées de vitesse de la planète incorrectes pour les paramètres 1 et 6 | Gradient du LM faux de 4 % sur `p1` dans le cas `rel_rvp`. |
 | B8 | `io.f`, `ENTER_PRIOR` | `READ(5,'(a)')` pour des nombres, priors de types 2, 3 et 4 | Le programme s'arrête à la lecture des priors log-normal, linéaire et fixe, écrits comme le fait l'interface. Seul le type 1 fonctionne. |
 
@@ -47,6 +47,19 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² du modèle indépendant dans tous les cas de test. La correction de B1 a été essayée de la même façon, sur le cas simulé relatif + vitesses radiales.
 
 ## Modifications
+
+## M005 — Corrige B5 et B6 : masse et amplitudes des vitesses radiales dans `CHI2SEUL` universel
+
+- **Date :** 2026-11-06
+- **Fichier :** `Code/mcmc/sub/kepu.f`, routine `CHI2SEUL` (deux blocs repérés `M005`).
+- **B5 :** avec une seule orbite et sans vitesses de l'étoile (`MULTIPLA` faux), le tableau `GM` des masses dynamiques n'était jamais rempli. Ajout de `ELSE` / `GM = MUF`, où `MUF` contient alors la masse totale de l'orbite (voir `ELEMENTS`).
+- **B6 :** les amplitudes `AMX`, `AMY` des vitesses radiales oubliaient `sin i`, et `AMX` utilisait `SIGMA` (un scalaire, la masse cumulée de la dernière orbite) au lieu de `GM`. Formules remplacées par `AMX = -GM*SI*SOM` et `AMY = SQRT(QQ*GM*(1+EXC))*SI*COM`.
+- **Pourquoi :** le MCMC universel calculait un χ² faux dès qu'il y avait des vitesses radiales, ou avec une orbite sans vitesses de l'étoile. `kepellip.f` n'est pas concerné.
+- **Vérification :**
+  - le code est identique, aux repères près, à la copie corrigée testée le 2026-11-05 (`Tests/parametrisation/patch_B5B6.py`) ;
+  - `make test` : 324 OK, 0 échec. Dans `Tests/reference/reference.json`, refaite pour cette correction, seules les 10 entrées universelles touchées changent (`rel`, `rel_corr`, `rel_seppa`, `rel_rv`, `rel_rv_jit`, `rel_rv_prior`, `rel_rv_rvp`, `rel_rv_2orb_jit`, `rel_rvp`, `rv_seul`). Les 12 autres sont identiques, dont tous les cas classiques et `rel_2orb` universel. Le χ² universel est maintenant égal à celui du modèle Python et de la version classique dans tous les cas ; `KNOWN_CHI2_UNIV` est vidé dans `Tests/run_tests.py` ;
+  - systèmes synthétiques en universel (`Tests/synthetic.py`, `--rapide`) : `rel_vr_etoile` donne m = 30,4 ± 0,4 Mjup pour 30 vrais (19,5 avant) et retrouve tous les paramètres à moins de 1,6 sigma ; `rel_vr_planete`, auparavant bloqué à χ² ≈ 2e11, va au bout et retrouve tout à moins de 1,9 sigma.
+- **Effet sur les résultats :** les runs universels avec vitesses radiales, ou à une orbite sans vitesses de l'étoile, changent. Les runs classiques et les runs universels à astrométrie relative seule avec plusieurs orbites ne changent pas.
 
 ## M004 — Tests de paramétrisation et lecture Gaia (sans repère)
 

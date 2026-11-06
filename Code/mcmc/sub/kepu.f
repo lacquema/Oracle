@@ -592,6 +592,11 @@ c...  Compute fractional masses
               GM(I) = SIGMA
               MFRAC(I) = MUF(I)/SIGMA
            END DO
+c>>> [MOD M005] B5 : sans MULTIPLA (une orbite), GM n'etait pas rempli
+c    AVANT : pas de branche ELSE
+        ELSE
+           GM = MUF
+c<<< [MOD M005]
         END IF
 c...  Define vectors & amplitudes (formulas differ depending on whether
 c...                             there are radial velocities or not)        
@@ -608,8 +613,12 @@ c           AMS = -NN*A*SI*SOM
 c           AMC = +NN*A*SI*EXQ*COM
 c           AMPS = AMS*MFRAC
 c           AMPC = AMC*MFRAC
-           AMX = -SIGMA*SOM
-           AMY = SQRT(QQ*GM*(1.d0+EXC))*COM
+c>>> [MOD M005] B6 : sin(i) manquait, et AMX prenait SIGMA au lieu de GM
+c    AVANT :      AMX = -SIGMA*SOM
+c    AVANT :      AMY = SQRT(QQ*GM*(1.d0+EXC))*COM
+           AMX = -GM*SI*SOM
+           AMY = SQRT(QQ*GM*(1.d0+EXC))*SI*COM
+c<<< [MOD M005]
            AMPX = AMX*MFRAC
            AMPY = AMY*MFRAC
         ELSE
