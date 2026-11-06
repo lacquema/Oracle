@@ -351,7 +351,7 @@ def test_priors(report, exes):
             result = subprocess.run([exes["ellip", "O3"], "1"], input="\n".join(stdin), cwd=tmp,
                                     capture_output=True, text=True, timeout=120)
         message = " ".join(result.stderr.split())[:80]
-        report.check(result.returncode == 0, f"prior de type {kind}", message, known="B8")
+        report.check(result.returncode == 0, f"prior de type {kind}", message)  # B8 : M007, lecture seule
 
 
 def test_prior_mstar(report, exes):

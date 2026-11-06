@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -31,11 +31,12 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B5 | `kepu.f:592` | `GM` n'est rempli que si `MULTIPLA` | **Corrigée par M005.** Une orbite sans vitesses de l'étoile : `CHI2SEUL`, donc le MCMC universel, utilisait une masse non initialisée. Sur un cas simulé, χ² de 18659 au lieu de 279. |
 | B6 | `kepu.f:611-612` | `sin i` manque dans `AMX` et `AMY`, et `AMX` utilise `SIGMA` au lieu de `GM` | **Corrigée par M005.** `CHI2SEUL` universel : mauvaise amplitude des vitesses radiales. Sur un cas simulé, χ² de 735 au lieu de 377. |
 | B7 | `MRQVFITP` de `kepu.f`, cause non analysée | Dérivées de vitesse de la planète incorrectes pour les paramètres 1 et 6 | Gradient du LM faux de 4 % sur `p1` dans le cas `rel_rvp`. |
-| B8 | `io.f`, `ENTER_PRIOR` | `READ(5,'(a)')` pour des nombres, priors de types 2, 3 et 4 | Le programme s'arrête à la lecture des priors log-normal, linéaire et fixe, écrits comme le fait l'interface. Seul le type 1 fonctionne. |
+| B8 | `io.f`, `ENTER_PRIOR` | `READ(5,'(a)')` pour des nombres, priors de types 2, 3 et 4 | **Corrigée par M007 (lecture seulement, voir B13).** Le programme s'arrête à la lecture des priors log-normal, linéaire et fixe, écrits comme le fait l'interface. Seul le type 1 fonctionne. |
 | B9 | `COMPUTE_MAP`, `RATIO_PRIORS` (`kepellip.f:188`, `kepellip.f:556`), même schéma dans `kepu.f` | Une orbite sans vitesses de l'étoile (`MULTIPLA` faux), prior sur `m0` (coefficients `1 0`) : le terme `BCOF(0)*MSTAR` est ignoré et le prior s'évalue sur une masse nulle, sans avertissement | Le prior n'agit pas, avec ou sans vitesses de la planète. Confirmé sur des runs réels lancés avec et sans ce prior : mêmes résultats, `Map` décalée d'une constante. Exemple : 51 Eri (une orbite, astrométrie relative et vitesses de la planète, prior 1,55 ± 0,03 Msun), où `a` et `P` ajustés donnent `a³/P²` ≈ 1,36 Msun, loin de la valeur du prior. Les coefficients `1 1` donnent bien un prior sur la masse totale (vérifié par `make test`). |
 | B10 | `RATIO_PRIORS` de `kepu.f` (facteur `(Q/QT)*(UPQT/UPQ)`) | Le rapport contient `(q/q')(P/P')` en plus du prior `1/(q·P)` de `COMPUTE_MAP` et du commentaire. Le jacobien du commentaire oublie que les paramètres sont `ln q` et `ln P_q` | Le MCMC universel échantillonne en `1/(q²·P²)` au lieu de `1/(q·P)`. Mesuré exactement par le jacobien numérique. Intention à confirmer avec Hervé. |
 | B11 | `RATIO_PRIORS` des deux versions, boucle sur les priors de masse | Chaque prior ajoute `M'/M` et `m0'/m0`, y compris les priors de masse positive et plusieurs fois pour la même masse. `COMPUTE_MAP` ne les contient pas | Quand les masses sont ajustées, le prior réellement échantillonné diffère de celui qu'indique `COMPUTE_MAP`, et favorise les grandes masses. Sur un run réel à deux orbites, `m0` 0,563 Msun contre 0,536 avec un prior plat sur les masses, estimé par repondération ; orbites externes presque inchangées. Prior voulu à confirmer avec Hervé. |
 | B12 | `GELMAN_RUBIN` (`mcmc.f:347`), départ des chaînes | Les 8 chaînes partent du même point (solution du LM). Au premier calcul, l'écart entre chaînes est quasi nul, donc `r` ≈ 1 et `ts` est énorme : le critère d'inférence (`RINF`, `TSINF`) est atteint avant que les chaînes aient exploré | Constaté le 2026-11-06 sur `rel_vr_planete` en classique (relative + vitesses de la planète, `--rapide`) : inférence dès le premier contrôle dans 5 runs sur 5, avec le code de `a83b9d1` comme après M006. Distributions trop étroites ou asymétriques, `P` entre 1,1 et 3,1 sigma de la vérité selon le run. Même mécanisme probable pour la fausse convergence de `arc_periastre` en universel (`Tests/parametrisation/README.md`). Correction à discuter avec Hervé : départs dispersés, période de chauffe, ou critère sur la seconde moitié des chaînes. |
+| B13 | `USER_PRIOR_MAP` et `USER_PRIOR_RATIO` (`mcmc.f:710-812`), **à vérifier** | Repéré à la lecture le 2026-11-06, non testé : type 3 (linéaire) : rapport toujours égal à 1 et aucun terme dans le MAP, les bornes lues ne semblent servir nulle part ; type 4 (fixe) : gaussienne de largeur relative 1e-3 dans le MAP mais 1e-6 dans le rapport ; type 6 (Heaviside, prior par défaut `MPRIOR(0)`, `io.f:385`) : dans `USER_PRIOR_MAP`, `EX = EXP(X)` avec `X` non initialisé, et `EX` est un argument, donc la masse de l'appelant serait écrasée | Effet non mesuré. Le cas 6 toucherait le MAP de tous les runs ; pourtant `make test` trouve `MAP = χ² + Fmap` cohérent : à comprendre avant de conclure. |
 
 **Fragilité constatée :** un job tué pendant l'écriture de `dump.dat` laisse un fichier illisible à la reprise (`End of file`), car le fichier est écrit sur place.
 
@@ -46,6 +47,14 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² du modèle indépendant dans tous les cas de test. La correction de B1 a été essayée de la même façon, sur le cas simulé relatif + vitesses radiales.
 
 ## Modifications
+
+## M007 — Corrige B8 : lecture des priors de masse log-normal, linéaire et fixe
+
+- **Date :** 2026-11-06
+- **Fichier :** `Code/mcmc/sub/io.f`, routine `ENTER_PRIOR` (trois blocs repérés `M007`).
+- **Changement :** `READ(5,'(a)')` devient `READ(5,*)` pour les types 2, 3 et 4, comme pour le type 1 juste au-dessus. Le format `'(a)'` lit du texte : le programme s'arrêtait en lisant des nombres.
+- **Vérification :** `make test` : les trois priors, écrits comme le fait l'interface, se lisent sans erreur. **Seule la lecture est vérifiée** : l'effet de ces priors dans le MCMC n'est pas testé, et la lecture du code a révélé des points suspects (B13).
+- **Effet sur les résultats :** les priors de types 2, 3 et 4 deviennent utilisables. Aucun run existant ne les utilisait, puisque le programme s'arrêtait.
 
 ## M006 — Corrige B1, B2 et B4 : masse de l'étoile, son erreur, et paramètres lus sans exister
 

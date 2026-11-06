@@ -112,20 +112,29 @@ c        FORMAT((f),a2,(f))
         CASE(2)                  ! Log-normal
           WRITE(SD,*)
      &           'Enter mean and standard deviation + unit (ms or mj) '
-          READ(5,'(a)')MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
+c>>> [MOD M007] B8 : lecture de nombres, format libre comme le type 1
+c    AVANT :  READ(5,'(a)')MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
+          READ(5,*)MPRIOR(IV)%MEAN,MPRIOR(IV)%SDEV,UNIT
+c<<< [MOD M007]
           CALL CONVERT_UNIT(UNIT,FAC)
           MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%SDEV = MPRIOR(IV)%SDEV/MPRIOR(IV)%MEAN ! ln(1±s/x)~s/x
           MPRIOR(IV)%MEAN = LOG(MPRIOR(IV)%MEAN*FAC)
         CASE(3) ! Linear
           WRITE(SD,*)'Enter bounds + unit (ms or mj) '
-          READ(5,'(a)')MPRIOR(IV)%BOUND(1:2),UNIT
+c>>> [MOD M007] B8 : lecture de nombres, format libre comme le type 1
+c    AVANT :  READ(5,'(a)')MPRIOR(IV)%BOUND(1:2),UNIT
+          READ(5,*)MPRIOR(IV)%BOUND(1:2),UNIT
+c<<< [MOD M007]
           CALL CONVERT_UNIT(UNIT,FAC)
           MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%BOUND(1:2) = MPRIOR(IV)%BOUND(1:2)*FAC
         CASE(4) ! Fixed
           WRITE(SD,*)'Enter value + unit (ms or mj) '
-          READ(5,'(a)')MPRIOR(IV)%MEAN,UNIT
+c>>> [MOD M007] B8 : lecture de nombres, format libre comme le type 1
+c    AVANT :  READ(5,'(a)')MPRIOR(IV)%MEAN,UNIT
+          READ(5,*)MPRIOR(IV)%MEAN,UNIT
+c<<< [MOD M007]
           CALL CONVERT_UNIT(UNIT,FAC)
           MPRIOR(IV)%MUNIT = FAC
           MPRIOR(IV)%MEAN = MPRIOR(IV)%MEAN*FAC ! Convert into the right unit
