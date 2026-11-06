@@ -43,7 +43,7 @@ GFORTRAN = os.environ.get("COMPILF", "gfortran")
 # retirer la ligne ici et a mettre le journal a jour.
 # B5 et B6 corrigees par M005 : plus d'ecart connu sur le chi2 universel.
 KNOWN_CHI2_UNIV = {}
-KNOWN_GRADIENT = {"rel_rvp/univ": "B7"}
+KNOWN_GRADIENT = {}  # B7 corrigee par M009
 
 
 def known_memory(stderr):

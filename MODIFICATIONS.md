@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -30,7 +30,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B4 | `kepellip.f:1556`, `kepu.f:2120`, `STORE_SOLUTION` (`io.f:1406-1407`) | Lecture de `P(NEL*NPLA+1)` et `P(NPAR)` sans tester `ISDATA(2)` et `MULTIPLA` | **Corrigée par M006.** Types `1 0 1 0`, une orbite : lecture hors du tableau. Dans `results.dat`, `V0` contient en fait χ²/`MPS` et `m0` vaut environ 3379 : colonnes sans signification. Vérifié sur un run réel et sur un cas simulé. Les colonnes orbitales ne sont pas touchées. |
 | B5 | `kepu.f:592` | `GM` n'est rempli que si `MULTIPLA` | **Corrigée par M005.** Une orbite sans vitesses de l'étoile : `CHI2SEUL`, donc le MCMC universel, utilisait une masse non initialisée. Sur un cas simulé, χ² de 18659 au lieu de 279. |
 | B6 | `kepu.f:611-612` | `sin i` manque dans `AMX` et `AMY`, et `AMX` utilise `SIGMA` au lieu de `GM` | **Corrigée par M005.** `CHI2SEUL` universel : mauvaise amplitude des vitesses radiales. Sur un cas simulé, χ² de 735 au lieu de 377. |
-| B7 | `MRQVFITP` de `kepu.f`, cause non analysée | Dérivées de vitesse de la planète incorrectes pour les paramètres 1 et 6 | Gradient du LM faux de 4 % sur `p1` dans le cas `rel_rvp`. |
+| B7 | `MRQVFITP` de `kepu.f` | Dérivées de vitesse de la planète incorrectes pour les paramètres 1 et 6 | **Corrigée par M009** (division par `MTOT` au lieu de `MDYN(I)`). Gradient du LM faux de 4 % sur `p1` dans le cas `rel_rvp`. |
 | B8 | `io.f`, `ENTER_PRIOR` | `READ(5,'(a)')` pour des nombres, priors de types 2, 3 et 4 | **Corrigée par M007 (lecture seulement, voir B13).** Le programme s'arrête à la lecture des priors log-normal, linéaire et fixe, écrits comme le fait l'interface. Seul le type 1 fonctionne. |
 | B9 | `COMPUTE_MAP`, `RATIO_PRIORS` (`kepellip.f:188`, `kepellip.f:556`), même schéma dans `kepu.f` | Une orbite sans vitesses de l'étoile (`MULTIPLA` faux), prior sur `m0` (coefficients `1 0`) : le terme `BCOF(0)*MSTAR` est ignoré et le prior s'évalue sur une masse nulle, sans avertissement | Le prior n'agit pas, avec ou sans vitesses de la planète. Confirmé sur des runs réels lancés avec et sans ce prior : mêmes résultats, `Map` décalée d'une constante. Exemple : 51 Eri (une orbite, astrométrie relative et vitesses de la planète, prior 1,55 ± 0,03 Msun), où `a` et `P` ajustés donnent `a³/P²` ≈ 1,36 Msun, loin de la valeur du prior. Les coefficients `1 1` donnent bien un prior sur la masse totale (vérifié par `make test`). |
 | B10 | `RATIO_PRIORS` de `kepu.f` (facteur `(Q/QT)*(UPQT/UPQ)`) | Le rapport contient `(q/q')(P/P')` en plus du prior `1/(q·P)` de `COMPUTE_MAP` et du commentaire. Le jacobien du commentaire oublie que les paramètres sont `ln q` et `ln P_q` | Le MCMC universel échantillonne en `1/(q²·P²)` au lieu de `1/(q·P)`. Mesuré exactement par le jacobien numérique. Intention à confirmer avec Hervé. |
@@ -47,6 +47,15 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² du modèle indépendant dans tous les cas de test. La correction de B1 a été essayée de la même façon, sur le cas simulé relatif + vitesses radiales.
 
 ## Modifications
+
+## M009 — Corrige B7 : dérivée des vitesses de la planète dans le LM universel
+
+- **Date :** 2026-11-06
+- **Fichier :** `Code/mcmc/sub/kepu.f`, routine `MRQVFITP` (un bloc repéré `M009`).
+- **Changement :** la dérivée partielle de la vitesse `VY` par rapport à la masse dynamique de l'orbite était divisée par `MTOT`. Elle est maintenant divisée par `MDYN(I)`, comme la ligne voisine pour `VX`.
+- **Pourquoi :** `MTOT` ne vaut `MDYN(I)` que si `MULTIPLA` est vrai. Avec une seule orbite et sans vitesses de l'étoile, `MTOT` reste la masse de l'étoile, et la dérivée était fausse dans le rapport `MSTAR/MDYN`. La masse dynamique dépend de q et de P_q, d'où l'erreur sur les dérivées des paramètres 1 et 6. La même ligne dans `MRQVFIT` (vitesses de l'étoile) est juste et n'est pas modifiée : ces vitesses imposent `MULTIPLA` vrai (`io.f:214`), donc `MTOT` = `MDYN(I)` à cet endroit.
+- **Vérification :** `make test` : le gradient analytique de `rel_rvp/univ` est maintenant égal aux différences finies (il s'en écartait de 4 % sur `p1`). Référence inchangée.
+- **Effet sur les résultats :** aucun χ² ni MAP ne change. Seul le Levenberg-Marquardt universel avec des vitesses de la planète, une orbite et sans vitesses de l'étoile est concerné : il suivait une direction légèrement fausse, et la matrice de covariance qu'il calcule était légèrement fausse. Le MCMC n'utilise pas ces dérivées.
 
 ## M008 — Corrige B3 : écriture hors du tableau `DMUDP` dans `MRQELEMENTS` universel
 

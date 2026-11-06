@@ -1767,7 +1767,11 @@ C
      &          +MDYN(I)*(EXC*S*SC1-2.d0*S2C2)*FACT/ALPHA)          
           DVYDS = -VY*(ALPHA*SC1/C0+EXC*MDYN(I)*SC1*FACT)
           DVYDQ = 0.5d0*VY*(MDYN(I)*S2C2-Q*C0)*FACT/Q
-          DVYDM = 0.5d0*VY*(-MDYN(I)*S2C2+Q*C0)*FACT/MTOT
+c>>> [MOD M009] B7 : derivee par rapport a la masse dynamique de l'orbite I
+c    (MTOT ne vaut MDYN(I) que si MULTIPLA ; sinon c'est la masse de l'etoile)
+c    AVANT :      DVYDM = 0.5d0*VY*(-MDYN(I)*S2C2+Q*C0)*FACT/MTOT
+          DVYDM = 0.5d0*VY*(-MDYN(I)*S2C2+Q*C0)*FACT/MDYN(I)
+c<<< [MOD M009]
 
           DVYDM = DVYDM+DVYDS*DSDM+DVYDALPHA*DALPHADM
           DVYDQ = DVYDQ+DVYDS*DSDQ+DVYDALPHA*DALPHADQ
