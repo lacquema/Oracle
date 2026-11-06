@@ -2123,9 +2123,15 @@ C
         STAR%SIGJV = 0.d0
         IF (MULTIPLA) THEN
            STAR%MASS = EXP(P(NPAR))
-           STAR%DMASS =  SQRT(ABS(COV(NPLA,NPLA)))*STAR%MASS
+c>>> [MOD M006] B2 : erreur sur la masse de l'etoile, P(NPAR) = ln(m0)
+c    AVANT :      STAR%DMASS =  SQRT(ABS(COV(NPLA,NPLA)))*STAR%MASS
+           STAR%DMASS =  SQRT(ABS(COV(NPAR,NPAR)))*STAR%MASS
+c<<< [MOD M006]
         END IF
-        IF (RADVEL) THEN
+c>>> [MOD M006] B4 : V0 et jitter n'existent qu'avec ISDATA(2)
+c    AVANT :  IF (RADVEL) THEN
+        IF (ISDATA(2)) THEN
+c<<< [MOD M006]
            STAR%V0 = P(NEL*NPLA+1)
            STAR%DV0 = SQRT(ABS(COV(NEL*NPLA+1,NEL*NPLA+1)))
            IF (JITNUM.EQ.1) THEN
@@ -2167,7 +2173,10 @@ C
            PLA(I)%DMDYN =
      &              ERR_COMB(NPAR,DMUDP(1:NPAR),COV(1:NPAR,1:NPAR))           
            IF (I.EQ.1) THEN
-             IF (NPLA.GT.1) THEN
+c>>> [MOD M006] B1 : m0 est ajustee des que MULTIPLA (aussi avec 1 orbite)
+c    AVANT :     IF (NPLA.GT.1) THEN
+             IF (MULTIPLA) THEN
+c<<< [MOD M006]
                 PLA(I)%MU = PLA(I)%MDYN-STAR%MASS
                 DMUDP(NPAR) = -STAR%MASS   ! dmu = dmass = -d(lnmass)*mass 
                 PLA(I)%DMU =
@@ -2427,7 +2436,10 @@ c...                                hh2 = -2xEnergie = alpha pour kepu
            CALL ECC_FUNC(PLA(I)%EXC,FE,DFE)
            P(DKAL+7) = S*FE ! P7 = S*f(E)
         END DO
-        IF (RADVEL) THEN
+c>>> [MOD M006] B4 : V0 et jitter n'existent qu'avec ISDATA(2)
+c    AVANT :  IF (RADVEL) THEN
+        IF (ISDATA(2)) THEN
+c<<< [MOD M006]
            P(NEL*NPLA+1) = STAR%V0
            IF (JITNUM.EQ.1) P(NEL*NPLA+2) = LOG(STAR%SIGJV)
         END IF

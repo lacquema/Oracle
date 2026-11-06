@@ -50,8 +50,6 @@ def known_memory(stderr):
     """Identifie un debordement de tableau deja liste."""
     if "'dmudp'" in stderr:
         return "B3"
-    if "array 'p'" in stderr:
-        return "B4"
     return None
 
 
@@ -333,11 +331,10 @@ def test_cases(report, exes, update):
             continue
         mstar = math.exp(res["PLAST"])
         report.check(close(res["MSTAR"], mstar, 1e-9), f"masse de l'étoile {label}",
-                     f"{res['MSTAR'] / model.SMAS:.6f} au lieu de {mstar / model.SMAS:.6f} Msun",
-                     known="B1" if res["npla"] == 1 else None)
+                     f"{res['MSTAR'] / model.SMAS:.6f} au lieu de {mstar / model.SMAS:.6f} Msun")  # B1 : M006
         expected = res["COVLAST"] * mstar
         report.check(close(res["DMSTAR"], expected, 1e-9), f"erreur sur la masse {label}",
-                     f"{res['DMSTAR']:.4g} au lieu de {expected:.4g}", known="B2")
+                     f"{res['DMSTAR']:.4g} au lieu de {expected:.4g}")  # B2 : M006
 
 
 def test_priors(report, exes):

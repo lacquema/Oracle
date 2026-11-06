@@ -1403,9 +1403,16 @@ c....... Internal routine : storing 1 solution .................
      &         PLA%CW,PLA%SW,CI2,SI2,PLA%CP,PLA%SP,CI,SI,
      &         PLA%COM,PLA%SOM,PLA%CO,PLA%SO,PLA%TP,PLA%MU)
 
-          STAR%MASS = EXP(P(NPAR))
-          STAR%V0 = P(NEL*NPLA+1)
-          IF (JITNUM.EQ.1) STAR%SIGJV = EXP(P(NEL*NPLA+2))
+c>>> [MOD M006] B4 : m0 lue seulement si ajustee, V0 et jitter si ISDATA(2)
+c    AVANT :    STAR%MASS = EXP(P(NPAR))
+c    AVANT :    STAR%V0 = P(NEL*NPLA+1)
+c    AVANT :    IF (JITNUM.EQ.1) STAR%SIGJV = EXP(P(NEL*NPLA+2))
+          IF (MULTIPLA) STAR%MASS = EXP(P(NPAR))
+          IF (ISDATA(2)) THEN
+             STAR%V0 = P(NEL*NPLA+1)
+             IF (JITNUM.EQ.1) STAR%SIGJV = EXP(P(NEL*NPLA+2))
+          END IF
+c<<< [MOD M006]
 
           PLA%PER = DPI/NN
           PLA%OM = ATAN2(PLA%SOM,PLA%COM)
