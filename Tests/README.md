@@ -32,6 +32,9 @@ Les tests s'évaluent à paramètres fixés, sans hasard, sauf l'essai réel qui
 - `reference/reference.json` : valeurs du code de départ.
 - `driver.f` : programme qui appelle les vraies routines et imprime leurs résultats.
 - `model.py` : modèle indépendant, `cases_definition.py` : définition des cas.
+- `synthetic.py` : systèmes synthétiques lancés avec le vrai programme jusqu'au bout (long, hors de `make test`).
+- `parametrisation/` : comparaison classique, universelle et variante lambda, avec les scripts pour refaire les copies corrigées et les résultats. Voir son `README.md`.
+- `gaia/bh3_esa.py` : refait l'ajustement de Gaia BH3 du notebook de l'ESA à partir des données brutes de la pré-publication DR4 (fichier hors du dépôt), pour vérifier la lecture des données avant le code Gaia.
 
 ## Quand refaire la référence
 

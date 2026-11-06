@@ -28,7 +28,7 @@ sys.path.insert(0, TESTS)
 import model  # noqa: E402
 
 SUB = os.environ.get("ORACLE_SUB", os.path.join(ROOT, "Code", "mcmc", "sub"))
-MAIN = os.path.join(ROOT, "Code", "mcmc", "main")
+MAIN = os.environ.get("ORACLE_MAIN", os.path.join(ROOT, "Code", "mcmc", "main"))
 WORK = os.environ.get("ORACLE_SYNTH", os.path.join(TESTS, "build_synthetic"))
 
 ORBIT_A = dict(m_mjup=30.0, a=5.0, e=0.35, i=40.0, node=120.0, w=50.0, tp=55500.0)
@@ -47,6 +47,21 @@ SYSTEMS = {
     # Orbite peu couverte, proche de 51 Eri : arc de 10 ans sur environ 26 ans
     "arc_court": dict(mstar=1.5, orbits=[dict(m_mjup=3.0, a=10.0, e=0.55, i=135.0, node=60.0, w=200.0,
                                              tp=62000.0)], rel=25, rvp=4, span=3650.0),
+    # Arc tres court : 6 ans sur environ 47 ans (13 %), orbite excentrique
+    "arc_tres_court": dict(mstar=1.5, orbits=[dict(m_mjup=3.0, a=15.0, e=0.75, i=120.0, node=60.0, w=200.0,
+                                                  tp=63000.0)], rel=15, rvp=4, span=2190.0, sig_pos=2.0),
+    # Passage au periastre d'une orbite tres excentrique (q = 2 au, P = 206 ans), 4 ans autour du passage.
+    # Domaine prevu des variables universelles : e peut aller jusqu'a 1,5 en universel, 0,99 en classique
+    "arc_periastre": dict(mstar=1.5, orbits=[dict(m_mjup=3.0, a=40.0, e=0.95, i=120.0, node=60.0, w=200.0,
+                                                 tp=54730.0)], rel=25, rvp=4, span=1460.0,
+                          range_a=(0.5, 10000.0), range_p=(100.0, 1.0e8), range_e=(0.0, 0.99),
+                          range_e_univ=(0.0, 1.5), par_q=True),
+    # Quasi parabolique (e = 0,98, q = 2 au, P = 816 ans), 2 ans autour du passage, peu de points :
+    # e mal determine, le posterior doit deborder au-dela de 1 si la parametrisation le permet
+    "arc_parabole": dict(mstar=1.5, orbits=[dict(m_mjup=3.0, a=100.0, e=0.98, i=120.0, node=60.0, w=200.0,
+                                                tp=54365.0)], rel=12, rvp=3, span=730.0, sig_pos=2.0,
+                         range_a=(0.5, 10000.0), range_p=(100.0, 1.0e8), range_e=(0.0, 0.99),
+                         range_e_univ=(0.0, 1.5), par_q=True),
     # Aucune mesure : le MCMC doit redonner le prior
     "sans_donnees": dict(mstar=1.0, orbits=[ORBIT_A], span=6000.0),
 }
@@ -74,9 +89,10 @@ def write_data(name, spec, folder):
         for ipla in range(len(spec["orbits"])):
             for t in np.linspace(T_START, T_START + spec["span"], spec["rel"]):
                 x, y = system.relative_position(ipla, t)
-                xo = float(x) * plx + rng.normal(0, SIG_POS)
-                yo = float(y) * plx + rng.normal(0, SIG_POS)
-                lines.append(f"{ipla + 1} {t:.3f} {xo:.6f} {yo:.6f} {SIG_POS:.6f} {SIG_POS:.6f}")
+                sig = spec.get("sig_pos", SIG_POS)
+                xo = float(x) * plx + rng.normal(0, sig)
+                yo = float(y) * plx + rng.normal(0, sig)
+                lines.append(f"{ipla + 1} {t:.3f} {xo:.6f} {yo:.6f} {sig:.6f} {sig:.6f}")
     elif not spec.get("rv"):
         lines += ["1", "I JD X Y dX dY", "-" * 40]
     if spec.get("rv"):
@@ -119,13 +135,20 @@ def write_input(spec, folder, univ):
     for o in spec["orbits"]:
         a = o["a"] * 1.03
         e = o["e"] + 0.03
+        if spec.get("par_q"):
+            # e proche de 1 : decaler q et e sans sortir de [0, 0,99]
+            e = o["e"] + 0.3 * (1.0 - o["e"])
+            a = 1.03 * o["a"] * (1.0 - o["e"]) / (1.0 - e)
         scale = a * (1.0 - e) if univ else a
         lines.append(
             f"{o['m_mjup'] * 1.2} mj {scale} {e} {o['i'] + 4} {o['node'] + 4} {o['w'] + 4} {o['tp'] + 40}"
         )
+    range_p = spec.get("range_p", RANGE_P)
+    range_a = RANGE_A if univ else spec.get("range_a", RANGE_A)
+    range_e = spec.get("range_e_univ" if univ else "range_e", RANGE_E)
     if not univ:
-        lines.append(f"{RANGE_P[0]} {RANGE_P[1]}")
-    lines += [f"{RANGE_A[0]} {RANGE_A[1]}", f"{RANGE_E[0]} {RANGE_E[1]}", "exit", ""]
+        lines.append(f"{range_p[0]} {range_p[1]}")
+    lines += [f"{range_a[0]} {range_a[1]}", f"{range_e[0]} {range_e[1]}", "exit", ""]
     with open(os.path.join(folder, "input.txt"), "w") as f:
         f.write("\n".join(lines))
 
@@ -280,6 +303,21 @@ def analyse(name, univ):
                 return raw("a") / factor if n == "a" else raw("P") / factor**1.5
             return raw(n)
         true_period = 2.0 * math.pi / math.sqrt(system.sigma[k] / orbit["a"] ** 3)
+        if spec.get("par_q"):
+            # q et la masse sont definis pour toutes les coniques, a et P non (e >= 1)
+            e = raw("e")
+            q = raw("a") if univ else raw("a") * (1.0 - e)
+            pq = raw("P") if univ else raw("P") * (1.0 - e) ** 1.5
+            print(f"  fraction e >= 1 : {np.mean(e >= 1.0):.3f}, e > 0,99 : {np.mean(e > 0.99):.3f}")
+            good &= report_line("q (au)", q, orbit["a"] * (1.0 - orbit["e"]))
+            good &= report_line("e", e, orbit["e"])
+            good &= report_line("i (deg)", np.degrees(raw("i")), orbit["i"])
+            good &= report_line("Omega (écart)", angle_offset(raw("W"), orbit["node"]), 0.0)
+            good &= report_line("omega (écart)", angle_offset(raw("w"), orbit["w"]), 0.0)
+            mass = (2.0 * np.pi / pq) ** 2 * q ** 3 / model.SMAS
+            good &= report_line("M tot (Msun)", mass, system.sigma[0] / model.SMAS)
+            good &= report_line("tp (jours)", raw("tp"), orbit["tp"])
+            continue
         good &= report_line("a (au)", get("a"), orbit["a"])
         good &= report_line("P (jours)", get("P"), true_period)
         good &= report_line("e", get("e"), orbit["e"])
@@ -289,7 +327,9 @@ def analyse(name, univ):
             good &= report_line("omega (écart)", angle_offset(get("w"), orbit["w"]), 0.0)
         if len(spec["orbits"]) > 1 or spec.get("rv"):
             good &= report_line("m (Mjup)", get("m") * model.MJUP / model.MJUP, orbit["m_mjup"])
-    if len(spec["orbits"]) > 1 or spec.get("rv"):
+    if spec.get("par_q"):
+        pass
+    elif len(spec["orbits"]) > 1 or spec.get("rv"):
         good &= report_line("m0 (Msun)", data[0, names.index("m0")][ok], spec["mstar"])
     else:
         mass = (2.0 * np.pi / data[0, names.index("P")][ok]) ** 2 * data[0, names.index("a")][ok] ** 3 / model.SMAS
