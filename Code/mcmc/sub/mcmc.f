@@ -508,6 +508,9 @@ c...  Inférence quand le critère est atteint
                  PSAV(1:NPAR,I) = CHN(C)%P
                  PSAV(NPAR+1,I) = CHN(C)%CHI2
                  PSAV(NPAR+2,I) = COMPUTE_MAP(CHN(C)%P,CHN(C)%CHI2)
+c>>> [MOD M017] F3 : nombre de solutions gardees, pour le fichier provisoire
+                 NHARV = NHARV+1_8
+c<<< [MOD M017]
               END DO
            END IF
            IF ((MOD(LONG,WRITFREQ).LT.10).AND.(NMOD.EQ.NMAX)) THEN
@@ -998,7 +1001,8 @@ C
 c...  Called at each Gelman-Rubin check. Keeps the recent positions of the
 c...  chains (NPARTIAL per chain) and writes every TPARTIAL seconds (more
 c...  if writing is long : at most 5% of the time is spent on it), in the
-c...  same format as the final output file, xxx_partial.dat.gz :
+c...  same format as the final output file, xxx_partial.dat.gz (during
+c...  inference, only if FPARTIAL of the models are new since last time) :
 c...  the recent positions of the chains before inference (not converged),
 c...  the models already retained after. xxx_partial.txt gives the status
 c...  (LONG, inference flag, # of models, # of recent positions).
@@ -1029,6 +1033,7 @@ c...  Both files are removed at the end of the run.
         INTEGER*4, SAVE :: NSEEN = 0 ! # of filled slots of PSAV
         INTEGER*8, SAVE :: TLAST = -1_8 ! Clock at last writing
         REAL*8, SAVE :: WAIT = TPARTIAL ! Time between writings (s)
+        INTEGER*8, SAVE :: NHLAST = 0_8 ! NHARV at last writing
 
         L = LEN_TRIM(FILES(1))
         BASE = FILES(1)(1:L)
@@ -1063,7 +1068,12 @@ c...  Write every WAIT seconds (TPARTIAL, or 20 times the writing time)
         IF (DBLE(TNOW-TLAST).LT.WAIT*DBLE(RATE)) RETURN
         NSEEN = MAX(NSEEN,NMOD)
         IF (INFER.AND.(NSEEN.GT.0)) THEN
-           CALL WRITE_ONE(NSEEN)         ! Models already retained
+c...  During inference, rewrite only if FPARTIAL of the models are new
+           IF ((NHLAST.EQ.0_8).OR.
+     &         (DBLE(NHARV-NHLAST).GE.FPARTIAL*DBLE(NMAX))) THEN
+              CALL WRITE_ONE(NSEEN)      ! Models already retained
+              NHLAST = NHARV
+           END IF
         ELSE
            CALL MOVE_ALLOC(PSAV,PTMP)    ! Recent positions => PSAV
            CALL MOVE_ALLOC(PREC,PSAV)

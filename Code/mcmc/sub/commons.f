@@ -15,6 +15,8 @@ C...  To be included into the module 'DATA' in every version
 c>>> [MOD M017] F3 : fichier provisoire pour suivre le run
         INTEGER*4, PARAMETER :: NPARTIAL = 1000 ! Recent positions/chain
         REAL*8, PARAMETER :: TPARTIAL = 300.d0  ! Writing period (s)
+        REAL*8, PARAMETER :: FPARTIAL = 0.05d0  ! Renewed fraction
+        INTEGER*8 :: NHARV = 0_8 ! # of models harvested since start
 c<<< [MOD M017]
         REAL*8, PARAMETER :: BETAMAX = 1.d10
         REAL*8, PARAMETER :: PI = 3.14159265358979323846d0     

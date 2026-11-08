@@ -65,7 +65,7 @@ Résultat sur `rel_vr_planete` (5 runs) : 0 run correct sur 5 avant, 5 sur 5 apr
 
 Pourquoi le second remplissage : avec le remplacement aléatoire, ajouter `NMAX` solutions après la convergence en laisse environ 37 % d'avant (e⁻¹). Un run qui converge vite s'arrête dès la réserve pleine, avec surtout des solutions d'avant la convergence. Une alternative envisagée : une « boîte glissante » (on remplace toujours la plus ancienne solution), qui donne le même résultat final et un aperçu continu. Le second remplissage en est la version à un seul passage, avec deux lignes dans ton code.
 
-**Questions.** Les départs identiques étaient-ils voulus, par exemple pour éviter de partir dans un mauvais minimum ? Quelle dispersion jugerais-tu raisonnable ? Pourquoi le remplacement aléatoire dans la réserve plutôt que des positions à intervalle régulier : était-ce pour la mémoire, ou pour une autre raison ? D'accord avec un second remplissage en un temps égal au temps de convergence, plutôt que 4 fois ?
+**Questions.** Les départs identiques étaient-ils voulus, par exemple pour éviter de partir dans un mauvais minimum ? Quelle dispersion jugerais-tu raisonnable ? Pourquoi le remplacement aléatoire dans la réserve plutôt que des positions à intervalle régulier : était-ce pour la mémoire, ou pour une autre raison ? D'accord avec un second remplissage en un temps égal au temps de convergence, plutôt que 4 fois ? Faut-il garder l'écriture de `results.dat.gz` tous les 10 millions de pas, maintenant que le fichier provisoire `xxx_partial.dat.gz` (M017) suit le run dès le début ?
 
 ## B14, pour mémoire
 
