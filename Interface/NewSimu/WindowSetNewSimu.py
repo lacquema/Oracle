@@ -99,10 +99,13 @@ class WindowSetNewSimu(WindowWithFinder):
         elif IdTab=='TabDataSet':
             self.TabDataSet.BtnReset.clicked.connect(lambda: self.ReInit('TabDataSet'))
             self.TabDataSet.NbBodies.SpinParam.valueChanged.connect(self.ChangeNbBodies)
+            self.TabDataSet.AbsRV.CheckParam.stateChanged.connect(self.LockMassPriorsOrNot)
+            self.TabDataSet.CheckAbsAstro.CheckParam.stateChanged.connect(self.LockMassPriorsOrNot)
         elif IdTab=='TabGuessSet':
             self.TabGuessSet.BtnReset.clicked.connect(lambda: self.ReInit('TabGuessSet'))
         elif IdTab=='TabRangeSet':
             self.TabRangeSet.BtnReset.clicked.connect(lambda: self.ReInit('TabRangeSet'))
+            self.TabRangeSet.BtnNewPriorMass.clicked.connect(self.LockMassPriorsOrNot) # after AddNewPriorMass
         elif IdTab=='TabStartSet':
             self.TabStartSet.BtnReset.clicked.connect(lambda: self.ReInit('TabStartSet'))
             self.TabStartSet.BtnCreate.clicked.connect(self.CreateInputFiles)
@@ -177,6 +180,33 @@ class WindowSetNewSimu(WindowWithFinder):
             for x in self.TabRangeSet.ListPriorMass:
                 for i in range(3):
                     x.Layout.removeWidget(x.Layout.itemAt(x.Layout.indexOf(x.Distrib)-2).widget())
+
+        self.LockMassPriorsOrNot()
+
+    def LockMassPriorsOrNot(self):
+        '''Only the total mass can have a prior when individual masses are not fitted.
+
+        With one orbit and neither stellar RV nor absolute astrometry, Fortran fits only
+        the total mass m0+m1 (MULTIPLA false) and refuses a prior on individual masses
+        (B9 in MODIFICATIONS.md). The companion coefficient (m2 here) is then greyed out
+        and follows the star coefficient (m1 here).
+        '''
+        NbBodies = self.TabDataSet.NbBodies.SpinParam.value()
+        TotalOnly = NbBodies == 2 and not self.TabDataSet.AbsRV.CheckParam.isChecked() \
+            and not self.TabDataSet.CheckAbsAstro.CheckParam.isChecked()
+        for Prior in self.TabRangeSet.ListPriorMass:
+            Star = Prior.Layout.itemAt(1).widget()
+            Companion = Prior.Layout.itemAt(4).widget()
+            if not getattr(Prior, 'MirrorConnected', False):
+                Star.SpinParam.valueChanged.connect(
+                    lambda Value, C=Companion: C.SpinParam.setValue(Value) if not C.isEnabled() else None)
+                Prior.MirrorConnected = True
+            Companion.setEnabled(not TotalOnly)
+            if TotalOnly:
+                Companion.SpinParam.setValue(Star.SpinParam.value())
+                Companion.setToolTip('Same as m1: without stellar RV or absolute astrometry, only the total mass is fitted')
+            else:
+                Companion.setToolTip('')
 
     # def EnableOrNotPriorJitter(self):
     #     if self.TabDataSet.RelRV.CheckParam.isChecked() or self.TabDataSet.AbsRV.CheckParam.isChecked():

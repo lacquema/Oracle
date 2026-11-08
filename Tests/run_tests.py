@@ -456,18 +456,21 @@ def test_prior_mstar(report, exes):
     with open(os.path.join(folder, "input_ellip.txt")) as f:
         lines = f.read().split("\n")
     position = lines.index("100000000") + 1
+    # B9 corrigee par M012 : sans masses individuelles ajustees, un prior sur m0 seul
+    # (coefficients 1 0) est refuse a la lecture, avec un message.
     stdin = lines[:position] + ["1", "1 0", "1", "1.0 0.1 ms"] + lines[position + 1:]
-    with tempfile.TemporaryDirectory() as tmp:
-        shutil.copy(os.path.join(folder, "data.dat"), tmp)
-        result = subprocess.run([exes["ellip", "O3"], "1"], input="\n".join(stdin), cwd=tmp,
-                                capture_output=True, text=True, timeout=120)
-    found = re.search(r"TEST MAP\s+(\S+)", result.stdout)
-    without = run_driver(exes["ellip", "O3"], "ellip", "rel")["MAP"]
-    # Masse totale du point : 1.03 Msun, donc un terme de prior faible s'il agit.
-    # S'il est evalue sur une masse nulle, il vaut -0.5*(1.0/0.1)^2 = -50.
-    term = float(found.group(1)) - without if found else float("nan")
-    report.check(result.returncode != 0 or abs(term) < 10.0, "prior sur m0 pris en compte",
-                 f"terme de prior {term:.3f}, soit la valeur pour une masse nulle", known="B9")
+    for version in VERSIONS:
+        with open(os.path.join(folder, f"input_{version}.txt")) as f:
+            vlines = f.read().split("\n")
+        vpos = vlines.index("100000000") + 1
+        vstdin = vlines[:vpos] + ["1", "1 0", "1", "1.0 0.1 ms"] + vlines[vpos + 1:]
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copy(os.path.join(folder, "data.dat"), tmp)
+            result = subprocess.run([exes[version, "O3"], str(VERSIONS[version][0])], input="\n".join(vstdin),
+                                    cwd=tmp, capture_output=True, text=True, timeout=120)
+        refused = result.returncode != 0 and "only the total mass" in result.stdout.lower()
+        report.check(refused, f"prior sur m0 seul refusé avec un message ({version})",
+                     f"code {result.returncode}, sortie : {' '.join(result.stdout.split()[-12:])}")
 
     # Cas ou le prior doit agir : la valeur attendue est le terme gaussien seul.
     mjup = 1.0 / 1047.355

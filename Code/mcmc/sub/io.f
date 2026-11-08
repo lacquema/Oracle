@@ -96,6 +96,18 @@ c<<< [MOD M010]
            MPRIOR(IV)%BCOF(I) = MPRIOR(IV)%ACOF(I)-MPRIOR(IV)%ACOF(I+1)
         END DO
         MPRIOR(IV)%BCOF(NPLA) = MPRIOR(IV)%ACOF(NPLA)
+c>>> [MOD M012] B9 : sans masses individuelles ajustees (MULTIPLA faux,
+c    une orbite sans VR de l'etoile), seule la masse totale m0+m1 est un
+c    parametre. Un prior qui demande m0 seul (BCOF(0) non nul) ne peut pas
+c    agir : il etait evalue sur une masse nulle, sans message. Il est refuse.
+        IF ((.NOT.MULTIPLA).AND.(MPRIOR(IV)%BCOF(0).NE.0.d0)) THEN
+           WRITE(SD,*)'Error : this mass prior needs individual'
+           WRITE(SD,*)'masses, not fitted here (no stellar RV).'
+           WRITE(SD,*)'Only the total mass can have a prior :'
+           WRITE(SD,*)'same coefficient for m0 and m1 (e.g. 1 1).'
+           STOP 1
+        END IF
+c<<< [MOD M012]
         WRITE(SD,*)' Enter type of prior :'
         WRITE(SD,*)'   0 = Logarithmic (default)'
         WRITE(SD,*)'   1 = Gaussian'
