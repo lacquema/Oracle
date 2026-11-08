@@ -507,7 +507,10 @@ c...     MAP = exp(-Chi2/2)
           P5 = P(DKAL+5)
           P6 = P(DKAL+6)
           P7 = P(DKAL+7)
-          UP2 = EXP(-2.d0*P6)  !  1/Period^2
+c>>> [MOD M011] Lambda : P6,P7 = (cos,sin)(lambda)/Pq
+c    AVANT :           UP2 = EXP(-2.d0*P6)  !  1/Period^2
+          UP2 = P6*P6+P7*P7  !  1/Period^2
+c<<< [MOD M011]
           Q = EXP(P1)          ! Period
           SI2 = (P4*P4+P5*P5) ! sin(i/2)^2
           SI2 = 4.d0*SI2*(1.d0-SI2)  ! sin(i)^2
@@ -702,7 +705,12 @@ C
      &       SC1,S3C3,              ! Stumpff functions
      &       C0,C1,C2,C3,           !  "     "       "
      &       FE,DFE,                ! Eccentricity function & derivative
-     &       TT                     ! Time
+c>>> [MOD M011] Lambda : anomalie vraie a T0
+c    AVANT :      &       TT                     ! Time
+     &       TT,                    ! Time
+     &       CNU,SNU                ! cos,sin(true anomaly at T0)
+        LOGICAL :: OKNU            ! Unused (see NU_TO_S)
+c<<< [MOD M011]
         
         IF (MULTIPLA) THEN
            MTOT = EXP(P(NPAR))
@@ -720,7 +728,10 @@ C
            P6 = P(DKAL+6)
            P7 = P(DKAL+7)
            Q(I) = EXP(P1)
-           UP = EXP(-P6)
+c>>> [MOD M011] Lambda : 1/Pq = norme de (P6,P7)
+c    AVANT :            UP = EXP(-P6)
+           UP = SQRT(P6*P6+P7*P7)
+c<<< [MOD M011]
            NQ(I) = DPI*UP
            PER = 1.d0/UP
            MUF(I) = NQ(I)*NQ(I)*Q(I)**3 ! Dynamical mass of orbit #i
@@ -749,8 +760,13 @@ C
               COM(I) = 0.d0
               SOM(I) = 0.d0
            END IF
-           CALL ECC_FUNC(EXC(I),FE,DFE)
-           S = P7/FE  ! S=Universal variable at T=T0 / P7 = S*f(e)
+c>>> [MOD M011] Lambda : s a T0 deduit de nu = lambda-w (sans inversion)
+c    AVANT :            CALL ECC_FUNC(EXC(I),FE,DFE)
+c    AVANT :            S = P7/FE  ! S=Universal variable at T=T0 / P7 = S*f(e)
+           CNU = (P6*CW(I)+P7*SW(I))/UP ! nu = lambda-w
+           SNU = (P7*CW(I)-P6*SW(I))/UP
+           CALL NU_TO_S(CNU,SNU,EXC(I),Q(I),MUF(I),S,OKNU)
+c<<< [MOD M011]
            ALPHA = MUF(I)/Q(I)*(1.d0-EXC(I))
            XX = S*S*ALPHA
            CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
@@ -799,7 +815,11 @@ C
      &       MSTAR, MSTART,     ! Stellar mass 
      &       SIGJV,SIGJVT,      ! Velocity Jitters
      &       FE,DFE,FET,DFET,   ! Eccentricity function
-     &       UPQ,UPQT           ! Inverses de périodes
+c>>> [MOD M011] Lambda : facteurs du jacobien
+c    AVANT :      &       UPQ,UPQT           ! Inverses de périodes
+     &       UPQ,UPQT,          ! Inverses de périodes
+     &       CNU,CNUT,FNU,FNUT  ! cos(nu) at T0 & Jacobian factors
+c<<< [MOD M011]
 
 c     For each planet,
 c           J/J'=(q/q')^2*(dsdt/dsdt')
@@ -848,16 +868,22 @@ c
           PT7 = PTRY(DKAL+7)
           Q = EXP(P1)
           QT = EXP(PT1)
-          UPQ = EXP(-P6)
-          UPQT = EXP(-PT6)
+c>>> [MOD M011] Lambda : 1/Pq = norme de (P6,P7)
+c    AVANT :           UPQ = EXP(-P6)
+c    AVANT :           UPQT = EXP(-PT6)
+          UPQ = SQRT(P6*P6+P7*P7)
+          UPQT = SQRT(PT6*PT6+PT7*PT7)
+c<<< [MOD M011]
           MTOT(I) = Q**3*(DPI*UPQ)**2
           MTOTT(I) = QT**3*(DPI*UPQT)**2          
           EXC = SQRT(P2*P2+P3*P3)
           EXCT = SQRT(PT2*PT2+PT3*PT3)
-          CALL ECC_FUNC(EXC,FE,DFE)
-          CALL ECC_FUNC(EXCT,FET,DFET)
-          S = P7/FE     ! P7 = S*f(E)
-          ST = PT7/FET
+c>>> [MOD M011] Lambda : s n'est plus un parametre
+c    AVANT :           CALL ECC_FUNC(EXC,FE,DFE)
+c    AVANT :           CALL ECC_FUNC(EXCT,FET,DFET)
+c    AVANT :           S = P7/FE     ! P7 = S*f(E)
+c    AVANT :           ST = PT7/FET
+c<<< [MOD M011]
           CW = P2/EXC
           SW = P3/EXC
           CWT = PT2/EXCT
@@ -871,20 +897,31 @@ c     &             .OR.(VPRIOR(1)%BOUND(2)*UPT.LT.1.d0)
           SI2 = (PT4*PT4+PT5*PT5) ! sin(i/2)^2
           BAD = BAD.OR.(SI2.GT.1.d0)
 
-          ALPHA = MTOT(I)/Q*(1.d0-EXC)
-          XX = S*S*ALPHA
-          CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
-          S2C2 = C2*S*S 
-          DSDT = 1.d0/(MTOT(I)*S2C2+Q*C0)
-
-          ALPHA = MTOTT(I)/QT*(1.d0-EXCT)
-          XX = ST*ST*ALPHA
-          CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
-          S2C2 = C2*ST*ST 
-          DSDTT = 1.d0/(MTOTT(I)*S2C2+QT*C0)
-
-          RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*
-     &                           (EXC/EXCT)*(FE/FET)*(DSDT/DSDTT)
+c>>> [MOD M011] Lambda (et B10) : jacobien des nouveaux parametres 6 et 7.
+c    Pour une orbite, J(orbite->parametres)/prior par defaut (log en q et
+c    en Pq, sin(i)) = e*(1+e*cos(nu))^2/((1+e)^(3/2)*Pq^3), nu a T0.
+c    Le facteur (q/q')*(Pq/Pq') de l'ancien rapport (B10) disparait.
+c    AVANT :           ALPHA = MTOT(I)/Q*(1.d0-EXC)
+c    AVANT :           XX = S*S*ALPHA
+c    AVANT :           CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
+c    AVANT :           S2C2 = C2*S*S 
+c    AVANT :           DSDT = 1.d0/(MTOT(I)*S2C2+Q*C0)
+c    AVANT : 
+c    AVANT :           ALPHA = MTOTT(I)/QT*(1.d0-EXCT)
+c    AVANT :           XX = ST*ST*ALPHA
+c    AVANT :           CALL KEPU_STUMPFF(XX,C0,C1,C2,C3)
+c    AVANT :           S2C2 = C2*ST*ST 
+c    AVANT :           DSDTT = 1.d0/(MTOTT(I)*S2C2+QT*C0)
+c    AVANT : 
+c    AVANT :           RAPQ = RAPQ*(Q/QT)*(UPQT/UPQ)*
+c    AVANT :      &                           (EXC/EXCT)*(FE/FET)*(DSDT/DSDTT)
+          CNU = (P6*CW+P7*SW)/UPQ
+          CNUT = (PT6*CWT+PT7*SWT)/UPQT
+          BAD = BAD.OR.(1.d0+EXCT*CNUT.LE.0.d0)
+          FNU = (1.d0+EXC*CNU)**2/(1.d0+EXC)**1.5d0
+          FNUT = (1.d0+EXCT*CNUT)**2/(1.d0+EXCT)**1.5d0
+          RAPQ = RAPQ*(EXC/EXCT)*(FNU/FNUT)*(UPQ/UPQT)**3
+c<<< [MOD M011]
        END DO
 c...  At this point RAPQ =
 c...    Product((e/e')*(f(e)/f(e'))*(q/q')*(P/P')*(dsdt/dsdt'),planets)
@@ -2593,3 +2630,39 @@ c          FF2 = 2.d0*CI*CI/T2-4.d0/(T2*(1.d0+T2)*(1.d0+T2))
         
         END
       
+c>>> [MOD M011] Lambda : nouvelle routine
+C
+C -----------------------------------------------------------------------------
+C       Universal variable s at T0 from the true anomaly nu at T0
+C -----------------------------------------------------------------------------
+C
+        SUBROUTINE NU_TO_S(CNU,SNU,EXC,Q,MU,S,OK)
+
+        IMPLICIT NONE
+
+        REAL*8 ::       CNU,SNU,        ! cos,sin(true anomaly)
+     &                  EXC,Q,MU,       ! Eccentricity, periastron, mass
+     &                  S,              ! Universal variable (output)
+     &                  NU,ALPHA,X      ! Internals
+        LOGICAL ::      OK              ! False if nu beyond asymptote
+
+        OK = .TRUE.
+        NU = ATAN2(SNU,CNU)
+        ALPHA = MU/Q*(1.d0-EXC)
+        IF (EXC.LT.1.d0-1.d-10) THEN
+c...  Ellipse : s = E/sqrt(alpha), E eccentric anomaly
+           X = 2.d0*ATAN2(SQRT(1.d0-EXC)*SIN(0.5d0*NU),
+     &                    SQRT(1.d0+EXC)*COS(0.5d0*NU))
+           S = X/SQRT(ALPHA)
+        ELSE IF (EXC.GT.1.d0+1.d-10) THEN
+c...  Hyperbola : s = F/sqrt(-alpha), F hyperbolic anomaly
+           OK = (1.d0+EXC*CNU.GT.0.d0)
+           X = SQRT((EXC-1.d0)/(EXC+1.d0))*TAN(0.5d0*NU)
+           X = MIN(MAX(X,-1.d0+1.d-15),1.d0-1.d-15)
+           S = 2.d0*ATANH(X)/SQRT(-ALPHA)
+        ELSE
+c...  Parabola
+           S = TAN(0.5d0*NU)*SQRT(2.d0*Q/MU)
+        END IF
+        END
+c<<< [MOD M011]

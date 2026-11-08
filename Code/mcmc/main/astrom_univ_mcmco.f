@@ -35,6 +35,9 @@ c-------------------------------------------------------------------------
 c                                                #3 = data
         INTEGER*4 ::         CNEW
         LOGICAL ::          OK,NEW
+c>>> [MOD M011] Lambda : position a T0 dans la base propre
+        REAL*8 ::           RX,RY,RR,CL,SL
+c<<< [MOD M011]
 
         METHOD = 2
         CALL INIT_SIMU(CNEW,NMOD,FILES,NEW)
@@ -97,8 +100,21 @@ c...                                hh2 = -2xEnergie = alpha pour kepu
 c              M0 =  STAR%T0-P(DKAL+6)
 c              CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
               PSTART(DKAL+1) = LOG(PLA(I)%Q)           ! Par 1 = ln(q)
-              PSTART(DKAL+6) = LOG(PLA(I)%PER)         ! Par 6 = ln(perq)
-              PSTART(DKAL+7) = P(DKAL+7) ! Par 7=f(E)*S=f(E)*univ.var@t=T0    
+c>>> [MOD M011] Lambda : Par 6,7 = (cos,sin)(lambda)/Pq, lambda = w+nu(T0)
+c    AVANT :               PSTART(DKAL+6) = LOG(PLA(I)%PER)         ! Par 6 = ln(perq)
+c    AVANT :               PSTART(DKAL+7) = P(DKAL+7) ! Par 7=f(E)*S=f(E)*univ.var@t=T0    
+              MASS = (DPI*UP)**2*PLA(I)%Q**3
+              HH2 = -(PLA(I)%EXC-1.d0)*MASS/PLA(I)%Q
+              M0 = STAR%T0-PLA(I)%TP
+              CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
+              RX = PLA(I)%Q-MASS*S2C2
+              RY = SQRT(PLA(I)%Q*MASS*(1.d0+PLA(I)%EXC))*SC1
+              RR = SQRT(RX*RX+RY*RY)
+              CL = (RX*PLA(I)%CW-RY*PLA(I)%SW)/RR
+              SL = (RX*PLA(I)%SW+RY*PLA(I)%CW)/RR
+              PSTART(DKAL+6) = CL*UP
+              PSTART(DKAL+7) = SL*UP
+c<<< [MOD M011]
            END DO
            IF (MULTIPLA) PSTART(NPAR) = LOG(STAR%MASS) ! Stellar mass
            IF (ISDATA(2)) THEN

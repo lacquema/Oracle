@@ -89,6 +89,11 @@ c...  L-M : mean longitude / MCMC : true longitude at T0
               CALL LONGITUDE_T0(I,CL,SL)
               PM(DKAL+6) = CL/PLA(I)%PER
               PM(DKAL+7) = SL/PLA(I)%PER
+           ELSE
+c...  L-M : ln(Pq), s*f(e) / MCMC (M011) : (cos,sin)(true longitude)/Pq
+              CALL LONGITUDE_T0(I,CL,SL)
+              PM(DKAL+6) = CL/PLA(I)%PER
+              PM(DKAL+7) = SL/PLA(I)%PER
            END IF
         END DO
 

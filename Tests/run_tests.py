@@ -175,7 +175,8 @@ def test_journal(report):
     marker = re.compile(r"(>>>|<<<) \[MOD (M\d{3})\]")
     git = ["git", "-C", ROOT]
     tracked = subprocess.run(
-        [*git, "ls-files", "--cached", "--others", "--exclude-standard", "Code/mcmc", "Interface", "Makefile"],
+        # Seulement le code d'Herve : l'interface (Interface/) est le code d'Antoine, sans reperes
+        [*git, "ls-files", "--cached", "--others", "--exclude-standard", "Code/mcmc", "Makefile"],
         capture_output=True, text=True, check=True,
     ).stdout.split("\n")
     files = [f for f in tracked if f.endswith((".f", ".py")) or f == "Makefile"]
@@ -307,7 +308,7 @@ def test_cases(report, exes, update):
                 bad_exact.append(f"point {k}: {value:.6f} / {expected:.6f}")
             if abs(value - expected - gap) > TOL_PRIOR * 0.1:
                 bad_known.append(f"point {k}: écart {value - expected:.6f} / identifié {gap:.6f}")
-        codes = "+".join(c for c, on in (("B10", version == "univ"), ("B11", res["multipla"])) if on)
+        codes = "+".join(c for c, on in (("B11", res["multipla"]),) if on)  # B10 corrigee par M011
         report.check(not bad_known, f"rapport des priors, écart expliqué {label}", "; ".join(bad_known[:2]))
         report.check(not bad_exact, f"rapport des priors {label}", "; ".join(bad_exact[:1]), known=codes or None)
 

@@ -1,15 +1,25 @@
 c-------------------------------------------------------------------------
-c     Programme de test, variables universelles : routine vide, car ces
-c     variables n'utilisent pas de longitude a T0.
+c     Programme de test, variables universelles : longitude vraie a T0,
+c     comme ASTROM_UNIV_MCMCO (M011, parametres 6 et 7 = (cos,sin)(lambda)/Pq)
 c-------------------------------------------------------------------------
         SUBROUTINE LONGITUDE_T0(I,CL,SL)
+
+        USE DATA
 
         IMPLICIT NONE
 
         INTEGER*4 ::    I               ! Index of the orbit
-        REAL*8 ::       CL,SL           ! cos,sin(longitude at T0)
+        REAL*8 ::       CL,SL,          ! cos,sin(true longitude at T0)
+     &                  MASS,HH2,M0,S,C0,SC1,S2C2,S3C3,RX,RY,RR
 
-        CL = 0.d0
-        SL = 0.d0
+        MASS = (DPI/PLA(I)%PER)**2*PLA(I)%Q**3
+        HH2 = -(PLA(I)%EXC-1.d0)*MASS/PLA(I)%Q
+        M0 = STAR%T0-PLA(I)%TP
+        CALL KEP_UNIV(M0,PLA(I)%Q,MASS,HH2,S,C0,SC1,S2C2,S3C3)
+        RX = PLA(I)%Q-MASS*S2C2
+        RY = SQRT(PLA(I)%Q*MASS*(1.d0+PLA(I)%EXC))*SC1
+        RR = SQRT(RX*RX+RY*RY)
+        CL = (RX*PLA(I)%CW-RY*PLA(I)%SW)/RR
+        SL = (RX*PLA(I)%SW+RY*PLA(I)%CW)/RR
 
         END

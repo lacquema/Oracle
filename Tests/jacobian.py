@@ -49,8 +49,11 @@ def classical_inverse(p):
     return np.array([np.exp(p[0]), per, e, inc, angle, w, m0])
 
 
-def universal_forward(x, t0_minus_tp=None):
-    """(q, Pq, e, i, angle, w, dt) -> parametres universels, avec dt = T0 - tp."""
+def universal_forward(x):
+    """(q, Pq, e, i, angle, w, dt) -> parametres universels du MCMC (M011), avec dt = T0 - tp.
+
+    Parametres 6 et 7 = (cos, sin)(lambda)/Pq, lambda = w + anomalie vraie a T0.
+    """
     q, per, e, inc, angle, w, dt = x
     mu = (2.0 * np.pi / per) ** 2 * q**3
     alpha = mu / q * (1.0 - e)
@@ -62,23 +65,32 @@ def universal_forward(x, t0_minus_tp=None):
         c2 = (1.0 - c0) / xx
         t = mu * c3 * s**3 + q * c1 * s
         s = s - (t - dt) / (mu * c2 * s * s + q * c0)
+    xx = alpha * s * s
+    c1, c3 = stumpff(xx)
+    c2 = (1.0 - np.cos(np.sqrt(xx))) / xx
+    x_pos = q - mu * c2 * s * s
+    y_pos = np.sqrt(mu * q * (1.0 + e)) * c1 * s
+    lam = w + np.arctan2(y_pos, x_pos)
     si = np.sin(inc / 2.0)
-    return np.array([np.log(q), e * np.cos(w), e * np.sin(w), si * np.cos(angle), si * np.sin(angle), np.log(per),
-                     s * ecc_func(e)])
+    return np.array([np.log(q), e * np.cos(w), e * np.sin(w), si * np.cos(angle), si * np.sin(angle),
+                     np.cos(lam) / per, np.sin(lam) / per])
 
 
 def universal_inverse(p):
+    """Inverse de universal_forward, pour une orbite liee."""
     q = np.exp(p[0])
-    per = np.exp(p[5])
+    per = 1.0 / np.hypot(p[5], p[6])
     e = np.hypot(p[1], p[2])
     w = np.arctan2(p[2], p[1])
     si = np.hypot(p[3], p[4])
     inc = 2.0 * np.arcsin(si)
     angle = np.arctan2(p[4], p[3])
-    s = p[6] / ecc_func(e)
+    nu = np.arctan2(p[6], p[5]) - w
     mu = (2.0 * np.pi / per) ** 2 * q**3
-    xx = mu / q * (1.0 - e) * s * s
-    c1, c3 = stumpff(xx)
+    alpha = mu / q * (1.0 - e)
+    u = 2.0 * np.arctan2(np.sqrt(1.0 - e) * np.sin(nu / 2.0), np.sqrt(1.0 + e) * np.cos(nu / 2.0))
+    s = u / np.sqrt(alpha)
+    c1, c3 = stumpff(alpha * s * s)
     dt = mu * c3 * s**3 + q * c1 * s
     return np.array([q, per, e, inc, angle, w, dt])
 
@@ -112,7 +124,7 @@ def scales(p, npla, version):
     out = []
     for k in range(npla):
         b = p[7 * k : 7 * k + 7]
-        per = 1.0 / np.hypot(b[5], b[6]) if version == "ellip" else np.exp(b[5])
+        per = 1.0 / np.hypot(b[5], b[6])  # Les deux versions depuis M011
         out.append((b[0], np.log(per), np.log((2.0 * np.pi / per) ** 2) + 3.0 * b[0]))
     return out
 
@@ -120,14 +132,12 @@ def scales(p, npla, version):
 def known_prior_gap(point, base, npla, version, multipla, user_prior_star):
     """Ecart deja identifie entre RATIO_PRIORS et COMPUTE_MAP + jacobien.
 
-    Version universelle (B10) : facteur (q/q')(P/P') par orbite.
+    Version universelle : B10 corrigee par M011, plus d'ecart.
     Masses ajustees (B11) : un facteur M'/M ou m0'/m0 par prior concerne, moins
     le m0'/m0 deja compte dans le jacobien de ln(m0).
     """
     a, b = scales(point, npla, version), scales(base, npla, version)
     gap = 0.0
-    if version == "univ":
-        gap -= sum((a[k][0] - b[k][0]) + (a[k][1] - b[k][1]) for k in range(npla))
     if multipla:
         dm0 = point[-1] - base[-1]
         dmass = [a[k][2] - b[k][2] for k in range(npla)]

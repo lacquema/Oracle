@@ -12,7 +12,7 @@ Chaque test affiché vaut `ECHEC` (à corriger) ou `CONNU` (anomalie listée dan
 
 | Test | Question posée |
 |---|---|
-| Journal et repères | Toute ligne changée depuis `bcced4b` est-elle dans un bloc repéré et listée dans le journal ? |
+| Journal et repères | Toute ligne du code d'Hervé (`Code/mcmc`, `Makefile`) changée depuis `bcced4b` est-elle dans un bloc repéré et listée dans le journal ? |
 | Exécution et contrôles | Les routines tournent-elles sans erreur, y compris avec les contrôles de bornes de tableaux (`-fcheck=all`) ? |
 | Référence | χ², MAP et χ²+Fmap sont-ils identiques à ceux du code de départ (à 1e-10 près) ? |
 | Modèle indépendant | Un modèle Python écrit séparément (`model.py`) donne-t-il le même χ² que le Fortran ? |

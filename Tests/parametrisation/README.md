@@ -10,7 +10,7 @@ Comparaison, sur des systèmes synthétiques, de trois façons d'ajuster une orb
 
 `λ` est la longitude vraie à `T0`. Elle est définie pour toutes les coniques, et `s` s'en déduit sans inversion numérique (`NU_TO_S`). `P_q = 2π √(q³/μ)`. Idée d'Antoine (2026-11-05), en réponse au constat qu'avec `s·f(e)` le paramètre 7 n'est pas un bon paramètre d'ajustement.
 
-**Aucune de ces corrections n'est dans le dépôt.** Les scripts ci-dessous créent des copies dans `Tests/build_synthetic/variantes/` (non suivi par git).
+**Depuis M011 (2026-11-08), la variante lambda est dans le code** (`kepu.f`, `astrom_univ_mcmco.f`), avec B5, B6 (M005) et B10. Les scripts ci-dessous ne s'appliquent plus au code actuel : ils transformaient le code d'avant ces corrections. Ils restent ici pour pouvoir refaire les comparaisons à partir du commit `13ce361` ou d'avant. Ils créent des copies dans `Tests/build_synthetic/variantes/` (non suivi par git).
 
 ## Refaire les copies et les vérifier
 
@@ -53,7 +53,7 @@ Sur les quatre arcs, les versions qui convergent donnent des distributions quasi
 - **Autour du périastre, lambda est meilleure** : 4 à 10 fois moins de pas, et elle seule décrit `e ≥ 1`. Quand `e` est proche de 1, la classique donne un résultat biaisé et trop précis (`arc_parabole`).
 - **La paramétrisation actuelle `s·f(e)` est à remplacer.** Elle échoue au périastre et peut se déclarer convergée sur une mauvaise orbite : Gelman-Rubin ne voit rien si toutes les chaînes sont coincées au même endroit. Toujours regarder le χ².
 - Par pas, l'universel est environ 3 fois plus lent que le classique (fonctions de Stumpff). Non optimisé.
-- Décision d'Antoine (2026-11-06) : utiliser lambda. À faire dans le vrai code, après avis d'Hervé et avec les corrections B5, B6 et B10.
+- Décision d'Antoine (2026-11-06) : utiliser lambda. Fait dans le vrai code par M011 (2026-11-08), à présenter à Hervé.
 
 ### Limites
 
