@@ -54,10 +54,28 @@ Cas mesuré : `rel_vr_planete` en version classique (relative et vitesses de la 
 2. **Période de chauffe** : remettre à zéro les moyennes et covariances cumulées à un instant donné (par exemple au premier contrôle, ou à chaque doublement de `LONG`), pour que `R` ne porte que sur la suite.
 3. **Seconde moitié seulement** : calculer `R` sur la seconde moitié des chaînes, comme le recommandent Gelman et Rubin. Avec des sommes cumulées, cela revient à l'option 2 avec des remises à zéro aux doublements.
 
-**Je propose 1 et 2 ensemble.** 1 rend le test valable. 2 empêche les premiers pas, encore corrélés au point de départ, de peser sur `R`. Je vérifierais sur `rel_vr_planete` (5 runs) que l'inférence arrive plus tard et que la vérité est retrouvée, puis sur GG Tau que rien ne change.
+**Décision prise : 1 et 2, plus un second remplissage de la réserve (M015, 2026-11-08).**
+- Départs dispersés de 2 pas `BETA` autour du point du LM (la chaîne 1 reste au point du LM).
+- Chauffe de 1 000 balayages sans Gelman-Rubin, puis remise à zéro des moyennes et covariances.
+- La récolte commence toujours à R < 1,1, ce qui donne un aperçu pendant le run. Mais au premier passage sous 1,01, la réserve est réécrite dans l'ordre, en un temps égal à celui mis pour converger. À l'arrêt, toutes les solutions datent d'après la convergence.
 
-**Questions.** Les départs identiques étaient-ils voulus, par exemple pour éviter de partir dans un mauvais minimum ? Quelle dispersion jugerais-tu raisonnable ?
+En vérifiant, une seconde anomalie est apparue (**B15**, corrigée par M016) : une fois R < 1,01, l'intervalle entre deux contrôles valait `MIN(NGROUP, NINT(LONG/100/NGROUP)·NGROUP)`, soit 0 avant 5 000 balayages. Les chaînes ne bougeaient plus et les mêmes 8 positions étaient gardées jusqu'à remplir la réserve (9 solutions distinctes sur 20 001 dans un run). Les longs runs réels ne sont pas touchés.
+
+Résultat sur `rel_vr_planete` (5 runs) : 0 run correct sur 5 avant, 5 sur 5 après, avec la même distribution à chaque fois.
+
+Pourquoi le second remplissage : avec le remplacement aléatoire, ajouter `NMAX` solutions après la convergence en laisse environ 37 % d'avant (e⁻¹). Un run qui converge vite s'arrête dès la réserve pleine, avec surtout des solutions d'avant la convergence. Une alternative envisagée : une « boîte glissante » (on remplace toujours la plus ancienne solution), qui donne le même résultat final et un aperçu continu. Le second remplissage en est la version à un seul passage, avec deux lignes dans ton code.
+
+**Questions.** Les départs identiques étaient-ils voulus, par exemple pour éviter de partir dans un mauvais minimum ? Quelle dispersion jugerais-tu raisonnable ? Pourquoi le remplacement aléatoire dans la réserve plutôt que des positions à intervalle régulier : était-ce pour la mémoire, ou pour une autre raison ? D'accord avec un second remplissage en un temps égal au temps de convergence, plutôt que 4 fois ?
 
 ## B14, pour mémoire
 
 La graine du générateur aléatoire n'est jamais fixée : deux lancements identiques ne donnent pas le même résultat, et le LM lui-même en dépend (redémarrages au hasard de `MRQRENEW`). Préfères-tu une graine fixe, une graine donnée en entrée, ou une graine tirée puis écrite dans la sortie pour pouvoir refaire un run ?
+
+## Autres conventions à discuter (pas des erreurs)
+
+Relevées le 2026-11-08 en relisant les priors. Le code les applique de façon cohérente ; la question est seulement de savoir si ce sont les bons choix.
+
+1. **Prior sur e en version universelle.** `COMPUTE_MAP` n'a pas de terme en `e` : le prior est uniforme en `e` jusqu'à la borne donnée par l'utilisateur. Si cette borne dépasse 1, la part a priori d'orbites hyperboliques dépend de ce choix arbitraire (un tiers pour une borne à 1,5, la moitié pour 2). Testé le 2026-11-08 sur deux arcs autour d'un périastre à e = 0,98 (2 ans, puis 1 an avec 8 points) : bornes 1,5 et 3, mêmes résultats (36 % puis environ 50 % d'hyperboles, vérité retrouvée). Les données y contraignent assez e pour que la borne ne joue pas. Elle ne compterait que pour des données qui contraignent très peu e.
+2. **Seuils de Gelman-Rubin** (`commons.f`) : la récolte commence à `RINF = 1,1` et le MCMC s'arrête à `RCONV = 1,01`, ce qui correspond aux recommandations actuelles (R̂ < 1,01). Depuis M015, les solutions récoltées entre 1,1 et 1,01 ne restent plus dans l'échantillon final. `TSINF` = 100 reste bas, mais ne sert plus qu'à l'aperçu.
+3. **Prior conjoint logarithmique en a (ou q) et en P (ou P_q).** Il implique un prior particulier sur la masse dynamique, auquel s'ajoute un prior de masse de l'utilisateur (choix « multiplier », M013). Une alternative courante : logarithmique en a et en masse.
+4. **Prior du jitter** `1/(j + j0)` avec `j0 = 0,1 km/s` fixé dans le code (`SIGV0`). Convention standard (Gregory 2005), mais `j0` devrait sans doute dépendre des données, et ne conviendra pas pour un jitter Gaia en mas.

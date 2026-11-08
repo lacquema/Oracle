@@ -155,10 +155,16 @@ C
      &                  DP(NPAR) ! Departure from model
         REAL*8 :: CHCMOY(NPAR),CHCBETA(NPAR),CHCP(NPAR) ! Current partial chain
         REAL*8 :: CHCCOV(NPAR,NPAR),CHCCHI2
+c>>> [MOD M015] B12 : chauffe faite ou non
+        LOGICAL ::      BURNT        ! True once burn-in is over
+c<<< [MOD M015]
 
         CALL INIT_MCMC(PROBINFER,CHN,CH0,DIRS,
      &              NMOD,COUNTOK,LONG,NGEL,INFER,NEW)
         NGROUP = NGEL
+c>>> [MOD M015] B12 : une reprise (dump) a deja fait sa chauffe
+        BURNT = .NOT.NEW
+c<<< [MOD M015]
         DO WHILE ((COUNTOK.LT.5).OR.(NMOD.LT.NMAX))
            JGROUP = NGEL/NGROUP
            DO J = 1,JGROUP
@@ -217,7 +223,29 @@ c                 write(sd,*)'ps ',sngl(chn(c)%p)
 
 c....  Gelman-Rubin statistics
 
-           CALL GELMAN_RUBIN(PROBINFER,CHN,NMOD,LONG,INFER,OK,FILES)
+c>>> [MOD M015] B12 : pendant la chauffe (NBURN balayages), ni Gelman-Rubin
+c    ni solution gardee. A la fin, moyennes et covariances cumulees sont
+c    remises a zero et LONG repart de 1 : le critere ne porte plus que sur
+c    la suite, une fois les chaines detachees de leurs points de depart.
+c    AVANT :   CALL GELMAN_RUBIN(PROBINFER,CHN,NMOD,LONG,INFER,OK,FILES)
+           IF (BURNT) THEN
+              CALL GELMAN_RUBIN(PROBINFER,CHN,NMOD,LONG,INFER,OK,FILES)
+           ELSE
+              OK = .FALSE.
+              IF (LONG.GE.NBURN) THEN
+                 DO C = 1,NCH
+                    CHN(C)%MOY = CHN(C)%P
+                    CHN(C)%COV = 0.d0
+                 END DO
+                 WRITE(SD,*)'Burn-in over after ',long,' sweeps'
+                 LONG = 1_8
+                 BURNT = .TRUE.
+              END IF
+           END IF
+c<<< [MOD M015]
+c>>> [MOD M017] F3 : fichier provisoire pour suivre le run
+           CALL WRITE_PARTIAL(CHN,NMOD,LONG,INFER,FILES,.FALSE.)
+c<<< [MOD M017]
 
 c.......
            IF (.NOT.OK) THEN
@@ -227,7 +255,12 @@ c.......
 c              IF (COUNTOK.LT.10) THEN
 c                 NGEL = NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP
 c              ELSE
-                 NGEL = MIN(NGROUP,NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP)
+c>>> [MOD M016] B15 : pour LONG < 5000, l'ancienne formule donnait NGEL = 0,
+c    donc aucun pas entre deux controles : les memes 8 positions etaient
+c    gardees a chaque controle jusqu'a remplir la reserve.
+c    AVANT :                  NGEL = MIN(NGROUP,NINT(LONG*1d-2/NGROUP,KIND=8)*NGROUP)
+                 NGEL = NGROUP
+c<<< [MOD M016]
 c              END IF
               COUNTOK = COUNTOK+1
               WRITE(SD,*)'countok = ',countok
@@ -249,6 +282,9 @@ c......... Resume current status => dump file
           END IF
 
         END DO
+c>>> [MOD M017] F3 : le fichier provisoire est retire a la fin
+        CALL WRITE_PARTIAL(CHN,NMOD,LONG,INFER,FILES,.TRUE.)
+c<<< [MOD M017]
 
         DO C = 1,NCH
            DEALLOCATE(CHN(C)%P)
@@ -287,6 +323,12 @@ C
      &                  NEW          ! True if new simulation
         REAl*8 ::       PROBINFER,   ! Probability of retaining a model
      &                  DIRS(NPAR,NPAR)  ! Directions
+c>>> [MOD M015] B12 : variables des departs disperses
+        REAL*8 ::       PTRY(NPAR),  ! Trial start
+     &                  R,RAPQ       ! Gaussian number, prior ratio
+        INTEGER*4 ::    NTRY         ! Number of trials
+        LOGICAL ::      OKSTART,BAD  ! Valid start, unreal solution
+c<<< [MOD M015]
 
         write(sd,*)'init_mcmc'
         DO C = 1,NCH
@@ -317,9 +359,38 @@ c              print*,'chi2seul',ch0%chi2
            END DO
            WRITE(SD,*)'beta initiation successful ! '
            WRITE(SD,*)'beta values = ',sngl(ch0%beta)
+c>>> [MOD M015] B12 : departs disperses. La chaine 1 reste au point du L-M,
+c    les autres en sont decalees de KDISP*BETA*N(0,1) le long de chaque
+c    direction. Un depart impossible (BAD ou prior nul) est retire (au plus
+c    100 essais, sinon la chaine part du point du L-M). Gelman-Rubin
+c    suppose des departs plus disperses que la distribution cherchee.
+c    AVANT :      DO C=1,NCH
+c    AVANT :         CHN(C) = CH0             
+c    AVANT :      END DO
            DO C=1,NCH
-              CHN(C) = CH0             
+              CHN(C) = CH0
+              IF (C.GT.1) THEN
+                 OKSTART = .FALSE.
+                 NTRY = 0
+                 DO WHILE ((.NOT.OKSTART).AND.(NTRY.LT.100))
+                    NTRY = NTRY+1
+                    PTRY = CH0%P
+                    DO I = 1,NPAR
+                       CALL GASDEV(R)
+                       PTRY = PTRY+KDISP*CH0%BETA(I)*R*DIRS(1:NPAR,I)
+                    END DO
+                    BAD = .FALSE.
+                    CALL RATIO_PRIORS(CH0%P,PTRY,RAPQ,BAD)
+                    OKSTART = ((.NOT.BAD).AND.(RAPQ.GT.0.d0))
+                 END DO
+                 IF (OKSTART) THEN
+                    CHN(C)%P = PTRY
+                    CHN(C)%MOY = PTRY
+                    CALL CHI2SEUL(CHN(C)%P,CHN(C)%CHI2)
+                 END IF
+              END IF
            END DO
+c<<< [MOD M015]
            LONG = 1_8
            INFER = .FALSE.
            NGEL = 100_8
@@ -405,6 +476,19 @@ c     &      (sngl(sqrt(chn(i)%p(9)**2+chn(i)%p(10)**2)),i=1,nch)
            WRITE(SD,*)
      &          'Inference now, sampling probability = ',probinfer
         END IF
+c>>> [MOD M015] B12 : au premier passage a la convergence, la reserve est
+c    remplie a nouveau dans l'ordre (NMOD = 0), en un temps KREFILL fois
+c    celui mis pour converger. A l'arret, toutes les solutions gardees
+c    datent d'apres la convergence. Celles d'avant restent visibles dans
+c    les cases pas encore reecrites (fichier provisoire, F3).
+        IF (OK.AND.INFER.AND.(.NOT.REFILL)) THEN
+           REFILL = .TRUE.
+           NMOD = 0
+           PROBINFER = MAX(NINFER*100.d0/(KREFILL*LONG),MINPROB)
+           WRITE(SD,*)'Convergence reached, models refilled, ',
+     &          'sampling probability = ',probinfer
+        END IF
+c<<< [MOD M015]
         
 c...  Inférence quand le critère est atteint
 
@@ -905,3 +989,116 @@ C
         END
 
       
+c>>> [MOD M017] F3 : nouvelle routine
+C
+C -----------------------------------------------------------------------------
+C       Partial output file, to follow a run in real time
+C -----------------------------------------------------------------------------
+C
+c...  Called at each Gelman-Rubin check. Keeps the recent positions of the
+c...  chains (NPARTIAL per chain) and writes every TPARTIAL seconds (more
+c...  if writing is long : at most 5% of the time is spent on it), in the
+c...  same format as the final output file, xxx_partial.dat.gz :
+c...  the recent positions of the chains before inference (not converged),
+c...  the models already retained after. xxx_partial.txt gives the status
+c...  (LONG, inference flag, # of models, # of recent positions).
+c...  Both files are removed at the end of the run.
+
+        SUBROUTINE WRITE_PARTIAL(CHN,NMOD,LONG,INFER,FILES,FINAL)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        CHARACTER*(*),DIMENSION(NFIL) :: FILES
+        TYPE(CHAIN), DIMENSION(NCH) :: CHN
+        INTEGER*4 ::    NMOD,        ! # of models
+     &                  C,L,         ! Indexes
+     &                  LOG_TO_INT   ! Conversion function
+        INTEGER*8 ::    LONG,        ! Length of chains
+     &                  TNOW,TEND,RATE ! Clock
+        LOGICAL ::      INFER,       ! Inference flag
+     &                  FINAL        ! True at the end => remove files
+        REAL*8 ::       COMPUTE_MAP  ! Function => MAP
+        CHARACTER*256 :: BASE        ! Root of file names
+        CHARACTER*600 :: LINE        ! Command line
+        REAL*8, DIMENSION(:,:), ALLOCATABLE :: PTMP ! For swapping
+        REAL*8, DIMENSION(:,:), ALLOCATABLE, SAVE :: PREC ! Recent pos.
+        INTEGER*4, SAVE :: IREC = 0  ! Last stored position
+        INTEGER*4, SAVE :: NREC = 0  ! # of stored positions
+        INTEGER*4, SAVE :: NSEEN = 0 ! # of filled slots of PSAV
+        INTEGER*8, SAVE :: TLAST = -1_8 ! Clock at last writing
+        REAL*8, SAVE :: WAIT = TPARTIAL ! Time between writings (s)
+
+        L = LEN_TRIM(FILES(1))
+        BASE = FILES(1)(1:L)
+        IF (L.GT.4) THEN
+           IF (FILES(1)(L-3:L).EQ.'.dat') BASE = FILES(1)(1:L-4)
+        END IF
+
+        IF (FINAL) THEN
+           LINE = 'rm -f '//TRIM(BASE)//'_partial.dat.gz '
+     &                    //TRIM(BASE)//'_partial_tmp.dat* '
+     &                    //TRIM(BASE)//'_partial.txt'
+           CALL SYSTEM(LINE)
+           IF (ALLOCATED(PREC)) DEALLOCATE(PREC)
+           RETURN
+        END IF
+
+c...  Store the current positions (circular buffer)
+
+        IF (.NOT.ALLOCATED(PREC)) ALLOCATE(PREC(NPAR+2,NCH*NPARTIAL))
+        DO C = 1,NCH
+           IREC = MOD(IREC,NCH*NPARTIAL)+1
+           PREC(1:NPAR,IREC) = CHN(C)%P
+           PREC(NPAR+1,IREC) = CHN(C)%CHI2
+           PREC(NPAR+2,IREC) = COMPUTE_MAP(CHN(C)%P,CHN(C)%CHI2)
+        END DO
+        NREC = MIN(NREC+NCH,NCH*NPARTIAL)
+
+c...  Write every WAIT seconds (TPARTIAL, or 20 times the writing time)
+
+        CALL SYSTEM_CLOCK(TNOW,RATE)
+        IF (TLAST.LT.0_8) TLAST = TNOW
+        IF (DBLE(TNOW-TLAST).LT.WAIT*DBLE(RATE)) RETURN
+        NSEEN = MAX(NSEEN,NMOD)
+        IF (INFER.AND.(NSEEN.GT.0)) THEN
+           CALL WRITE_ONE(NSEEN)         ! Models already retained
+        ELSE
+           CALL MOVE_ALLOC(PSAV,PTMP)    ! Recent positions => PSAV
+           CALL MOVE_ALLOC(PREC,PSAV)
+           CALL WRITE_ONE(NREC)
+           CALL MOVE_ALLOC(PSAV,PREC)
+           CALL MOVE_ALLOC(PTMP,PSAV)
+        END IF
+        OPEN(15,FILE=TRIM(BASE)//'_partial.txt',STATUS='UNKNOWN')
+        WRITE(15,*)LONG,LOG_TO_INT(INFER),NMOD,NREC
+        CLOSE(15)
+        CALL SYSTEM_CLOCK(TEND,RATE)
+        WAIT = MAX(TPARTIAL,20.d0*DBLE(TEND-TNOW)/DBLE(RATE))
+        TLAST = TEND
+
+        CONTAINS
+
+        SUBROUTINE WRITE_ONE(N)
+
+          IMPLICIT NONE
+
+          INTEGER*4 :: N          ! # of solutions to write
+
+c...  Written under a temporary name then renamed : a reader never
+c...  sees a file being written
+          IF (RADVEL) THEN
+             CALL WRITE_DISTRIB(N,TRIM(BASE)//'_partial_tmp.dat')
+          ELSE
+             CALL WRITE_DISTRIB_DOUBLING(N,
+     &                              TRIM(BASE)//'_partial_tmp.dat')
+          END IF
+          LINE = 'mv -f '//TRIM(BASE)//'_partial_tmp.dat.gz '
+     &                   //TRIM(BASE)//'_partial.dat.gz'
+          CALL SYSTEM(LINE)
+
+          END SUBROUTINE WRITE_ONE
+
+        END
+c<<< [MOD M017]

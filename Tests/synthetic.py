@@ -6,7 +6,7 @@ puis le vrai programme (compile avec OpenMP, comme en production) tourne jusqu'a
 bout. Ce test est long, il n'est donc pas dans `make test`.
 
     python3 Tests/synthetic.py liste
-    python3 Tests/synthetic.py lance NOM [--univ] [--rapide] [--threads 6] [--limite 3600]
+    python3 Tests/synthetic.py lance NOM [--univ] [--rapide] [--threads 6] [--limite 3600] [--emax 1.5]
     python3 Tests/synthetic.py analyse NOM [--univ]
 
 Le cas `sans_donnees` n'a aucune mesure : le MCMC doit alors redonner le prior.
@@ -62,6 +62,12 @@ SYSTEMS = {
                                                 tp=54365.0)], rel=12, rvp=3, span=730.0, sig_pos=2.0,
                          range_a=(0.5, 10000.0), range_p=(100.0, 1.0e8), range_e=(0.0, 0.99),
                          range_e_univ=(0.0, 1.5), par_q=True),
+    # Comme arc_parabole, mais un an de donnees et moins de points : e encore moins contraint,
+    # pour voir l'effet du prior sur e (uniforme jusqu'a la borne choisie, voir --emax)
+    "arc_parabole_court": dict(mstar=1.5, orbits=[dict(m_mjup=3.0, a=100.0, e=0.98, i=120.0, node=60.0, w=200.0,
+                                                      tp=54365.0)], rel=8, rvp=2, span=365.0, sig_pos=2.0,
+                               range_a=(0.5, 10000.0), range_p=(100.0, 1.0e8), range_e=(0.0, 0.99),
+                               range_e_univ=(0.0, 1.5), par_q=True),
     # Aucune mesure : le MCMC doit redonner le prior
     "sans_donnees": dict(mstar=1.0, orbits=[ORBIT_A], span=6000.0),
 }
@@ -114,7 +120,7 @@ def hash_name(name):
     return sum((i + 1) * ord(c) for i, c in enumerate(name)) + 20261105
 
 
-def write_input(spec, folder, univ):
+def write_input(spec, folder, univ, emax=None):
     """Ecrit l'entree : point de depart volontairement decale de la verite."""
     isdata = [int(bool(spec.get(k))) for k in ("rel", "rv", "rvp")] + [0]
     if not any(isdata):
@@ -146,6 +152,8 @@ def write_input(spec, folder, univ):
     range_p = spec.get("range_p", RANGE_P)
     range_a = RANGE_A if univ else spec.get("range_a", RANGE_A)
     range_e = spec.get("range_e_univ" if univ else "range_e", RANGE_E)
+    if emax is not None:  # Borne superieure de e imposee (test du prior sur e)
+        range_e = (range_e[0], emax)
     if not univ:
         lines.append(f"{range_p[0]} {range_p[1]}")
     lines += [f"{range_a[0]} {range_a[1]}", f"{range_e[0]} {range_e[1]}", "exit", ""]
@@ -201,14 +209,14 @@ def case_folder(name, univ):
     return os.path.join(WORK, name + ("_univ" if univ else "_ellip"))
 
 
-def launch(name, univ, threads, limit, ninfer=None):
+def launch(name, univ, threads, limit, ninfer=None, emax=None):
     spec = SYSTEMS[name]
     folder = case_folder(name, univ)
     if os.path.isdir(folder):
         shutil.rmtree(folder)
     os.makedirs(folder)
     write_data(name, spec, folder)
-    write_input(spec, folder, univ)
+    write_input(spec, folder, univ, emax)
     exe = build(univ, ninfer)
     env = dict(os.environ, OMP_NUM_THREADS=str(threads), STACKSIZE="1000000", GFORTRAN_UNBUFFERED_ALL="1")
     with open(os.path.join(folder, "input.txt")) as stdin, open(os.path.join(folder, "out.txt"), "w") as out:
@@ -349,11 +357,12 @@ def main():
     parser.add_argument("--threads", type=int, default=6)
     parser.add_argument("--limite", type=int, default=3600)
     parser.add_argument("--rapide", action="store_true", help="20 000 orbites au lieu de 400 000 (NINFER = 2500)")
+    parser.add_argument("--emax", type=float, help="borne superieure de e (remplace celle du systeme)")
     args = parser.parse_args()
     if args.action == "liste":
         print("\n".join(SYSTEMS))
     elif args.action == "lance":
-        launch(args.nom, args.univ, args.threads, args.limite, 2500 if args.rapide else None)
+        launch(args.nom, args.univ, args.threads, args.limite, 2500 if args.rapide else None, args.emax)
     else:
         return 0 if analyse(args.nom, args.univ) else 1
     return 0

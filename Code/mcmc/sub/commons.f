@@ -12,6 +12,10 @@ C...  To be included into the module 'DATA' in every version
         INTEGER*4, PARAMETER :: SD = SD0   ! ou SD0
         INTEGER*8, PARAMETER :: VERBFREQ = 100000_8  ! ou 1000_8
         INTEGER*8, PARAMETER :: WRITFREQ = 10000000_8
+c>>> [MOD M017] F3 : fichier provisoire pour suivre le run
+        INTEGER*4, PARAMETER :: NPARTIAL = 1000 ! Recent positions/chain
+        REAL*8, PARAMETER :: TPARTIAL = 300.d0  ! Writing period (s)
+c<<< [MOD M017]
         REAL*8, PARAMETER :: BETAMAX = 1.d10
         REAL*8, PARAMETER :: PI = 3.14159265358979323846d0     
         REAL*8, parameter :: AU = 1.495978707d8  ! (km)      
@@ -35,6 +39,13 @@ c...  (Velocity unit)^(-1) = 1 km/s expressed in AU per DAY
         REAL*8, PARAMETER :: RINF = 1.1d0
         REAL*8, PARAMETER :: TSINF = 1d2
         REAL*8, PARAMETER :: MINPROB = 1.d-1
+c>>> [MOD M015] B12 : chauffe, dispersion des departs des chaines, et
+c    reserve remplie a nouveau une fois la convergence atteinte
+        INTEGER*8, PARAMETER :: NBURN = 1000_8 ! Burn-in (sweeps), no G-R
+        REAL*8, PARAMETER :: KDISP = 2.d0 ! Start offsets, in units of BETA
+        REAL*8, PARAMETER :: KREFILL = 1.d0 ! Refill time / time to conv.
+        LOGICAL :: REFILL = .FALSE. ! True once refill has started
+c<<< [MOD M015]
         REAL*8, PARAMETER :: SIGV0 = 0.1d0*MPS ! Jitter norm = 0.1 km/s
         CHARACTER*80, PARAMETER :: LOGFILE = 'logfile.dat'
         INTEGER*4 :: FREQDUMP     ! Saving frequency

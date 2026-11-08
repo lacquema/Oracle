@@ -564,8 +564,14 @@ C
         REAl*8 ::       PROBINFER,   ! Probability of retaining a model
      &                  DIRS(NPAR,NPAR), ! Directions
      &                  BETA0(NPAR)  ! Scale parameter vector
+c>>> [MOD M018] Commande de renommage
+        CHARACTER*600 :: LINE        ! Command line
+c<<< [MOD M018]
         
-        OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
+c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme
+c    AVANT :         OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
+        OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='UNKNOWN')
+c<<< [MOD M018]
         WRITE(18,*,IOSTAT=ERROR)ISDATA(1:NDATATYP),CORR
         WRITE(18,*,IOSTAT=ERROR)NPAR,NPLA,NPRIOR,JITNUM,
      &                          DATEINPUT,XYFORMAT,CORRNUM
@@ -607,7 +613,15 @@ C
         WRITE(18,*,IOSTAT=ERROR)INFER
         WRITE(18,*,IOSTAT=ERROR)PROBINFER
         WRITE(18,*,IOSTAT=ERROR)COUNTOK
+c>>> [MOD M015] B12 : remplissage apres convergence commence ou non
+        WRITE(18,*,IOSTAT=ERROR)REFILL
+c<<< [MOD M015]
         CLOSE(18)  
+c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme : un run
+c    tue pendant l'ecriture laisse le dump precedent intact
+        LINE = 'mv -f '//TRIM(FILES(2))//'.tmp '//TRIM(FILES(2))
+        CALL SYSTEM(LINE)
+c<<< [MOD M018]
 
         END
 C     
@@ -682,6 +696,9 @@ C
         INTEGER*4 ::    C,I,         ! Indexes
      &                  COUNTOK,     ! Counter
      &                  NMOD               ! Number of models   
+c>>> [MOD M015] B12 : erreur de lecture
+        INTEGER*4 ::    ERROR        ! Error flag
+c<<< [MOD M015]
         INTEGER*8 ::    LONG,
      &                  NGEL         ! Time for Gelman-Rubin
         LOGICAL ::      INFER        ! Inference flag
@@ -705,6 +722,10 @@ C
         READ(18,*)INFER
         READ(18,*)PROBINFER
         READ(18,*)COUNTOK
+c>>> [MOD M015] B12 : absent d'un ancien fichier => remplissage a refaire
+        READ(18,*,IOSTAT=ERROR)REFILL
+        IF (ERROR.NE.0) REFILL = .FALSE.
+c<<< [MOD M015]
         CLOSE(18)        
 
         END
