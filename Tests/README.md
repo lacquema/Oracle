@@ -22,6 +22,7 @@ Chaque test affiché vaut `ECHEC` (à corriger) ou `CONNU` (anomalie listée dan
 | Dérivées | Le gradient du Levenberg-Marquardt correspond-il aux différences finies ? |
 | Éléments | `MRQELEMENTS` redonne-t-il la masse de l'étoile et son erreur ? |
 | Priors | Les priors sur les masses se lisent-ils, écrits comme le fait l'interface ? |
+| Types de priors | Pour chaque type de prior de masse (0, 1, 2, 3, 4 et 6), le MAP (`USER_PRIOR_MAP`), le MCMC (`USER_PRIOR_RATIO`) et le L-M (`FMAP_PRIOR`) donnent-ils la densité voulue, et les masses hors du support (bornes, masse négative) sont-elles refusées ? |
 | Essai réel | Le vrai programme retrouve-t-il la solution de GG Tau ? |
 
 Les tests s'évaluent à paramètres fixés, sans hasard, sauf l'essai réel qui compare à une tolérance large.
@@ -31,6 +32,7 @@ Les tests s'évaluent à paramètres fixés, sans hasard, sauf l'essai réel qui
 - `cases/` : données simulées et entrées, à ne pas régénérer sans raison (`generate_cases.py`, graine fixe).
 - `reference/reference.json` : valeurs du code de départ.
 - `driver.f` : programme qui appelle les vraies routines et imprime leurs résultats.
+- `priors.f` : programme qui appelle directement les trois routines de prior de masse, pour un prior et une liste de masses.
 - `model.py` : modèle indépendant, `cases_definition.py` : définition des cas.
 - `synthetic.py` : systèmes synthétiques lancés avec le vrai programme jusqu'au bout (long, hors de `make test`).
 - `parametrisation/` : comparaison classique, universelle et variante lambda, avec les scripts pour refaire les copies corrigées et les résultats. Voir son `README.md`.

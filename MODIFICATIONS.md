@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B10 | `RATIO_PRIORS` de `kepu.f` (facteur `(Q/QT)*(UPQT/UPQ)`) | Le rapport contient `(q/q')(P/P')` en plus du prior `1/(q·P)` de `COMPUTE_MAP` et du commentaire. Le jacobien du commentaire oublie que les paramètres sont `ln q` et `ln P_q` | Le MCMC universel échantillonne en `1/(q²·P²)` au lieu de `1/(q·P)`. Mesuré exactement par le jacobien numérique. Intention à confirmer avec Hervé. |
 | B11 | `RATIO_PRIORS` des deux versions, boucle sur les priors de masse | Chaque prior ajoute `M'/M` et `m0'/m0`, y compris les priors de masse positive et plusieurs fois pour la même masse. `COMPUTE_MAP` ne les contient pas | Quand les masses sont ajustées, le prior réellement échantillonné diffère de celui qu'indique `COMPUTE_MAP`, et favorise les grandes masses. Sur un run réel à deux orbites, `m0` 0,563 Msun contre 0,536 avec un prior plat sur les masses, estimé par repondération ; orbites externes presque inchangées. Prior voulu à confirmer avec Hervé. |
 | B12 | `GELMAN_RUBIN` (`mcmc.f:347`), départ des chaînes | Les 8 chaînes partent du même point (solution du LM). Au premier calcul, l'écart entre chaînes est quasi nul, donc `r` ≈ 1 et `ts` est énorme : le critère d'inférence (`RINF`, `TSINF`) est atteint avant que les chaînes aient exploré | Constaté le 2026-11-06 sur `rel_vr_planete` en classique (relative + vitesses de la planète, `--rapide`) : inférence dès le premier contrôle dans 5 runs sur 5, avec le code de `a83b9d1` comme après M006. Distributions trop étroites ou asymétriques, `P` entre 1,1 et 3,1 sigma de la vérité selon le run. Même mécanisme probable pour la fausse convergence de `arc_periastre` en universel (`Tests/parametrisation/README.md`). Correction à discuter avec Hervé : départs dispersés, période de chauffe, ou critère sur la seconde moitié des chaînes. |
-| B13 | `USER_PRIOR_MAP` et `USER_PRIOR_RATIO` (`mcmc.f:710-812`), **à vérifier** | Repéré à la lecture le 2026-11-06, non testé : type 3 (linéaire) : rapport toujours égal à 1 et aucun terme dans le MAP, les bornes lues ne semblent servir nulle part ; type 4 (fixe) : gaussienne de largeur relative 1e-3 dans le MAP mais 1e-6 dans le rapport ; type 6 (Heaviside, prior par défaut `MPRIOR(0)`, `io.f:385`) : dans `USER_PRIOR_MAP`, `EX = EXP(X)` avec `X` non initialisé, et `EX` est un argument, donc la masse de l'appelant serait écrasée | Effet non mesuré. Le cas 6 toucherait le MAP de tous les runs ; pourtant `make test` trouve `MAP = χ² + Fmap` cohérent : à comprendre avant de conclure. |
+| B13 | `USER_PRIOR_MAP` et `USER_PRIOR_RATIO` (`mcmc.f`) | Type 0 : rapport du MCMC `ln m / ln m_essai` au lieu de `m / m_essai`. Type 3 : bornes lues mais jamais appliquées. Type 4 : largeur 1e-3 dans le MAP, 1e-6 dans le MCMC et le L-M. Type 6 : dans le MAP, `EX = EXP(X)` avec `X` non initialisé (en pratique 0, donc toute masse remplacée par 1) | **Corrigée par M010.** Le type 3 (« Uniform » de l'interface) ne bornait pas la masse. Le type 6 (masses positives, ajouté automatiquement) laissait le MAP sans pénalité pour une masse négative ; le MCMC n'était pas touché. Type 0 : jamais écrit par l'interface. |
 
 **Fragilité constatée :** un job tué pendant l'écriture de `dump.dat` laisse un fichier illisible à la reprise (`End of file`), car le fichier est écrit sur place.
 
@@ -47,6 +47,20 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² du modèle indépendant dans tous les cas de test. La correction de B1 a été essayée de la même façon, sur le cas simulé relatif + vitesses radiales.
 
 ## Modifications
+
+## M010 — Corrige B13 : priors de masse de types 0, 3, 4 et 6
+
+- **Date :** 2026-11-06
+- **Fichiers :** `Code/mcmc/sub/mcmc.f`, routines `USER_PRIOR_MAP` (trois blocs) et `USER_PRIOR_RATIO` (deux blocs), repérés `M010`. `Code/mcmc/sub/io.f`, routine `ENTER_PRIOR` (un bloc). Interface : `Interface/NewSimu/PriorMass.py` (un bloc). Nouveau test : `Tests/priors.f` et la section « Priors sur les masses » de `Tests/run_tests.py`.
+- **Changement :**
+  - Type 0 (logarithmique, prior en 1/m) : le rapport du MCMC vaut `m / m_essai`. Il valait `ln m / ln m_essai`, qui ne correspond à aucun prior.
+  - Type 3 (uniforme, « Uniform » dans l'interface) : les bornes lues par `ENTER_PRIOR` sont appliquées. Le MCMC refuse une masse hors des bornes (rapport 0) et le MAP la pénalise de 1e30. Le prior reste plat entre les bornes. Le L-M (`FMAP_PRIOR`) n'est pas modifié : il traite toujours ce prior comme une constante, car un mur ne se dérive pas.
+  - Type 4 (fixe) : le MAP utilise la même largeur relative (1e-6) que le MCMC et le L-M. Il utilisait 1e-3.
+  - Interface : l'entrée « Log », qui envoie le type 2 (log-normal), est renommée « Log-normal » pour ne pas être confondue avec le prior logarithmique (type 0). Le type 0 n'est pas ajouté à l'interface : sans prior, ORACLE est déjà à peu près log-uniforme sur la masse dynamique (ln a et ln P plats), et l'effet d'un prior de plus dépend de B11, à discuter avec Hervé. `ENTER_PRIOR` donne maintenant une unité (1) à tout prior : le type 0, écrit à la main, n'en lisait pas et l'unité restait non définie dans les fichiers de sortie.
+  - Type 6 (masses individuelles positives, ajouté automatiquement quand les masses sont ajustées) : la ligne `EX = EXP(X)`, où `X` n'avait pas de valeur, est supprimée. Pour une masse très négative, le terme `-LOG(1+EXP(-S))` est remplacé par son équivalent `S`, pour éviter un `EXP` infini, comme le fait déjà le rapport du MCMC.
+- **Pourquoi :** les types 2, 3 et 4 ne pouvaient pas tourner avant M007 (le programme s'arrêtait à leur lecture), le type 0 n'est pas proposé par l'interface, et l'erreur du type 6 donnait un terme proche de 0 pour des masses positives : aucun n'avait été vérifié en fonctionnement.
+- **Vérification :** nouveau test, pour chaque type : densité attendue dans le MAP, rapport du MCMC égal à `exp(MAP(m') - MAP(m))`, L-M égal à -2 fois le MAP à une constante près, masse non modifiée par le MAP, masses hors support refusées par le MCMC et pénalisées dans le MAP. Avant la correction : échec des types 0, 3, 4 et 6, succès des types 1 et 2. Après : tous passent. Le test de lecture contient aussi un prior de type 0 écrit à la main (le type, sans ligne de paramètres). `make test` : référence inchangée (aucun cas de référence n'utilise ces types).
+- **Effet sur les résultats :** un run avec un prior uniforme borne maintenant vraiment la masse. Un run avec un prior fixe affiche un MAP cohérent avec ce qui est échantillonné. Les runs à masses ajustées affichent un MAP qui pénalise les masses négatives ; leur MCMC ne change pas. Rien ne change pour les priors gaussiens et log-normaux.
 
 ## M009 — Corrige B7 : dérivée des vitesses de la planète dans le LM universel
 

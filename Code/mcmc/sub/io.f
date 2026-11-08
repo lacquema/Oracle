@@ -86,6 +86,9 @@ c        FORMAT((f),a2,(f))
         MPRIOR(IV)%MEAN = 0.d0
         MPRIOR(IV)%SDEV = 0.d0
         MPRIOR(IV)%BOUND = 0.d0
+c>>> [MOD M010] B13 : unite definie aussi pour le type 0 (sans parametre)
+        MPRIOR(IV)%MUNIT = 1.d0
+c<<< [MOD M010]
         WRITE(SD,*)'Prior on masses : Enter list of coefficients'
         WRITE(SD,*)'        a_0*m0+a_1*m1+...+a_n*mn'       
         READ(5,*)MPRIOR(IV)%ACOF(0:NPLA)

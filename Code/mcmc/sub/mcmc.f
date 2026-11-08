@@ -735,17 +735,35 @@ C
              SIGMA = MPRIOR(IV)%SDEV
              S = (X-XBAR)/SIGMA
              FMAP = FMAP-0.5d0*S*S-X
+c>>> [MOD M010] B13 : type 3, masse hors des bornes tres defavorisee
+c    (le rapport du MCMC vaut 0 hors des bornes ; plat entre les bornes)
+c    AVANT : pas de cas 3 (aucun terme, bornes ignorees)
+           CASE (3)    ! Linear (uniform between bounds)
+             IF ((EX.LT.MPRIOR(IV)%BOUND(1)).OR.
+     &           (EX.GT.MPRIOR(IV)%BOUND(2))) FMAP = FMAP-1.d30
+c<<< [MOD M010]
            CASE (4)    ! Fixed value (treated as steep gaussian 0.1%)
              XBAR = MPRIOR(IV)%MEAN
-             SIGMA = 1d-3*XBAR
+c>>> [MOD M010] B13 : type 4, meme largeur que le MCMC et le L-M (1d-6)
+c    AVANT :      SIGMA = 1d-3*XBAR
+             SIGMA = 1d-6*XBAR
+c<<< [MOD M010]
              S = (EX-XBAR)/SIGMA
              FMAP = FMAP-0.5d0*S*S
            CASE (6)    ! Heaviside
-             EX = EXP(X)
+c>>> [MOD M010] B13 : type 6, X n'etait pas initialise et EX etait ecrase.
+c    Pour une masse tres negative, -LOG(1+EXP(-S)) ~ S (evite EXP infini)
+c    AVANT :      EX = EXP(X)
+c    AVANT :      FMAP = FMAP-LOG(1.d0+EXP(-S))
              SIGMA = MPRIOR(IV)%SDEV
              XBAR = MPRIOR(IV)%MEAN
              S = (EX-XBAR)/SIGMA
-             FMAP = FMAP-LOG(1.d0+EXP(-S))
+             IF (S.LT.-1d3) THEN
+                FMAP = FMAP+S
+             ELSE
+                FMAP = FMAP-LOG(1.d0+EXP(-S))
+             END IF
+c<<< [MOD M010]
           END SELECT
         END
 C     
@@ -769,10 +787,13 @@ C
 
         SELECT CASE (MPRIOR(IV)%TYP)
            CASE(0)
-              X = LOG(EX)
-              XTRY = LOG(EXTRY)
-              EXTRY = EXP(XTRY)
-              RAPQ = X/XTRY ! log prior (default)
+c>>> [MOD M010] B13 : type 0, prior en 1/m : rapport m/m_try
+c    AVANT :      X = LOG(EX)
+c    AVANT :      XTRY = LOG(EXTRY)
+c    AVANT :      EXTRY = EXP(XTRY)
+c    AVANT :      RAPQ = X/XTRY ! log prior (default)
+              RAPQ = EX/EXTRY ! log prior (default)
+c<<< [MOD M010]
            CASE (1)                ! Normal (Gaussian) prior
              XBAR = MPRIOR(IV)%MEAN
              SIGMA = MPRIOR(IV)%SDEV
@@ -788,7 +809,15 @@ C
              ST = (XTRY-XBAR)/SIGMA
              RAPQ = EXP(0.5d0*(S*S-ST*ST))*EX/EXTRY
            CASE(3)      ! Linear
-              RAPQ = 1.d0
+c>>> [MOD M010] B13 : type 3, les bornes lues sont appliquees
+c    AVANT :      RAPQ = 1.d0
+              IF ((EXTRY.LT.MPRIOR(IV)%BOUND(1)).OR.
+     &            (EXTRY.GT.MPRIOR(IV)%BOUND(2))) THEN
+                 RAPQ = 0.d0
+              ELSE
+                 RAPQ = 1.d0
+              END IF
+c<<< [MOD M010]
            CASE(4)               ! Fixed
              XBAR = MPRIOR(IV)%MEAN
              SIGMA = XBAR*1d-6

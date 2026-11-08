@@ -39,7 +39,10 @@ class PriorMassClass(QWidget):
             else : self.Layout.addWidget(QLabel('='), alignment=Qt.AlignmentFlag.AlignLeft)
         
 
-        self.Distrib = ComboBox(None, 'Choice of a priori mass combination', ['Distribution', 'Normal', 'Log', 'Linear', 'Fixed'])
+        # >>> [MOD M010] B13 : "Log" est le prior log-normal (type 2 du Fortran), pas le prior logarithmique
+        # AVANT : self.Distrib = ComboBox(None, 'Choice of a priori mass combination', ['Distribution', 'Normal', 'Log', 'Linear', 'Fixed'])
+        self.Distrib = ComboBox(None, 'Choice of a priori mass combination', ['Distribution', 'Normal', 'Log-normal', 'Linear', 'Fixed'])
+        # <<< [MOD M010]
         self.Layout.addWidget(self.Distrib, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.Distrib.ComboParam.currentIndexChanged.connect(self.AddDistribParams)

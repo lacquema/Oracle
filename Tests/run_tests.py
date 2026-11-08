@@ -337,20 +337,115 @@ def test_cases(report, exes, update):
 
 
 def test_priors(report, exes):
-    """Priors log-normal, lineaire et fixe, ecrits comme le fait l'interface."""
+    """Priors log-normal, lineaire et fixe ecrits comme le fait l'interface, et logarithmique ecrit a la main."""
     report.section("Lecture des priors sur les masses")
     folder = os.path.join(TESTS, "cases", "rel_rv")
     with open(os.path.join(folder, "input_ellip.txt")) as f:
         lines = f.read().split("\n")
     position = lines.index("100000000") + 1
-    for kind, values in (("2", "1.0 0.1 ms"), ("3", "0.5 2.0 ms"), ("4", "1.0 ms")):
-        stdin = lines[:position] + ["1", "1 0", kind, values] + lines[position + 1:]
+    # Type 0 (ecrit a la main, pas par l'interface) : aucune ligne de parametres apres le type
+    for kind, values in (("2", ["1.0 0.1 ms"]), ("3", ["0.5 2.0 ms"]), ("4", ["1.0 ms"]), ("0", [])):
+        stdin = lines[:position] + ["1", "1 0", kind, *values] + lines[position + 1:]
         with tempfile.TemporaryDirectory() as tmp:
             shutil.copy(os.path.join(folder, "data.dat"), tmp)
             result = subprocess.run([exes["ellip", "O3"], "1"], input="\n".join(stdin), cwd=tmp,
                                     capture_output=True, text=True, timeout=120)
         message = " ".join(result.stderr.split())[:80]
         report.check(result.returncode == 0, f"prior de type {kind}", message)  # B8 : M007, lecture seule
+
+
+def build_priors():
+    """Compile Tests/priors.f avec les routines courantes (variables classiques)."""
+    folder = os.path.join(BUILD, "priors")
+    os.makedirs(folder, exist_ok=True)
+    base = [GFORTRAN, "-w", "-O0", "-g", "-fcheck=all", "-J", folder, "-I", folder, "-I", SUB]
+    objects = [os.path.join(folder, "priors.o")]
+    quiet([*base, "-c", os.path.join(TESTS, "priors.f"), "-o", objects[0]])
+    for source in COMMON_SOURCES + ["kepellip.f"]:
+        obj = os.path.join(folder, source.replace(".f", ".o"))
+        quiet([*base, "-c", os.path.join(SUB, source), "-o", obj])
+        objects.append(obj)
+    longitude = os.path.join(folder, "longitude.o")
+    quiet([*base, "-c", os.path.join(TESTS, "longitude_ellip.f"), "-o", longitude])
+    objects.append(longitude)
+    exe = os.path.join(folder, "priors")
+    quiet([GFORTRAN, "-w", *objects, "-o", exe])
+    return exe
+
+
+# Anomalies B13 encore presentes, par type de prior (voir MODIFICATIONS.md)
+KNOWN_PRIOR_TYPES = {}
+
+
+def test_prior_types(report):
+    """Les trois routines de prior (MAP, MCMC, L-M) donnent-elles le meme prior ?
+
+    Pour chaque type : le terme du MAP suit la densite voulue, le rapport du
+    MCMC vaut exp(MAP(m') - MAP(m)), le L-M vaut -2 fois le terme du MAP (a une
+    constante pres), la masse donnee a USER_PRIOR_MAP n'est pas modifiee, et
+    les masses hors du support (bornes du type 3, masse negative du type 6)
+    sont refusees par le MCMC et fortement penalisees dans le MAP.
+    """
+    report.section("Priors sur les masses : MAP, MCMC et L-M donnent le même prior")
+    exe = build_priors()
+    tiny = 1e-9
+    # type : (moyenne, ecart-type, bornes, masses dans le support, masses hors support, densite ln p)
+    cases = {
+        0: (0.0, 0.0, (0.0, 0.0), [0.5, 1.0, 2.0], [], lambda m: -math.log(m)),
+        1: (1.0, 0.1, (0.0, 0.0), [0.9, 1.0, 1.2], [], lambda m: -0.5 * ((m - 1.0) / 0.1) ** 2),
+        2: (0.0, 0.1, (0.0, 0.0), [0.9, 1.0, 1.2], [],
+            lambda m: -0.5 * (math.log(m) / 0.1) ** 2 - math.log(m)),
+        3: (0.0, 0.0, (0.5, 2.0), [0.8, 1.5], [0.3, 2.5], lambda m: 0.0),
+        4: (1.0, 0.0, (0.0, 0.0), [1.0, 1.0 + 5e-7, 1.0 - 1e-6], [],
+            lambda m: -0.5 * ((m - 1.0) / 1e-6) ** 2),
+        6: (0.0, tiny, (0.0, 0.0), [1.0, 0.5], [-0.1],
+            lambda m: -math.log1p(math.exp(-m / tiny))),
+    }
+    names = {0: "logarithmique", 1: "gaussien", 2: "log-normal", 3: "uniforme", 4: "fixe", 6: "masses positives"}
+    for kind, (mean, sdev, bounds, inside, outside, lnp) in cases.items():
+        masses = inside + outside
+        stdin = f"{kind} {mean!r} {sdev!r} {bounds[0]!r} {bounds[1]!r}\n{len(masses)}\n" + \
+            " ".join(repr(m) for m in masses) + "\n"
+        result = subprocess.run([exe], input=stdin, capture_output=True, text=True, timeout=60)
+        out = {}
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if parts and parts[0] == "TEST":
+                key = (parts[1], *map(int, parts[2:-1]))
+                out[key] = float(parts[-1])
+        title = f"prior {names[kind]} (type {kind})"
+        known = KNOWN_PRIOR_TYPES.get(kind)
+        if result.returncode or not out:
+            report.check(False, f"{title} : exécution", " ".join(result.stderr.split())[:100])
+            continue
+        n_in = len(inside)
+        bad = []
+        # Masse inchangee par USER_PRIOR_MAP
+        for i, m in enumerate(masses, 1):
+            if out["EX", i] != m:
+                bad.append(f"masse {m} modifiée en {out['EX', i]:.3g} par le MAP")
+        # Densite, rapport et L-M dans le support
+        for i in range(1, n_in + 1):
+            for j in range(1, n_in + 1):
+                expected = lnp(masses[j - 1]) - lnp(masses[i - 1])
+                dmap = out["MAP", j] - out["MAP", i]
+                ratio = out["RAT", i, j]
+                if abs(dmap - expected) > 1e-6 * max(1.0, abs(expected)):
+                    bad.append(f"MAP {masses[i-1]}→{masses[j-1]} : {dmap:.6g} au lieu de {expected:.6g}")
+                if ratio <= 0 or abs(math.log(ratio) - expected) > 1e-6 * max(1.0, abs(expected)):
+                    bad.append(f"rapport MCMC {masses[i-1]}→{masses[j-1]} : {ratio:.6g} au lieu de "
+                               f"{math.exp(expected):.6g}")
+                dlm = -0.5 * (out["LM", j] - out["LM", i])
+                if abs(dlm - expected) > 1e-6 * max(1.0, abs(expected)):
+                    bad.append(f"L-M {masses[i-1]}→{masses[j-1]} : {dlm:.6g} au lieu de {expected:.6g}")
+        # Hors du support : refus du MCMC, forte penalite dans le MAP
+        for j in range(n_in + 1, len(masses) + 1):
+            if out["RAT", 1, j] != 0.0:
+                bad.append(f"masse {masses[j-1]} hors support acceptée par le MCMC (rapport {out['RAT', 1, j]:.3g})")
+            gap = out["MAP", j] - out["MAP", 1]
+            if not (gap < -1e3 and math.isfinite(out["MAP", j])):
+                bad.append(f"masse {masses[j-1]} hors support : MAP {gap:.3g} par rapport au support")
+        report.check(not bad, title, "; ".join(bad[:3]), known=known)
 
 
 def test_prior_mstar(report, exes):
@@ -437,6 +532,7 @@ def main():
     test_journal(report)
     test_cases(report, exes, update)
     test_priors(report, exes)
+    test_prior_types(report)
     test_prior_mstar(report, exes)
     test_smoke(report)
     c = report.counts
