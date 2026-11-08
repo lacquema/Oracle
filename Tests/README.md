@@ -23,9 +23,9 @@ Chaque test affiché vaut `ECHEC` (à corriger) ou `CONNU` (anomalie listée dan
 | Éléments | `MRQELEMENTS` redonne-t-il la masse de l'étoile et son erreur ? |
 | Priors | Les priors sur les masses se lisent-ils, écrits comme le fait l'interface ? |
 | Types de priors | Pour chaque type de prior de masse (0, 1, 2, 3, 4 et 6), le MAP (`USER_PRIOR_MAP`), le MCMC (`USER_PRIOR_RATIO`) et le L-M (`FMAP_PRIOR`) donnent-ils la densité voulue, et les masses hors du support (bornes, masse négative) sont-elles refusées ? |
-| Essai réel | Le vrai programme retrouve-t-il la solution de GG Tau ? |
+| Essai réel | Le vrai programme retrouve-t-il la solution de GG Tau ? (relancé jusqu'à trois fois : le L-M dépend du hasard, voir B14) |
 
-Les tests s'évaluent à paramètres fixés, sans hasard, sauf l'essai réel qui compare à une tolérance large.
+Les tests s'évaluent à paramètres fixés, sans hasard, sauf l'essai réel qui compare à une tolérance large et peut tomber, environ une fois sur cent, dans un autre minimum (B14).
 
 ## Les fichiers
 
