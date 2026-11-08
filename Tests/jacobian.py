@@ -132,20 +132,6 @@ def scales(p, npla, version):
 def known_prior_gap(point, base, npla, version, multipla, user_prior_star):
     """Ecart deja identifie entre RATIO_PRIORS et COMPUTE_MAP + jacobien.
 
-    Version universelle : B10 corrigee par M011, plus d'ecart.
-    Masses ajustees (B11) : un facteur M'/M ou m0'/m0 par prior concerne, moins
-    le m0'/m0 deja compte dans le jacobien de ln(m0).
+    B10 corrigee par M011, B11 par M013 : plus aucun ecart attendu.
     """
-    a, b = scales(point, npla, version), scales(base, npla, version)
-    gap = 0.0
-    if multipla:
-        dm0 = point[-1] - base[-1]
-        dmass = [a[k][2] - b[k][2] for k in range(npla)]
-        # Priors de masse positive : m0, puis M1 - m0, M2 - M1, etc.
-        count_m0 = 2
-        gap += (count_m0 - 1) * dm0 + dmass[0]
-        for k in range(1, npla):
-            gap += dmass[k - 1] + dmass[k]
-        if user_prior_star:
-            gap += dm0
-    return gap
+    return 0.0

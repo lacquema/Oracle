@@ -37,9 +37,11 @@ S'y ajoutent deux effets :
 - **A. « Remplacer »** (l'intention du commentaire) : garder un seul facteur `M'/M` par masse et par prior utilisateur, pas pour le type 6, et ajouter le terme `+ln M` correspondant dans `COMPUTE_MAP` pour que le MAP décrive le même prior.
 - **B. « Multiplier »** (ce que fait `COMPUTE_MAP`) : supprimer les facteurs `M'/M` et `m0'/m0` de `RATIO_PRIORS`. Le rapport est alors cohérent avec le MAP, sans autre changement.
 
-**Je penche pour B.** C'est le comportement le plus simple à expliquer à l'utilisateur : « le prior que vous donnez s'ajoute aux priors par défaut ». La correction est petite, et `make test` la vérifie directement. A se défend aussi, mais elle est plus délicate quand plusieurs priors portent sur des combinaisons de masses différentes : « remplacer » le prior par défaut n'y est plus bien défini.
+**Décision prise : B, « multiplier » (M013, 2026-11-08).** Les facteurs `M'/M` et `m0'/m0` sont retirés du rapport. Un seul `m0'/m0` reste, explicitement : c'est le jacobien de `ln m0` pour un prior plat en `m0`, comme dans `COMPUTE_MAP`. Le rapport du MCMC suit maintenant exactement `COMPUTE_MAP` et le jacobien dans les 22 cas de `make test`.
 
-**Question.** Quel prior voulais-tu : A ou B ? Si A, comment le définir avec plusieurs priors sur des combinaisons différentes ?
+Raisons : c'est le seul choix bien défini quand plusieurs priors portent sur des combinaisons de masses différentes (« remplacer » le prior par défaut n'y a plus de sens clair), et il se dit simplement : « les priors de l'utilisateur s'ajoutent aux priors par défaut ». Avec un prior étroit, A et B donnent presque le même résultat ; la différence compte pour les priors larges.
+
+**Question.** Voulais-tu A ? Si oui, comment le définir avec plusieurs priors sur des combinaisons différentes ? Et le prior plat en `m0` (rien dans `COMPUTE_MAP`) est-il voulu, ou faudrait-il un prior logarithmique en `m0` comme pour les masses dynamiques ?
 
 ## B12 — Fausse convergence de Gelman-Rubin au départ
 

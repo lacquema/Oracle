@@ -308,9 +308,9 @@ def test_cases(report, exes, update):
                 bad_exact.append(f"point {k}: {value:.6f} / {expected:.6f}")
             if abs(value - expected - gap) > TOL_PRIOR * 0.1:
                 bad_known.append(f"point {k}: écart {value - expected:.6f} / identifié {gap:.6f}")
-        codes = "+".join(c for c, on in (("B11", res["multipla"]),) if on)  # B10 corrigee par M011
+        codes = None  # B10 corrigee par M011, B11 par M013
         report.check(not bad_known, f"rapport des priors, écart expliqué {label}", "; ".join(bad_known[:2]))
-        report.check(not bad_exact, f"rapport des priors {label}", "; ".join(bad_exact[:1]), known=codes or None)
+        report.check(not bad_exact, f"rapport des priors {label}", "; ".join(bad_exact[:1]), known=codes)
 
     report.section("Dérivées du Levenberg-Marquardt contre différences finies")
     for label, res in sorted(usable.items()):

@@ -939,13 +939,23 @@ c                                      *m'_0/m_0 (if concerned)
 c           print*,'jj',j,sngl(muf),sngl(muft)
            CALL USER_PRIOR_RATIO(J,FAC,MUF,MUFT)
            RAPQ = RAPQ*FAC
-           DO I = 1,NPLA
-              IF (MPRIOR(J)%BCOF(I).NE.0.d0)
-     &              RAPQ = RAPQ*(MTOTT(I)/MTOT(I))
-           END DO
-           IF (MULTIPLA.AND.MPRIOR(J)%BCOF(0).NE.0.d0)
-     &              RAPQ = RAPQ*(MSTART/MSTAR)      
+c>>> [MOD M013] B11 : le prior de masse multiplie les priors par defaut,
+c    comme dans COMPUTE_MAP : plus de facteurs M'/M ni m0'/m0 par prior
+c    (ils etaient aussi appliques aux priors de masse positive, type 6,
+c    et comptes plusieurs fois pour une meme masse)
+c    AVANT :      DO I = 1,NPLA
+c    AVANT :         IF (MPRIOR(J)%BCOF(I).NE.0.d0)
+c    AVANT :     &              RAPQ = RAPQ*(MTOTT(I)/MTOT(I))
+c    AVANT :      END DO
+c    AVANT :      IF (MULTIPLA.AND.MPRIOR(J)%BCOF(0).NE.0.d0)
+c    AVANT :     &              RAPQ = RAPQ*(MSTART/MSTAR)      
+c<<< [MOD M013]
         END DO
+c>>> [MOD M013] B11 : jacobien de ln(m0) (prior plat en m0, comme
+c    COMPUTE_MAP), compte une seule fois. Il etait apporte avant par le
+c    facteur m0'/m0 du prior de masse positive sur m0.
+        IF (MULTIPLA) RAPQ = RAPQ*(MSTART/MSTAR)
+c<<< [MOD M013]
        
         IF (ISDATA(2).AND.(JITNUM.EQ.1)) THEN
 c...  Contribution of velocity Jitter
