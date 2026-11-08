@@ -52,8 +52,18 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | Code | Fonctionnalité | Pourquoi |
 |---|---|---|
 | F1 | Vitesses radiales absolues pour l'étoile **et** pour les compagnons : un seul type de donnée avec une colonne « corps » (0 pour l'étoile, k pour le compagnon k) et la vitesse systémique `v0` commune. L'actuel type 2 en est le cas « étoile seule » ; un ancien fichier sans colonne « corps » reste lu comme des vitesses de l'étoile. Le type 3 (vitesses relatives compagnon moins étoile) reste inchangé. | L'amplitude absolue d'un compagnon vaut `K_p = (2π/P)·m⋆/(m⋆+m_p)·a sin i/√(1−e²)` : elle dépend du rapport des masses, contrairement à la vitesse relative. Avec l'étoile et le compagnon mesurés en absolu, `K⋆/K_p = m_p/m⋆`. Demandé par Antoine (2026-11-08). Le manuscrit décrit déjà les deux formes (`observations.tex`), alors que le code ne gère que la forme relative pour les compagnons. |
+| F2 | Interface d'analyse : pouvoir choisir l'orbite représentative entre le meilleur χ² (actuel, `BestOrbit.py`) et le MAP (déjà lu par `TransferData.py`, jamais utilisé), ou afficher les deux. | Le meilleur χ² ignore les priors ; le MAP en tient compte, ce qui compte avec un prior informatif (par exemple une masse serrée). Depuis M010, M011 et M013, le MAP décrit bien le prior échantillonné par le MCMC. Amélioration secondaire : les résultats restent les distributions. Proposé le 2026-11-08. |
 
 ## Modifications
+
+## M014 — Prior logarithmique par défaut sur la masse de l'étoile
+
+- **Date :** 2026-11-08
+- **Fichiers :** `Code/mcmc/sub/kepellip.f` et `Code/mcmc/sub/kepu.f` : `COMPUTE_MAP`, `RATIO_PRIORS` et `MRQMAPASTROM` (un bloc repéré `M014` dans chacune, dans les deux fichiers). Le bloc de `RATIO_PRIORS` remplace le second bloc de M013. `Tests/reference/reference.json` refait.
+- **Changement :** quand `m0` est ajustée (`MULTIPLA`), son prior par défaut est maintenant logarithmique (`1/m0`) au lieu de plat. `COMPUTE_MAP` ajoute `-ln m0`. Le L-M (`MRQMAPASTROM`, où `FMAP = -2 ln prior`) ajoute `+2 ln m0` et sa dérivée `2` par rapport à `ln m0`. Le MCMC n'a plus de facteur `m0'/m0` : un prior logarithmique en `m0` est plat en `ln m0`, son paramètre.
+- **Pourquoi :** `m0` est une grandeur d'échelle, comme `a`, `P`, `q` et `P_q`, qui ont toutes un prior logarithmique dans ORACLE. Le prior plat en `m0` (aucun terme dans `COMPUTE_MAP`) était la seule exception et favorisait les grandes masses. Choix d'Antoine (2026-11-08), à présenter à Hervé : c'est un changement de convention, pas la correction d'une erreur.
+- **Vérification :** `make test` : le rapport du MCMC suit toujours exactement `COMPUTE_MAP` et le jacobien dans les 22 cas, le gradient du L-M suit les différences finies, et `MAP = χ² + Fmap` est vérifié. La référence a été refaite : dans les 11 cas où `m0` est ajustée, le MAP augmente de 8,105645 et le critère du L-M baisse de 16,211290, soit exactement `-ln m0` et `2 ln m0` pour `m0` = 1,02 Msun en unités internes. Les χ² ne changent pas. Les autres différences de la référence (cas universels) sont des arrondis de 1e-16 à 1e-13 en relatif, venus de M011 (calcul de `s` à partir de `λ`), très en dessous de la tolérance de 1e-10.
+- **Effet sur les résultats :** les runs où `m0` est ajustée sans prior de l'utilisateur la favorisent un peu moins grande qu'avant. L'effet est faible quand `m0` est bien contrainte par les données ou par un prior. Les valeurs de MAP affichées pour ces runs sont décalées d'une constante (`-ln m0` varie peu). Rien ne change pour les runs à une orbite sans vitesses de l'étoile.
 
 ## M013 — Corrige B11 : le prior de masse multiplie les priors par défaut, dans le MCMC comme dans le MAP
 

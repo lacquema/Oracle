@@ -41,7 +41,7 @@ S'y ajoutent deux effets :
 
 Raisons : c'est le seul choix bien défini quand plusieurs priors portent sur des combinaisons de masses différentes (« remplacer » le prior par défaut n'y a plus de sens clair), et il se dit simplement : « les priors de l'utilisateur s'ajoutent aux priors par défaut ». Avec un prior étroit, A et B donnent presque le même résultat ; la différence compte pour les priors larges.
 
-**Question.** Voulais-tu A ? Si oui, comment le définir avec plusieurs priors sur des combinaisons différentes ? Et le prior plat en `m0` (rien dans `COMPUTE_MAP`) est-il voulu, ou faudrait-il un prior logarithmique en `m0` comme pour les masses dynamiques ?
+**Question.** Voulais-tu A ? Si oui, comment le définir avec plusieurs priors sur des combinaisons différentes ? Et le prior par défaut sur `m0` : il était plat (rien dans `COMPUTE_MAP`). **Décision prise : logarithmique (M014)**, comme pour `a`, `P`, `q` et `P_q`, puisque `m0` est aussi une grandeur d'échelle. Es-tu d'accord ?
 
 ## B12 — Fausse convergence de Gelman-Rubin au départ
 

@@ -498,6 +498,10 @@ c...     MAP = exp(-Chi2/2)
 
         FMAP = -0.5d0*CHI2
         IF (MULTIPLA) MSTAR = EXP(P(NPAR))
+c>>> [MOD M014] Prior logarithmique par defaut sur m0 (1/m0), comme
+c    pour les autres grandeurs d'echelle (a ou q, P ou Pq)
+        IF (MULTIPLA) FMAP = FMAP-P(NPAR) ! *1/m0 -> -ln(m0)
+c<<< [MOD M014]
         DO I = 1,NPLA
           DKAL = NEL*(I-1)
           P1 = P(DKAL+1)
@@ -951,11 +955,10 @@ c    AVANT :      IF (MULTIPLA.AND.MPRIOR(J)%BCOF(0).NE.0.d0)
 c    AVANT :     &              RAPQ = RAPQ*(MSTART/MSTAR)      
 c<<< [MOD M013]
         END DO
-c>>> [MOD M013] B11 : jacobien de ln(m0) (prior plat en m0, comme
-c    COMPUTE_MAP), compte une seule fois. Il etait apporte avant par le
-c    facteur m0'/m0 du prior de masse positive sur m0.
-        IF (MULTIPLA) RAPQ = RAPQ*(MSTART/MSTAR)
-c<<< [MOD M013]
+c>>> [MOD M014] Prior logarithmique sur m0 : plat en ln(m0), le parametre
+c    du MCMC, donc aucun facteur (avec M013, prior plat en m0 : m0'/m0)
+c    AVANT :      IF (MULTIPLA) RAPQ = RAPQ*(MSTART/MSTAR)
+c<<< [MOD M014]
        
         IF (ISDATA(2).AND.(JITNUM.EQ.1)) THEN
 c...  Contribution of velocity Jitter
@@ -2543,6 +2546,13 @@ c
         ALLOCATE(DLMUF(N))
         ALLOCATE(D2LMUF(N,N))
         IF (MULTIPLA) MSTAR = EXP(P(N))
+c>>> [MOD M014] Prior logarithmique par defaut sur m0 : -2*ln(1/m0)
+c    = +2*ln(m0) = +2*P(N), derivee 2 par rapport a P(N)
+        IF (MULTIPLA) THEN
+           FMAP = FMAP+2.d0*P(N)
+           DFMAP(N) = DFMAP(N)+2.d0
+        END IF
+c<<< [MOD M014]
 
         DO I = 1,NPLA
           IM = NEL*(I-1)
