@@ -53,6 +53,7 @@ c    n'est plus utilise). Seuil : Vehtari et al. 2021, Bayesian Anal.
 c    16, 667 (R < 1,01 et ESS > 400). Moyennes de lots de taille
 c    sqrt(n) : Flegal & Jones 2010, Ann. Stat. 38, 1034.
         REAL*8, PARAMETER :: ESSMIN = 400.d0 ! Min. effective sample size
+        REAL*8, PARAMETER :: PESSMIN = 1.d-2 ! Min. prob. for ESS refill
 c<<< [MOD M019]
         REAL*8, PARAMETER :: SIGV0 = 0.1d0*MPS ! Jitter norm = 0.1 km/s
         CHARACTER*80, PARAMETER :: LOGFILE = 'logfile.dat'

@@ -1188,17 +1188,18 @@ c...  A chain that does not move counts for 1.
            ESSM = MIN(ESSM,ESS)
         END DO
 
-c...  Too low : sampling probability lowered (aiming at twice ESSMIN)
-c...  and reserve refilled. Accepted with a warning if already minimal.
+c...  Too low : sampling probability lowered (aiming at twice ESSMIN),
+c...  below MINPROB if needed, and reserve refilled. Accepted with a
+c...  warning if already at PESSMIN (chains that hardly move).
 
         IF (ESSM.GE.ESSMIN) THEN
            WRITE(SD,*)'Effective sample size ok : ',sngl(essm)
-        ELSE IF (PROBINFER.LE.MINPROB) THEN
+        ELSE IF (PROBINFER.LE.PESSMIN) THEN
            WRITE(SD,*)'Warning : effective sample size ',sngl(essm),
      &          ' below ',sngl(essmin),', minimal sampling probability'
         ELSE
            PROBINFER = MAX(MIN(PROBINFER,1.d0)*ESSM/(2.d0*ESSMIN),
-     &          MINPROB)
+     &          PESSMIN)
            NMOD = 0
            WRITE(SD,*)'Effective sample size ',sngl(essm),
      &          ' too low, models refilled, sampling probability = ',
