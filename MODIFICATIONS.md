@@ -58,6 +58,31 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M019 — Arrêt sur le nombre de tirages indépendants (ESS) au lieu de TS
+
+- **Date :** 2026-11-09
+- **Fichiers :** `Code/mcmc/sub/commons.f` (constante `ESSMIN`), `Code/mcmc/sub/mcmc.f` (`GELMAN_RUBIN` : critère de convergence, appel à la fin du second remplissage ; nouvelle routine `ESS_RESERVE` en fin de fichier).
+- **Changement :**
+  1. **Convergence sur R seul** : `OK` demande R < `RCONV` = 1,01 pour chaque paramètre, sans `TS` > `TSCONV` (constante gardée, plus utilisée). `TS` reste affiché dans `out.txt`. Le critère d'inférence (`RINF`, `TSINF`) ne change pas.
+  2. **ESS de la réserve** : quand le second remplissage de M015 remplit la réserve, `ESS_RESERVE` calcule pour chaque paramètre d'ajustement le nombre de tirages indépendants, par moyennes de lots : pour chaque chaîne, `n` = `NINFER` solutions gardées dans l'ordre, lots de taille `sqrt(n)`, temps d'autocorrélation `τ = taille × variance des moyennes de lots / variance`, ESS = somme sur les chaînes de `n/τ`. Une chaîne immobile compte pour 1. Les ESS sont écrits dans `out.txt`.
+  3. Si le plus petit ESS atteint `ESSMIN` = 400, le run s'arrête comme avant (réserve pleine et 5 contrôles convergés de suite). Sinon, la probabilité de récolte est abaissée pour viser 2 × `ESSMIN` (`p ← min(p, 1) × ESS / (2 × ESSMIN)`, au moins `MINPROB`) et la réserve est remplie à nouveau (`NMOD` = 0). Si la probabilité est déjà à `MINPROB`, l'échantillon est gardé avec un avertissement. La probabilité baisse au moins de moitié à chaque nouveau remplissage, donc la boucle se termine.
+- **Références :**
+  - R : Gelman & Rubin 1992, *Stat. Sci.* 7, 457 (statistique déjà utilisée par Hervé).
+  - TS : Ford 2006, *ApJ* 642, 505 (`Tz`, aussi utilisé par RadVel avec un seuil de 1 000).
+  - Seuils R < 1,01 et ESS > 400 : Vehtari, Gelman, Simpson, Carpenter & Bürkner 2021, *Bayesian Anal.* 16, 667.
+  - Moyennes de lots de taille `sqrt(n)` : Flegal & Jones 2010, *Ann. Stat.* 38, 1034.
+- **Pourquoi :**
+  - Avec les formules de `GELMAN_RUBIN`, `TS` ≈ `NCH`/(R² − 1) : avec 8 chaînes, `TS` > 1 000 revient à R < 1,004. C'était le vrai critère d'arrêt (GG Tau : environ 300 millions de pas, 30 % du run, entre R < 1,01 et l'arrêt).
+  - `TS` mesure l'écart entre chaînes, pas la qualité de l'échantillon gardé. Celle-ci dépend de la durée du second remplissage, et l'ESS la mesure directement.
+  - Test sans `TS` (`TSCONV` = 0, `arc_court`, 2 runs, 2026-11-09) : mêmes distributions qu'avec `TS` et qu'avec un remplissage 4 fois plus long (écarts < 0,05 σ). ESS minimal de 700 à 1 000 (Ω, ω), contre 1 300 avec `TS` et 14 500 avec le facteur 4.
+- **Vérification (2026-11-09, `Tests/build_synthetic/ess/`, `--rapide`) :**
+  - `arc_court`, 2 runs : ESS minimal 2 034 et 1 728, arrêt au premier remplissage. Distributions identiques aux runs précédents (tous les paramètres à moins de 1,4 σ de la vérité, écarts entre runs < 0,05 σ).
+  - `rel_vr_planete` : ESS minimal 18 079, vérité retrouvée (moins de 1,8 σ, comme pour M015).
+  - `arc_court` avec `ESSMIN` monté à 3 000 : premier ESS 2 165, donc nouveau remplissage à la probabilité 0,36 ; ESS final 7 925, même distribution.
+  - Comparaison avec un calcul indépendant en Python (somme de Geyer) sur les éléments physiques : même ordre de grandeur. Le calcul du Fortran porte sur les paramètres d'ajustement : il donne environ 20 % de plus pour Ω et ω, qui y sont mélangés à d'autres quantités.
+  - `make test` passe.
+- **Effet sur les résultats :** arrêt plus tôt quand l'échantillon est déjà assez riche ; remplissage plus long, avec une récolte plus espacée, quand il ne l'est pas. Choix de méthode à présenter à Hervé.
+
 ## M018 — `dump.dat` écrit sous un nom temporaire puis renommé
 
 - **Date :** 2026-11-08

@@ -436,8 +436,14 @@ C
      &                  R,W,B,VARP,TS,     ! TEsts for Gelman-Rubin
      &                  RR,RS,          ! Random number
      &                  MOYY(NPAR)         ! Global mean over chains
+c>>> [MOD M019] reserve remplie a ce controle
+        LOGICAL ::      FULL         ! True if refill just completed
+c<<< [MOD M019]
       
         OK = .TRUE.
+c>>> [MOD M019]
+        FULL = .FALSE.
+c<<< [MOD M019]
         VERBOSE = (MOD(LONG,VERBFREQ).LT.2)
         INFCRIT = .TRUE.
         DO IU = 1,NPAR
@@ -458,7 +464,13 @@ C
            R = SQRT(VARP/W)  ! Gelman-Rubin Criterion
            TS = LONG*NCH*MIN(VARP/B,1.d0)
            IF (VERBOSE) WRITE(SD,*)iu,'r',sngl(r),'ts',sngl(ts)
-           OK = OK.AND.((R.LT.RCONV).AND.(TS.GT.TSCONV))
+c>>> [MOD M019] convergence sur R seul (Gelman & Rubin 1992, Stat. Sci.
+c    7, 457). TS (Ford 2006, ApJ 642, 505) vaut environ NCH/(R**2-1) :
+c    TS > 1000 revenait a R < 1,004 sans mesurer l'echantillon garde.
+c    La qualite de l'echantillon est controlee par ESS_RESERVE.
+c    AVANT :           OK = OK.AND.((R.LT.RCONV).AND.(TS.GT.TSCONV))
+           OK = OK.AND.(R.LT.RCONV)
+c<<< [MOD M019]
            INFCRIT = INFCRIT.AND.((R.LT.RINF).AND.(TS.GT.TSINF))
         END DO
         IF (VERBOSE) THEN
@@ -501,6 +513,9 @@ c...  Inférence quand le critère est atteint
                     I = NMOD
                     if (mod(nmod,1000).eq.0)
      &                    WRITE(SD,*)'modele ',nmod
+c>>> [MOD M019] reserve pleine a la fin du second remplissage
+                    FULL = (REFILL.AND.(NMOD.EQ.NMAX))
+c<<< [MOD M019]
                  ELSE
                     CALL RANDOM_NUMBER(RS)
                     I = FLOOR(RS*NINFER)*NCH+C
@@ -512,6 +527,9 @@ c>>> [MOD M017] F3 : nombre de solutions gardees, pour le fichier provisoire
                  NHARV = NHARV+1_8
 c<<< [MOD M017]
               END DO
+c>>> [MOD M019] ESS de la reserve ; si trop faible, nouveau remplissage
+              IF (FULL) CALL ESS_RESERVE(PROBINFER,NMOD)
+c<<< [MOD M019]
            END IF
            IF ((MOD(LONG,WRITFREQ).LT.10).AND.(NMOD.EQ.NMAX)) THEN
               WRITE(SD,*)'Creating an output file...'
@@ -1112,3 +1130,80 @@ c...  sees a file being written
 
         END
 c<<< [MOD M017]
+c>>> [MOD M019] ESS de la reserve, a la fin du second remplissage
+C     
+C -----------------------------------------------------------------------------
+C       Effective sample size of the reserve (batch means)
+C -----------------------------------------------------------------------------
+C
+        SUBROUTINE ESS_RESERVE(PROBINFER,NMOD)
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    NMOD         ! # of models
+        REAL*8 ::       PROBINFER    ! Probability of retaining a model
+        INTEGER*4 ::    C,I,J,IU,    ! Indexes
+     &                  NB,          ! Batch size
+     &                  NA,          ! # of batches
+     &                  N            ! # of values used per chain
+        REAL*8 ::       X(NINFER),   ! Successive values in one chain
+     &                  XM,S2,       ! Mean & variance in one chain
+     &                  BM,VBM,      ! Batch mean & variance of those
+     &                  TAU,         ! Integrated autocorrelation time
+     &                  ESS,         ! ESS of one parameter
+     &                  ESSM         ! Minimum ESS over parameters
+
+c...  Slot (J-1)*NCH+C holds the J-th model kept from chain C (refill
+c...  done in order). ESS = sum over chains of N/TAU, TAU = NB*VBM/S2.
+c...  A chain that does not move counts for 1.
+
+        NB = INT(SQRT(DBLE(NINFER)))
+        NA = NINFER/NB
+        N = NA*NB
+        ESSM = HUGE(1.d0)
+        DO IU = 1,NPAR
+           ESS = 0.d0
+           DO C = 1,NCH
+              DO J = 1,N
+                 X(J) = PSAV(IU,(J-1)*NCH+C)
+              END DO
+              XM = SUM(X(1:N))/N
+              S2 = SUM((X(1:N)-XM)**2)/(N-1)
+              VBM = 0.d0
+              DO I = 1,NA
+                 BM = SUM(X((I-1)*NB+1:I*NB))/NB
+                 VBM = VBM+(BM-XM)**2
+              END DO
+              VBM = VBM/(NA-1)
+              IF (S2.GT.0.d0) THEN
+                 TAU = MAX(NB*VBM/S2,1.d0)
+              ELSE
+                 TAU = DBLE(N)
+              END IF
+              ESS = ESS+N/TAU
+           END DO
+           WRITE(SD,*)iu,'ess',sngl(ess)
+           ESSM = MIN(ESSM,ESS)
+        END DO
+
+c...  Too low : sampling probability lowered (aiming at twice ESSMIN)
+c...  and reserve refilled. Accepted with a warning if already minimal.
+
+        IF (ESSM.GE.ESSMIN) THEN
+           WRITE(SD,*)'Effective sample size ok : ',sngl(essm)
+        ELSE IF (PROBINFER.LE.MINPROB) THEN
+           WRITE(SD,*)'Warning : effective sample size ',sngl(essm),
+     &          ' below ',sngl(essmin),', minimal sampling probability'
+        ELSE
+           PROBINFER = MAX(MIN(PROBINFER,1.d0)*ESSM/(2.d0*ESSMIN),
+     &          MINPROB)
+           NMOD = 0
+           WRITE(SD,*)'Effective sample size ',sngl(essm),
+     &          ' too low, models refilled, sampling probability = ',
+     &          probinfer
+        END IF
+
+        END
+c<<< [MOD M019]

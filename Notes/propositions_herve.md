@@ -67,6 +67,23 @@ Pourquoi le second remplissage : avec le remplacement aléatoire, ajouter `NMAX`
 
 **Questions.** Les départs identiques étaient-ils voulus, par exemple pour éviter de partir dans un mauvais minimum ? Quelle dispersion jugerais-tu raisonnable ? Pourquoi le remplacement aléatoire dans la réserve plutôt que des positions à intervalle régulier : était-ce pour la mémoire, ou pour une autre raison ? D'accord avec un second remplissage en un temps égal au temps de convergence, plutôt que 4 fois ? Faut-il garder l'écriture de `results.dat.gz` tous les 10 millions de pas, maintenant que le fichier provisoire `xxx_partial.dat.gz` (M017) suit le run dès le début ?
 
+## Critère d'arrêt : TS remplacé par l'ESS de l'échantillon gardé (M019)
+
+**Constat.** Avec les formules de `GELMAN_RUBIN`, `TS = LONG·NCH·min(VARP/B, 1)` vaut environ `NCH/(R² − 1)`. Avec 8 chaînes, `TS` > 1 000 revient à R < 1,004 : c'était le vrai critère d'arrêt, plus strict que `RCONV`. Sur GG Tau, environ 300 millions de pas (30 % du run) se sont écoulés entre R < 1,01 et l'arrêt. Et `TS` mesure l'écart entre chaînes, pas la qualité de l'échantillon gardé.
+
+**Mesures (2026-11-09, `arc_court`, `--rapide`).**
+- Mêmes distributions, à 0,05 σ près, avec `TS`, sans `TS` (2 runs), et avec un second remplissage 4 fois plus long.
+- Tirages indépendants (ESS) dans l'échantillon final : minimum 700 à 1 000 sans `TS`, 1 300 avec, 14 500 avec le facteur 4. C'est la durée du second remplissage qui fixe l'ESS, pas `TS`.
+
+**Décision prise (M019).**
+- La convergence demande R < 1,01 seulement (Gelman & Rubin 1992).
+- À la fin du second remplissage, l'ESS de chaque paramètre est calculé sur la réserve, par moyennes de lots (Flegal & Jones 2010).
+- Si le plus petit ESS atteint 400 (seuil de Vehtari et al. 2021, avec R̂ < 1,01), le run s'arrête. Sinon, la réserve est remplie à nouveau avec une récolte plus espacée.
+
+**Questions.**
+- Pourquoi `TS` (Ford 2006) plutôt que R seul : as-tu vu des cas où R < 1,01 ne suffisait pas ?
+- Le seuil de 400 te paraît-il suffisant pour nos usages (intervalles à 68 et 95 %) ?
+
 ## B14, pour mémoire
 
 La graine du générateur aléatoire n'est jamais fixée : deux lancements identiques ne donnent pas le même résultat, et le LM lui-même en dépend (redémarrages au hasard de `MRQRENEW`). Préfères-tu une graine fixe, une graine donnée en entrée, ou une graine tirée puis écrite dans la sortie pour pouvoir refaire un run ?
@@ -76,6 +93,6 @@ La graine du générateur aléatoire n'est jamais fixée : deux lancements ident
 Relevées le 2026-11-08 en relisant les priors. Le code les applique de façon cohérente ; la question est seulement de savoir si ce sont les bons choix.
 
 1. **Prior sur e en version universelle.** `COMPUTE_MAP` n'a pas de terme en `e` : le prior est uniforme en `e` jusqu'à la borne donnée par l'utilisateur. Si cette borne dépasse 1, la part a priori d'orbites hyperboliques dépend de ce choix arbitraire (un tiers pour une borne à 1,5, la moitié pour 2). Testé le 2026-11-08 sur deux arcs autour d'un périastre à e = 0,98 (2 ans, puis 1 an avec 8 points) : bornes 1,5 et 3, mêmes résultats (36 % puis environ 50 % d'hyperboles, vérité retrouvée). Les données y contraignent assez e pour que la borne ne joue pas. Elle ne compterait que pour des données qui contraignent très peu e.
-2. **Seuils de Gelman-Rubin** (`commons.f`) : la récolte commence à `RINF = 1,1` et le MCMC s'arrête à `RCONV = 1,01`, ce qui correspond aux recommandations actuelles (R̂ < 1,01). Depuis M015, les solutions récoltées entre 1,1 et 1,01 ne restent plus dans l'échantillon final. `TSINF` = 100 reste bas, mais ne sert plus qu'à l'aperçu.
+2. **Seuils de Gelman-Rubin** (`commons.f`) : la récolte commence à `RINF = 1,1` et le MCMC s'arrête à `RCONV = 1,01`, ce qui correspond aux recommandations actuelles (R̂ < 1,01). Depuis M015, les solutions récoltées entre 1,1 et 1,01 ne restent plus dans l'échantillon final. Comme `TS` ≈ 8/(R² − 1), `TSINF` = 100 revient à R < 1,04 : c'est ce seuil, et non 1,1, qui lance la récolte. Il ne sert plus qu'à l'aperçu. Depuis M019, l'arrêt ne dépend plus de `TS` (voir plus haut).
 3. **Prior conjoint logarithmique en a (ou q) et en P (ou P_q).** Il implique un prior particulier sur la masse dynamique, auquel s'ajoute un prior de masse de l'utilisateur (choix « multiplier », M013). Une alternative courante : logarithmique en a et en masse.
 4. **Prior du jitter** `1/(j + j0)` avec `j0 = 0,1 km/s` fixé dans le code (`SIGV0`). Convention standard (Gregory 2005), mais `j0` devrait sans doute dépendre des données, et ne conviendra pas pour un jitter Gaia en mas.

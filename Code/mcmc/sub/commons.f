@@ -48,6 +48,12 @@ c    reserve remplie a nouveau une fois la convergence atteinte
         REAL*8, PARAMETER :: KREFILL = 1.d0 ! Refill time / time to conv.
         LOGICAL :: REFILL = .FALSE. ! True once refill has started
 c<<< [MOD M015]
+c>>> [MOD M019] arret sur l'ESS de la reserve au lieu de TS (TSCONV
+c    n'est plus utilise). Seuil : Vehtari et al. 2021, Bayesian Anal.
+c    16, 667 (R < 1,01 et ESS > 400). Moyennes de lots de taille
+c    sqrt(n) : Flegal & Jones 2010, Ann. Stat. 38, 1034.
+        REAL*8, PARAMETER :: ESSMIN = 400.d0 ! Min. effective sample size
+c<<< [MOD M019]
         REAL*8, PARAMETER :: SIGV0 = 0.1d0*MPS ! Jitter norm = 0.1 km/s
         CHARACTER*80, PARAMETER :: LOGFILE = 'logfile.dat'
         INTEGER*4 :: FREQDUMP     ! Saving frequency
