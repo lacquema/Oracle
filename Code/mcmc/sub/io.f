@@ -565,7 +565,7 @@ C
      &                  DIRS(NPAR,NPAR), ! Directions
      &                  BETA0(NPAR)  ! Scale parameter vector
 c>>> [MOD M018] Commande de renommage
-        CHARACTER*600 :: LINE        ! Command line
+        CHARACTER*1100 :: LINE       ! Command line
 c<<< [MOD M018]
         
 c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme
@@ -907,7 +907,14 @@ C
         LOGICAL ::     OK,OKF
         CHARACTER*80 :: LIG 
         
-        OPEN(15,FILE=FILNAM,STATUS='UNKNOWN')                                   
+c>>> [MOD M020] B18 : arret clair si le fichier de donnees manque
+c    AVANT :         OPEN(15,FILE=FILNAM,STATUS='UNKNOWN')                                   
+        OPEN(15,FILE=FILNAM,STATUS='OLD',IOSTAT=ERROR)
+        IF (ERROR.NE.0) THEN
+           WRITE(SD,*)'Data file not found : ',TRIM(FILNAM)
+           STOP
+        END IF
+c<<< [MOD M020]
 
         OKF = .TRUE.
         STAR%JDOFFSET = 0
@@ -1195,7 +1202,10 @@ C
      &                  ERROR,        ! Error flag
      &                  LOG_TO_INT    ! Conversion function
         CHARACTER*(*) :: DEV          ! Output file 
-        CHARACTER*80 :: LINE          ! Command line
+c>>> [MOD M020] B18 : noms de fichiers longs
+c    AVANT :         CHARACTER*80 :: LINE          ! Command line
+        CHARACTER*600 :: LINE         ! Command line
+c<<< [MOD M020]
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  O,OM,         ! Omega's ± Pi
@@ -1348,7 +1358,10 @@ C
      &                  ERROR,        ! Error flag
      &                  LOG_TO_INT    ! Conversion function
         CHARACTER*(*) :: DEV          ! Output file 
-        CHARACTER*80 :: LINE          ! Command line
+c>>> [MOD M020] B18 : noms de fichiers longs
+c    AVANT :         CHARACTER*80 :: LINE          ! Command line
+        CHARACTER*600 :: LINE         ! Command line
+c<<< [MOD M020]
         REAL*8, DIMENSION(:), ALLOCATABLE ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  CI,SI,        ! cos(i),sin(i)

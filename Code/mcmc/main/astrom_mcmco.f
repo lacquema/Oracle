@@ -27,8 +27,11 @@ c-------------------------------------------------------------------------
      &       CL,SL              ! Lambda = Omega+omega+v,
 
         CHARACTER*80 ::  LIG
-        CHARACTER*80, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
+c>>> [MOD M020] B18 : noms de fichiers longs (au-dela de 80 caracteres)
+c    AVANT :         CHARACTER*80, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
+        CHARACTER*512, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = dump,
 c                                                #3 = data
+c<<< [MOD M020]
         INTEGER*4 ::         CNEW
         LOGICAL ::          OK,NEW
 

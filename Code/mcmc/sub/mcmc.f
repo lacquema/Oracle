@@ -1042,8 +1042,8 @@ c...  Both files are removed at the end of the run.
         LOGICAL ::      INFER,       ! Inference flag
      &                  FINAL        ! True at the end => remove files
         REAL*8 ::       COMPUTE_MAP  ! Function => MAP
-        CHARACTER*256 :: BASE        ! Root of file names
-        CHARACTER*600 :: LINE        ! Command line
+        CHARACTER*512 :: BASE        ! Root of file names
+        CHARACTER*1600 :: LINE       ! Command line
         REAL*8, DIMENSION(:,:), ALLOCATABLE :: PTMP ! For swapping
         REAL*8, DIMENSION(:,:), ALLOCATABLE, SAVE :: PREC ! Recent pos.
         INTEGER*4, SAVE :: IREC = 0  ! Last stored position

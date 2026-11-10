@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -41,6 +41,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B15 | `MCMCP` (`mcmc.f`), intervalle entre deux contrôles de Gelman-Rubin une fois la convergence atteinte | `NGEL = MIN(NGROUP,NINT(LONG*1d-2/NGROUP)*NGROUP)` vaut 0 tant que `LONG` < 5 000 balayages : aucun pas entre deux contrôles | **Corrigée par M016.** Quand la convergence arrivait avant 5 000 balayages, les chaînes ne bougeaient plus et les mêmes 8 positions étaient gardées à chaque contrôle jusqu'à remplir la réserve. Constaté le 2026-11-08 sur `rel_vr_planete` (`--rapide`) : 9 solutions distinctes sur 20 001, ω hors de l'intervalle à 99,7 %. Explique aussi une partie de B12. Les longs runs réels (GG Tau, 51 Eri), qui convergent après des millions de pas, ne sont pas touchés. |
 | B16 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), erreur sur l'inclinaison | `PLA(I)%DINC` n'est calculée que dans la branche `RADVEL` : sans vitesses radiales, `DIDP` est rempli mais `ERR_COMB` n'est jamais appelée, et l'erreur affichée sur i vaut 0 | Non corrigée. Constaté le 2026-11-09 dans le dépôt Gaia (BH3 en Levenberg-Marquardt seul). Sans effet sur le MCMC : seul l'affichage du Levenberg-Marquardt (choix 4) est touché. |
 | B17 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), deux branches | `DIDP(4)` et `DIDP(5)` au lieu de `DIDP(DKAL+4)` et `DIDP(DKAL+5)` : pour la deuxième orbite et les suivantes, l'erreur sur i est calculée avec les paramètres de la première | Non corrigée. Constaté le 2026-11-09 en relisant B16. Même portée : affichage du Levenberg-Marquardt seulement. |
+| B18 | Programmes principaux (`CHARACTER*80 FILES`), `WRITE_DISTRIB` et `WRITE_DISTRIB_DOUBLING` (`CHARACTER*80 LINE`), `READ_DATAFILE` (`STATUS='UNKNOWN'`) | Les noms de fichiers sont coupés à 80 caractères. Le fichier de données au nom coupé est ouvert en `UNKNOWN`, donc créé vide s'il n'existe pas | **Corrigée par M020.** Avec un chemin de plus de 80 caractères (l'interface écrit des chemins absolus), le programme s'arrête sur `End of file` à la lecture des données, sans dire pourquoi. Le `gzip` des résultats avait la même limite. Constaté le 2026-11-10 en testant l'interface Gaia ; déjà connu d'Antoine. |
 
 **Fragilité constatée (corrigée par M018) :** un job tué pendant l'écriture de `dump.dat` laissait un fichier illisible à la reprise (`End of file`), car le fichier était écrit sur place.
 
@@ -59,6 +60,30 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F3 | Suivre un run en temps réel. **En partie fait par M017** : fichier provisoire `xxx_partial.dat.gz` (positions récentes des chaînes avant la récolte, réserve ensuite), lisible par l'interface d'analyse, et état du run dans `xxx_partial.txt`. Reste : un journal de suivi (R, TS et χ² de chaque chaîne au fil du run, avec chaîne et ordre des positions pour tracer les traces), un bouton « rafraîchir » et une mention « non convergé » dans l'interface d'analyse, et la durée réelle des écritures à mesurer sur un gros run. | Avant M017, seul `out.txt` (pas, χ² des chaînes, critère R) renseignait pendant le run. Demandé par Antoine (2026-11-08) : voir où en est le run sans attendre la fin. |
 
 ## Modifications
+
+## M021 — Interface : point décimal, commentaires du fichier de lancement, a priori de masse (sans repère)
+
+- **Date :** 2026-11-10
+- **Fichiers :** `Interface/Main.py`, `Interface/NewSimu/PriorMass.py`, `Interface/NewSimu/WindowSetNewSimu.py` (code d'Antoine, sans repère).
+- **Changement :**
+  1. `Main.py` impose le point décimal (`QLocale.setDefault(QLocale(QLocale.Language.C))`) avant de créer les fenêtres.
+  2. Les commentaires des choix 3 et 4 du `start.sh` étaient inversés (« LM only » pour 3, « MCMC only » pour 4). Les codes écrits étaient justes.
+  3. Les champs des a priori de masse (moyenne, écart-type, bornes, valeur) passent de 2 à 4 décimales.
+  4. L'unité d'un a priori de masse s'écrivait deux fois (`msMsun`) : seule `ms` ou `mj` reste.
+  5. `Create startup files` rend `start.sh` exécutable, comme le faisait déjà `Start the simulation`.
+- **Pourquoi :** (1) sur un système réglé en français, Qt peut écrire `1,66` : Fortran lit alors deux nombres, 1 et 66, sans erreur. Constaté le 2026-11-10 avec l'interface lancée hors écran ; les `start.sh` réels d'Antoine avaient des points. (3) Un écart-type de 0,001 Msun était impossible à saisir. (4) Fortran ne lit que deux caractères pour l'unité : sans effet, mais trompeur.
+- **Vérification :** `start.sh` produit hors écran avec points décimaux, a priori `0.7600 ms`.
+- **Effet sur les résultats :** aucun pour les runs déjà faits (leurs `start.sh` avaient des points).
+
+## M020 — Corrige B18 : noms de fichiers de plus de 80 caractères
+
+- **Date :** 2026-11-10
+- **Fichiers :** `Code/mcmc/main/astrom_mcmco.f`, `Code/mcmc/main/astrom_univ_mcmco.f` (`FILES` en `CHARACTER*512`), `Code/mcmc/sub/io.f` (`LINE` de `WRITE_DISTRIB` et `WRITE_DISTRIB_DOUBLING` en `CHARACTER*600`, ouverture du fichier de données dans `READ_DATAFILE`). Sans repère, dans des lignes ajoutées par M017 et M018 : `BASE` passe de 256 à 512 caractères et `LINE` de 600 à 1 600 dans `WRITE_PARTIAL` (`mcmc.f`), `LINE` de 600 à 1 100 dans `WRITE_DUMP` (`io.f`), pour contenir deux ou trois noms longs.
+- **Changement :** noms de fichiers jusqu'à 512 caractères. Le fichier de données est ouvert en `STATUS='OLD'` : s'il n'existe pas, le programme s'arrête avec `Data file not found : <nom>`.
+- **Pourquoi :** voir B18. Les sous-programmes reçoivent déjà les noms en `CHARACTER*(*)` : seules les déclarations des programmes principaux et des commandes `gzip`/`mv` fixaient une longueur.
+- **Dump :** les noms y sont écrits et relus en `(a)` : un dump écrit avant M020 se relit sans changement.
+- **Vérification :** `make test` passe. GG Tau en Levenberg-Marquardt avec un chemin de données de 167 caractères : χ² + Fmap = 25,0651, comme la référence. Fichier de données absent : arrêt avec le message.
+- **Effet sur les résultats :** aucun.
 
 ## M019 — Arrêt sur le nombre de tirages indépendants (ESS) au lieu de TS
 
