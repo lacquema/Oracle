@@ -62,6 +62,16 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M023 — Icône et logo d'ORACLE (sans repère)
+
+- **Date :** 2026-11-10
+- **Fichiers :** `Interface/Items/oracle-app.icns`, `.ico`, `.svg` (icône dessinée par Antoine, pour macOS, Windows et Linux) et `oracle-app.png` (512 px, tiré du `.icns`) et `oracle-app-macos.png` ajoutés, ainsi que le logo d'Antoine : `oracle-logo-fond-blanc.svg` (vectoriel) et `.jpg`, `oracle-logo-sans-fond.png` (encre bleu nuit sur fond transparent, pour fond clair), `oracle-logo-sombre.png` (encre claire sur fond bleu nuit) ; images de 1600 × 334 px ; `Interface/Main.py` (code d'Antoine).
+- **Changement :** `Main.py` donne à l'application son nom (`setApplicationName('Oracle')`) et son icône (`setWindowIcon`) : `oracle-app-macos.png` sur macOS, `oracle-app.png` ailleurs.
+- **Version macOS :** sur Mac, le dessin d'une icône occupe 824 px sur 1024, centré, avec une marge transparente (grille d'Apple, mesurée sur Zoom, Calendrier et VS Code : 80,5 % et 9,8 % de marge de chaque côté) ; le dessin d'origine remplit tout le carré et paraissait plus gros que les autres icônes du Dock. `oracle-app.icns` (toutes les tailles, par `iconutil`) et `oracle-app-macos.png` sont refaits avec le dessin réduit à 80,5 % et centré ; `.ico`, `.svg` et `oracle-app.png` gardent le dessin d'origine.
+- **Pourquoi :** l'icône apparaît sur les fenêtres, dans la barre des tâches (Windows, Linux) et dans le Dock (macOS), quel que soit le moyen de lancement. Les formats `.icns`, `.ico` et `.svg` serviront aux lanceurs (`Oracle.app`, raccourci Windows, `oracle.desktop`) que créera le futur script d'installation.
+- **Vérification :** interface lancée hors écran par un `Oracle.app`, sans erreur.
+- **Effet sur les résultats :** aucun.
+
 ## M022 — Corrige B19 : redémarrage du L-M au premier passage sans jitter
 
 - **Date :** 2026-11-10

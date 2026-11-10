@@ -4,6 +4,7 @@ import sys
 import os
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtCore import QLocale
+from PyQt6.QtGui import QIcon
 
 # Ajout des chemins des modules internes
 sys.path.append(os.path.dirname(__file__))
@@ -60,5 +61,10 @@ if __name__ == "__main__":
     # Fortran reads '1,5' as two numbers (1 and 5).
     QLocale.setDefault(QLocale(QLocale.Language.C))
     app = QApplication(sys.argv)  # Création de l'application PyQt
+    app.setApplicationName('Oracle')
+    # Icon of the windows, of the taskbar (Windows, Linux) and of the Dock (macOS).
+    # macOS version with Apple's margin (drawing in 824 px out of 1024), like the other Dock icons.
+    IconName = 'oracle-app-macos.png' if sys.platform == 'darwin' else 'oracle-app.png'
+    app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), 'Items', IconName)))
     main_window = MainWindow()  # Instanciation et affichage de la fenêtre principale
     sys.exit(app.exec())  # Lancement de l'application
