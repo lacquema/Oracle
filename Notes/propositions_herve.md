@@ -94,7 +94,7 @@ Pourquoi le second remplissage : avec le remplacement aléatoire, ajouter `NMAX`
 
 **Questions.**
 - Pourquoi 500 000 balayages : as-tu vu des cas où un recalcul précoce, sur une covariance encore mal estimée, posait problème ?
-- Les recalculs peuvent tomber pendant la récolte quand elle commence tôt (sur `rel_vr_planete`, elle commence juste après la chauffe). Le code d'origine le faisait déjà tous les 500 000 balayages. Comme le nombre de recalculs pendant la récolte reste fini, l'adaptation s'arrête et la loi échantillonnée n'est pas faussée à la longue ; mais geler les directions une fois la récolte commencée serait plus propre. Qu'en penses-tu ?
+- Les recalculs peuvent tomber pendant la récolte quand elle commence tôt (sur `rel_vr_planete`, elle commence juste après la chauffe). Le code d'origine le faisait déjà tous les 500 000 balayages. Comme le nombre de recalculs pendant la récolte reste fini, l'adaptation s'arrête et la loi échantillonnée n'est pas faussée à la longue ; mais geler les directions une fois la récolte commencée semblait plus propre. Essayé (2026-11-10, 2 runs par variante sur `arc_court` et `rel_vr_planete`) : mêmes distributions, mais un ESS 1,1 à 5 fois plus faible avec le gel. M024 est donc gardé tel quel. Qu'en penses-tu ?
 
 ## B14, pour mémoire
 

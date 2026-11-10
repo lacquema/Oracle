@@ -73,6 +73,7 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
   - `arc_tres_court` (cas le plus difficile) : pas de gain ni de perte visibles (début de la récolte à 6,0 et 7,1 millions de balayages contre 7,2).
   - Variante écartée : recalcul à chaque doublement de `LONG` (fin de chauffe, 1 000, 2 000, 4 000…). Sur `arc_tres_court`, la récolte commence plus tard (9,0 et 18,6 millions de balayages) : des recalculs trop fréquents gênent l'exploration.
 - **Vérification :** `rel_vr_planete` (`--rapide`) : recalculs bien faits en fin de chauffe, vers 10 000 et 100 000 balayages ; run terminé en 1 min 20 s ; tous les éléments à moins de 1,8 σ de la vérité. `make test` passe.
+- **Variante écartée (2026-11-10) : directions gelées pendant la récolte** (aucun recalcul une fois `INFER` vrai, y compris celui tous les 500 000 balayages). Sur `arc_court` et `rel_vr_planete`, la récolte commence juste après la chauffe, donc les recalculs de M024 tombent pendant la récolte. 2 runs par variante et par système : mêmes distributions (écarts à la vérité identiques à 0,05 σ près), mais ESS minimal plus faible avec le gel (`rel_vr_planete` : 3 000 et 7 400 contre 16 400 et 17 500 ; `arc_court` : 2 600 et 5 000 contre 4 700 et 5 400). Les recalculs pendant la récolte aident donc, sans biais visible : M024 est gardé tel quel. Avec M024, `arc_court` se termine en 200 000 à 300 000 balayages.
 - **Effet sur les résultats :** même distribution a posteriori ; convergence plus rapide, ou inchangée, selon le cas.
 
 ## M023 — Icône et logo d'ORACLE (sans repère)
