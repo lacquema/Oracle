@@ -1823,7 +1823,11 @@ C
 
         INTEGER*4       N               ! Dimension of parameter space
 
-        REAL*8, DIMENSION(NPAR) :: P    ! Parameters
+c>>> [MOD M022] B19 : P a la dimension N du L-M en cours (N = NPAR-1 au
+c    premier passage sans jitter)
+c    AVANT :         REAL*8, DIMENSION(NPAR) :: P    ! Parameters
+        REAL*8, DIMENSION(N) :: P       ! Parameters
+c<<< [MOD M022]
         INTEGER*4 ::    I,DKAL
         REAL*8 ::       R,              ! Random number
      &                  LAMBDA          ! Mean longitude at T0
@@ -1864,9 +1868,16 @@ c    AVANT :  IF (RADVEL) THEN
         IF (ISDATA(2)) THEN
 c<<< [MOD M006]
            P(NEL*NPLA+1) = STAR%V0
-           IF (JITNUM.EQ.1) P(NEL*NPLA+2) = LOG(STAR%SIGJV)
+c>>> [MOD M022] B19 : pas de jitter au premier passage, masse en P(N)
+c    AVANT :            IF (JITNUM.EQ.1) P(NEL*NPLA+2) = LOG(STAR%SIGJV)
+           IF ((JITNUM.EQ.1).AND.(N.EQ.NPAR))
+     &          P(NEL*NPLA+2) = LOG(STAR%SIGJV)
+c<<< [MOD M022]
         END IF
-        IF (MULTIPLA) P(NPAR) = LOG(STAR%MASS)        
+c>>> [MOD M022] B19 : pas de jitter au premier passage, masse en P(N)
+c    AVANT :         IF (MULTIPLA) P(NPAR) = LOG(STAR%MASS)        
+        IF (MULTIPLA) P(N) = LOG(STAR%MASS)
+c<<< [MOD M022]
         END    
         
 C     

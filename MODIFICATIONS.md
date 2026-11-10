@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -42,6 +42,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B16 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), erreur sur l'inclinaison | `PLA(I)%DINC` n'est calculée que dans la branche `RADVEL` : sans vitesses radiales, `DIDP` est rempli mais `ERR_COMB` n'est jamais appelée, et l'erreur affichée sur i vaut 0 | Non corrigée. Constaté le 2026-11-09 dans le dépôt Gaia (BH3 en Levenberg-Marquardt seul). Sans effet sur le MCMC : seul l'affichage du Levenberg-Marquardt (choix 4) est touché. |
 | B17 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), deux branches | `DIDP(4)` et `DIDP(5)` au lieu de `DIDP(DKAL+4)` et `DIDP(DKAL+5)` : pour la deuxième orbite et les suivantes, l'erreur sur i est calculée avec les paramètres de la première | Non corrigée. Constaté le 2026-11-09 en relisant B16. Même portée : affichage du Levenberg-Marquardt seulement. |
 | B18 | Programmes principaux (`CHARACTER*80 FILES`), `WRITE_DISTRIB` et `WRITE_DISTRIB_DOUBLING` (`CHARACTER*80 LINE`), `READ_DATAFILE` (`STATUS='UNKNOWN'`) | Les noms de fichiers sont coupés à 80 caractères. Le fichier de données au nom coupé est ouvert en `UNKNOWN`, donc créé vide s'il n'existe pas | **Corrigée par M020.** Avec un chemin de plus de 80 caractères (l'interface écrit des chemins absolus), le programme s'arrête sur `End of file` à la lecture des données, sans dire pourquoi. Le `gzip` des résultats avait la même limite. Constaté le 2026-11-10 en testant l'interface Gaia ; déjà connu d'Antoine. |
+| B19 | `MRQRENEW` (`kepellip.f`, `kepu.f`), redémarrage du L-M après une solution impossible | Pendant le premier passage sans jitter des vitesses (`MRQMIN(NPAR-1,...)`), la masse de l'étoile est en `P(NPAR-1)` = `P(NEL*NPLA+2)`. `MRQRENEW` y écrit ln(jitter) et met la masse en `P(NPAR)`, hors du tableau du passage (`P` déclaré `DIMENSION(NPAR)`) | **Corrigée par M022.** Vitesses de l'étoile avec jitter et prior fixe sur sa masse : après un redémarrage, la masse de l'étoile vaut exp(ln σ_jit) (0,0195 Msun pour un jitter initial de 0,01 km/s) ; le prior fixe donne alors une pénalité de 10¹² que le L-M ne rattrape plus, et la solution finale est fausse. Constaté le 2026-11-10 sur HD 114762 (vitesses de Lick seules, χ² = 2,3·10⁶ au lieu de 119). Sans jitter, pas d'effet. |
 
 **Fragilité constatée (corrigée par M018) :** un job tué pendant l'écriture de `dump.dat` laissait un fichier illisible à la reprise (`End of file`), car le fichier était écrit sur place.
 
@@ -60,6 +61,16 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F3 | Suivre un run en temps réel. **En partie fait par M017** : fichier provisoire `xxx_partial.dat.gz` (positions récentes des chaînes avant la récolte, réserve ensuite), lisible par l'interface d'analyse, et état du run dans `xxx_partial.txt`. Reste : un journal de suivi (R, TS et χ² de chaque chaîne au fil du run, avec chaîne et ordre des positions pour tracer les traces), un bouton « rafraîchir » et une mention « non convergé » dans l'interface d'analyse, et la durée réelle des écritures à mesurer sur un gros run. | Avant M017, seul `out.txt` (pas, χ² des chaînes, critère R) renseignait pendant le run. Demandé par Antoine (2026-11-08) : voir où en est le run sans attendre la fin. |
 
 ## Modifications
+
+## M022 — Corrige B19 : redémarrage du L-M au premier passage sans jitter
+
+- **Date :** 2026-11-10
+- **Fichiers :** `Code/mcmc/sub/kepellip.f` et `Code/mcmc/sub/kepu.f`, routine `MRQRENEW` (deux blocs chacun).
+- **Changement :** `P` est déclaré `DIMENSION(N)` (dimension du L-M en cours) au lieu de `NPAR` ; la masse de l'étoile est remise en `P(N)` au lieu de `P(NPAR)` ; le jitter des vitesses n'est remis que si `N = NPAR`, c'est-à-dire s'il fait partie du passage.
+- **Pourquoi :** voir B19. La masse est toujours le dernier paramètre du passage, `P(N)`, au premier comme au second.
+- **Vérification :** HD 114762, 74 vitesses de Lick (Kane et al. 2011, ApJ 735, L41), jitter, masse de l'étoile fixée à 0,83 Msun : χ² = 118,8 au lieu de 2,3·10⁶ ; P = 83,9145 ± 0,0032 j (Kane : 83,9151 ± 0,0030), e = 0,3385 ± 0,0050 (0,3354 ± 0,0048), ω = 201,97° (201,28°), m sin i = 11,0 MJ (10,98). Sans jitter, résultat inchangé. `make test` passe.
+- **Remarque :** avec les vitesses de l'étoile seules, l'ω affiché par ORACLE est égal à celui de Kane et al., qui suivent la convention habituelle des vitesses radiales (ω de l'orbite de l'étoile, z vers l'arrière du ciel). Ce que cela dit de la convention d'ORACLE avec l'astrométrie (ω du compagnon ou de l'étoile, sens de z) reste à vérifier.
+- **Effet sur les résultats :** seulement pour les runs avec vitesses de l'étoile et jitter dont le premier passage du L-M a redémarré ; le MCMC part ensuite de la solution du L-M.
 
 ## M021 — Interface : point décimal, commentaires du fichier de lancement, a priori de masse (sans repère)
 
