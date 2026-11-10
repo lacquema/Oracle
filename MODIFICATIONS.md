@@ -62,6 +62,19 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M024 — Directions du MCMC recalculées tôt après la chauffe
+
+- **Date :** 2026-11-10
+- **Fichiers :** `Code/mcmc/sub/commons.f` (constantes `NDIAG1` = 10 001 et `NDIAG2` = 100 001), `Code/mcmc/sub/mcmc.f` (`MCMCP` : condition du recalcul des directions, un bloc repéré ; et un appel à `CHANGE_DIRS` ajouté sans repère dans le bloc M015 de fin de chauffe, qui est du code ajouté par M015).
+- **Changement :** les directions de proposition (`CHANGE_DIRS`, axes propres de la covariance des chaînes) sont recalculées en fin de chauffe, puis quand `LONG` franchit 10 001 et 100 001 balayages après la chauffe, en plus du recalcul tous les `NDIAG` = 500 000 balayages d'origine. La condition porte sur le franchissement du seuil (`LONG ≥ seuil` et `LONG − NGROUP < seuil`), pas sur une valeur exacte de `LONG`.
+- **Pourquoi :** avant M024, les chaînes gardaient les axes de départ (directions des paramètres eux-mêmes) jusqu'à 500 000 balayages. Quand les paramètres sont fortement corrélés, les pas le long de ces axes sont minuscules et la convergence se fait attendre pendant des millions de balayages. Recalculer tôt, dès que les chaînes ont exploré un peu, aligne les pas sur les corrélations.
+- **Mesures (systèmes synthétiques, `--rapide`, 2026-11-09 et 10) :**
+  - `arc_court` : même distribution, ESS de l'échantillon final 3 à 6 fois plus grand qu'avec le code d'avant.
+  - `arc_tres_court` (cas le plus difficile) : pas de gain ni de perte visibles (début de la récolte à 6,0 et 7,1 millions de balayages contre 7,2).
+  - Variante écartée : recalcul à chaque doublement de `LONG` (fin de chauffe, 1 000, 2 000, 4 000…). Sur `arc_tres_court`, la récolte commence plus tard (9,0 et 18,6 millions de balayages) : des recalculs trop fréquents gênent l'exploration.
+- **Vérification :** `rel_vr_planete` (`--rapide`) : recalculs bien faits en fin de chauffe, vers 10 000 et 100 000 balayages ; run terminé en 1 min 20 s ; tous les éléments à moins de 1,8 σ de la vérité. `make test` passe.
+- **Effet sur les résultats :** même distribution a posteriori ; convergence plus rapide, ou inchangée, selon le cas.
+
 ## M023 — Icône et logo d'ORACLE (sans repère)
 
 - **Date :** 2026-11-10

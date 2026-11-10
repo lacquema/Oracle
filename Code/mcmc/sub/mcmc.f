@@ -233,6 +233,8 @@ c    AVANT :   CALL GELMAN_RUBIN(PROBINFER,CHN,NMOD,LONG,INFER,OK,FILES)
            ELSE
               OK = .FALSE.
               IF (LONG.GE.NBURN) THEN
+c...  M024 : directions recomputed at the end of burn-in
+                 CALL CHANGE_DIRS(LONG,CHN,DIRS)
                  DO C = 1,NCH
                     CHN(C)%MOY = CHN(C)%P
                     CHN(C)%COV = 0.d0
@@ -268,7 +270,14 @@ c              END IF
 
 c...  Compute new directions
 
-           IF ((NDIAG.GT.0).AND.(MOD(LONG,NDIAG).LT.10)) THEN
+c>>> [MOD M024] Directions recalculees aussi a 10 000 et 100 000
+c    balayages apres la chauffe (et en fin de chauffe, bloc M015)
+c    AVANT :            IF ((NDIAG.GT.0).AND.(MOD(LONG,NDIAG).LT.10)) THEN
+           IF (((NDIAG.GT.0).AND.(MOD(LONG,NDIAG).LT.10)).OR.
+     &         (BURNT.AND.(LONG.GE.NDIAG1).AND.(LONG-NGROUP.LT.NDIAG1))
+     &    .OR.(BURNT.AND.(LONG.GE.NDIAG2).AND.(LONG-NGROUP.LT.NDIAG2)))
+     &         THEN
+c<<< [MOD M024]
              CALL CHANGE_DIRS(LONG,CHN,DIRS)
            END IF
 

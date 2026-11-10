@@ -84,6 +84,18 @@ Pourquoi le second remplissage : avec le remplacement aléatoire, ajouter `NMAX`
 - Pourquoi `TS` (Ford 2006) plutôt que R seul : as-tu vu des cas où R < 1,01 ne suffisait pas ?
 - Le seuil de 400 te paraît-il suffisant pour nos usages (intervalles à 68 et 95 %) ?
 
+## Directions du MCMC recalculées tôt (M024)
+
+**Constat.** Les directions de proposition ne sont recalculées que tous les `NDIAG` = 500 000 balayages. Avant le premier recalcul, les chaînes avancent le long des axes des paramètres : quand ceux-ci sont très corrélés, les pas restent minuscules et la convergence peut demander des millions de balayages.
+
+**Décision prise (M024).** Recalcul aussi en fin de chauffe, puis à 10 000 et 100 000 balayages après la chauffe ; le recalcul tous les 500 000 reste.
+
+**Mesures.** `arc_court` : même distribution, ESS 3 à 6 fois plus grand. `arc_tres_court` : ni gain ni perte. Recalculer à chaque doublement de la longueur s'est révélé moins bon (récolte jusqu'à 2,6 fois plus tardive).
+
+**Questions.**
+- Pourquoi 500 000 balayages : as-tu vu des cas où un recalcul précoce, sur une covariance encore mal estimée, posait problème ?
+- Les recalculs peuvent tomber pendant la récolte quand elle commence tôt (sur `rel_vr_planete`, elle commence juste après la chauffe). Le code d'origine le faisait déjà tous les 500 000 balayages. Comme le nombre de recalculs pendant la récolte reste fini, l'adaptation s'arrête et la loi échantillonnée n'est pas faussée à la longue ; mais geler les directions une fois la récolte commencée serait plus propre. Qu'en penses-tu ?
+
 ## B14, pour mémoire
 
 La graine du générateur aléatoire n'est jamais fixée : deux lancements identiques ne donnent pas le même résultat, et le LM lui-même en dépend (redémarrages au hasard de `MRQRENEW`). Préfères-tu une graine fixe, une graine donnée en entrée, ou une graine tirée puis écrite dans la sortie pour pouvoir refaire un run ?

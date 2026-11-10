@@ -7,6 +7,10 @@ C...  To be included into the module 'DATA' in every version
         INTEGER*4, PARAMETER :: NINFER = 50000
         INTEGER*4, PARAMETER :: NMAX = NINFER*NCH
         INTEGER*8, PARAMETER :: NDIAG = 500000_8
+c>>> [MOD M024] Directions recalculees tot apres la chauffe
+        INTEGER*8, PARAMETER :: NDIAG1 = 10001_8  ! 1st early recompute
+        INTEGER*8, PARAMETER :: NDIAG2 = 100001_8 ! 2nd early recompute
+c<<< [MOD M024]
         INTEGER*8, PARAMETER :: SD0 = 6
         INTEGER*8, PARAMETER :: SDL = 35
         INTEGER*4, PARAMETER :: SD = SD0   ! ou SD0
