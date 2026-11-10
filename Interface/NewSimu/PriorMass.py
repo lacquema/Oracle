@@ -56,25 +56,25 @@ class PriorMassClass(QWidget):
         self.DistribIndex = self.Distrib.ComboParam.currentIndex()
 
         if self.DistribIndex == 1 or self.DistribIndex == 2: # Normal or Log
-            self.Mean = DoubleSpinBox(None, 'Mean of the distribution', None, 0, None, None, 2)
+            self.Mean = DoubleSpinBox(None, 'Mean of the distribution', None, 0, None, None, 4)
             self.Layout.addWidget(self.Mean, alignment=Qt.AlignmentFlag.AlignLeft)
 
             self.Layout.addWidget(QLabel('+/-'))
 
-            self.SD = DoubleSpinBox(None, 'Standart deviation of the distribution', None, 0, None, None, 2)
+            self.SD = DoubleSpinBox(None, 'Standart deviation of the distribution', None, 0, None, None, 4)
             self.Layout.addWidget(self.SD)
 
         elif self.DistribIndex == 3: # Uniform
-            self.Min = DoubleSpinBox(None, 'Minimum of the distribution', None, 0, None, None, 2)
+            self.Min = DoubleSpinBox(None, 'Minimum of the distribution', None, 0, None, None, 4)
             self.Layout.addWidget(self.Min)
 
             self.Layout.addWidget(QLabel('<->'))
 
-            self.Max = DoubleSpinBox(None, 'Maximum of the distribution', None, 0, None, None, 2)
+            self.Max = DoubleSpinBox(None, 'Maximum of the distribution', None, 0, None, None, 4)
             self.Layout.addWidget(self.Max)
 
         elif self.DistribIndex == 4: # Fixed
-            self.Value = DoubleSpinBox(None, 'Value', None, 0, None, None, 2)
+            self.Value = DoubleSpinBox(None, 'Value', None, 0, None, None, 4)
             self.Layout.addWidget(self.Value)
 
         if self.DistribIndex != 0: 

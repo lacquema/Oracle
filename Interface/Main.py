@@ -3,6 +3,7 @@
 import sys
 import os
 from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtCore import QLocale
 
 # Ajout des chemins des modules internes
 sys.path.append(os.path.dirname(__file__))
@@ -55,6 +56,9 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    # Decimal point in every number field, whatever the system language:
+    # Fortran reads '1,5' as two numbers (1 and 5).
+    QLocale.setDefault(QLocale(QLocale.Language.C))
     app = QApplication(sys.argv)  # Création de l'application PyQt
     main_window = MainWindow()  # Instanciation et affichage de la fenêtre principale
     sys.exit(app.exec())  # Lancement de l'application

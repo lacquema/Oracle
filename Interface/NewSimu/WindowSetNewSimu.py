@@ -268,6 +268,7 @@ class WindowSetNewSimu(WindowWithFinder):
                         shutil.copy(self.TabDataSet.PathData.EditPath.text(), self.TabSimuSet.SimuPath.EditParam.text()+self.TabSimuSet.SimuName.EditParam.text()+'/'+self.TabDataSet.PathData.EditPath.text().split('/')[-1])                    
                         print('\nData file was copied')
                         self.DoGoFile()
+                        os.chmod(self.SimuDir+'start.sh', 0o755)
                         print('\nGo file was created')
                         print('Just run it')
                 
@@ -302,10 +303,10 @@ class WindowSetNewSimu(WindowWithFinder):
                 file.write(' # New simulation LM and MCMC')
             elif not self.TabSimuSet.CheckLM.isChecked() and self.TabSimuSet.CheckMCMC.isChecked():
                 file.write('3')
-                file.write(' # New simulation LM only')
+                file.write(' # New simulation MCMC only')
             elif self.TabSimuSet.CheckLM.isChecked() and not self.TabSimuSet.CheckMCMC.isChecked():
                 file.write('4')
-                file.write(' # New simulation MCMC only')
+                file.write(' # New simulation LM only')
             file.write('\n')
             if self.TabDataSet.CheckRelAstro.CheckParam.isChecked(): file.write('1 ') # Data
             else: file.write('0 ')
@@ -391,7 +392,6 @@ class WindowSetNewSimu(WindowWithFinder):
                         file.write('ms')
                     elif self.TabRangeSet.ListPriorMass[i].PriorUnit.ComboParam.currentText() == 'Mjup':
                         file.write('mj')
-                    file.write(self.TabRangeSet.ListPriorMass[i].PriorUnit.ComboParam.currentText())
                     file.write(' # Distribution parameters')
                     file.write('\n')
             file.write(self.TabGuessSet.RefTime.MJDWidget.SpinParam.text())
