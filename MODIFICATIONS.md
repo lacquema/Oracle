@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -43,6 +43,9 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B17 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), deux branches | `DIDP(4)` et `DIDP(5)` au lieu de `DIDP(DKAL+4)` et `DIDP(DKAL+5)` : pour la deuxième orbite et les suivantes, l'erreur sur i est calculée avec les paramètres de la première | Non corrigée. Constaté le 2026-11-09 en relisant B16. Même portée : affichage du Levenberg-Marquardt seulement. |
 | B18 | Programmes principaux (`CHARACTER*80 FILES`), `WRITE_DISTRIB` et `WRITE_DISTRIB_DOUBLING` (`CHARACTER*80 LINE`), `READ_DATAFILE` (`STATUS='UNKNOWN'`) | Les noms de fichiers sont coupés à 80 caractères. Le fichier de données au nom coupé est ouvert en `UNKNOWN`, donc créé vide s'il n'existe pas | **Corrigée par M020.** Avec un chemin de plus de 80 caractères (l'interface écrit des chemins absolus), le programme s'arrête sur `End of file` à la lecture des données, sans dire pourquoi. Le `gzip` des résultats avait la même limite. Constaté le 2026-11-10 en testant l'interface Gaia ; déjà connu d'Antoine. |
 | B19 | `MRQRENEW` (`kepellip.f`, `kepu.f`), redémarrage du L-M après une solution impossible | Pendant le premier passage sans jitter des vitesses (`MRQMIN(NPAR-1,...)`), la masse de l'étoile est en `P(NPAR-1)` = `P(NEL*NPLA+2)`. `MRQRENEW` y écrit ln(jitter) et met la masse en `P(NPAR)`, hors du tableau du passage (`P` déclaré `DIMENSION(NPAR)`) | **Corrigée par M022.** Vitesses de l'étoile avec jitter et prior fixe sur sa masse : après un redémarrage, la masse de l'étoile vaut exp(ln σ_jit) (0,0195 Msun pour un jitter initial de 0,01 km/s) ; le prior fixe donne alors une pénalité de 10¹² que le L-M ne rattrape plus, et la solution finale est fausse. Constaté le 2026-11-10 sur HD 114762 (vitesses de Lick seules, χ² = 2,3·10⁶ au lieu de 119). Sans jitter, pas d'effet. |
+| B20 | `MRQRADVEL` (`mrqfit.f`), matrice `ALPHA` du L-M | Pour ln σ_jit, vraie dérivée seconde du χ² (négative quand les résidus dépassent σ) et termes croisés jitter × orbite, alors que les autres paramètres sont en Gauss-Newton | **Corrigée par M025.** Le L-M s'arrête avant le minimum, le jitter glissant vers 0 : sur les vitesses de HD 114762, χ² + Fmap = 89,75 (σ_jit = 1,2 m/s) au lieu de 80,05 (13,2 m/s). Constaté le 2026-11-11. |
+| B21 | `MRQSTEP` (`mrqfit.f`), pas d'essai hors des bornes | Chaque pas hors des bornes ou NaN appelle `MRQRENEW`, qui repart de l'orbite d'entrée avec des angles tirés au hasard, au lieu d'augmenter λ | **Corrigée par M026.** Boucle sans fin si le premier pas depuis l'orbite d'entrée sort des bornes : 1,7 million de redémarrages en 60 s sur HD 114762 (départ à i = 14,8°). Constaté le 2026-11-10 et analysé le 2026-11-11. |
+| B22 | `ENTER_ORBITS` (`io.f`) puis toutes les divisions par `S` = e/√(1−e²) | Excentricité de départ e = 0 : 0/0 | **Corrigée par M027.** Arrêt dans `KEPLER0` (`glup`) dès le début du L-M. Constaté le 2026-11-11. |
 
 **Fragilité constatée (corrigée par M018) :** un job tué pendant l'écriture de `dump.dat` laissait un fichier illisible à la reprise (`End of file`), car le fichier était écrit sur place.
 
@@ -61,6 +64,40 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F3 | Suivre un run en temps réel. **En partie fait par M017** : fichier provisoire `xxx_partial.dat.gz` (positions récentes des chaînes avant la récolte, réserve ensuite), lisible par l'interface d'analyse, et état du run dans `xxx_partial.txt`. Reste : un journal de suivi (R, TS et χ² de chaque chaîne au fil du run, avec chaîne et ordre des positions pour tracer les traces), un bouton « rafraîchir » et une mention « non convergé » dans l'interface d'analyse, et la durée réelle des écritures à mesurer sur un gros run. | Avant M017, seul `out.txt` (pas, χ² des chaînes, critère R) renseignait pendant le run. Demandé par Antoine (2026-11-08) : voir où en est le run sans attendre la fin. |
 
 ## Modifications
+
+## M027 — Excentricité de départ nulle acceptée
+
+- **Date :** 2026-11-11
+- **Fichier :** `Code/mcmc/sub/io.f` (`ENTER_ORBITS`, un bloc repéré).
+- **Changement :** une excentricité d'entrée inférieure à 0,001 (en pratique e = 0) est remplacée par 0,001, avec le message `Eccentricity < 0.001 replaced by 0.001`.
+- **Pourquoi :** les paramètres 2 et 3 valent e·(cos ϖ, sin ϖ)/√(1−e²). Avec e = 0, `S` = 0 et le code divise par `S` partout (`EXQ = EXC/S`, `CW = P2/S`, `SW = P3/S` dans `ELEMENTS`, `RATIO_PRIORS`, les routines du L-M et `MRQELEMENTS`) : 0/0 donne des NaN, et le programme s'arrête dans `KEPLER0` (message `glup`, puis `IEEE_INVALID_FLAG`). Le MCMC ne tombe jamais exactement sur e = 0 ; seule l'orbite de départ, donnée par l'utilisateur, peut le faire. Corriger à l'entrée évite de toucher à toutes ces divisions. Une orbite circulaire est une valeur de départ naturelle quand on ne connaît pas l'excentricité.
+- **Mesure :** vitesses de HD 114762, départ à e = 0 : arrêt sur `glup` avant M027 ; après, même solution que les autres départs (χ² + Fmap = 80,048, e = 0,337).
+- **Effet sur les résultats :** aucun, sauf pour les départs à e = 0, qui fonctionnent désormais.
+- **Vérification :** `make test` passe.
+
+## M026 — Levenberg-Marquardt : un pas hors des bornes augmente λ au lieu de tout recommencer
+
+- **Date :** 2026-11-11
+- **Fichier :** `Code/mcmc/sub/mrqfit.f` (`MRQSTEP` : constante `LAMBDAX` = 10⁸ et branche des pas hors des bornes, deux blocs repérés).
+- **Changement :** quand le pas d'essai sort des bornes (`MRQCHECK` : e, P, a ou masse de l'étoile hors de leurs limites, ou paramètre NaN) ou donne un χ² NaN, il est refusé comme un pas qui dégrade le χ² : λ est multiplié par 10 et le L-M repart du point courant. `MRQRENEW` (nouvelle solution : orbite d'entrée, Ω, ω et λ tirés au hasard) n'est appelé que si λ dépasse `LAMBDAX`. C'est l'idée laissée en commentaire par Hervé à cet endroit (boucle `DO WHILE(CHK)` qui augmente λ).
+- **Pourquoi :** avant M026, chaque pas hors des bornes appelait `MRQRENEW`, qui repart de l'orbite d'entrée et perd tout le chemin parcouru, avec λ remis à 10⁻³. Loin de la solution, le premier pas de Gauss-Newton sort souvent des bornes (pas de 80 sur e cos ω), d'où un nouveau redémarrage, et ainsi de suite : la boucle ne s'arrête jamais. Constaté le 2026-11-11 sur les vitesses de HD 114762, départ à i = 14,8° (période de départ 86,8 j) : 1,7 million de redémarrages en 60 s sans un seul pas accepté, χ² oscillant autour de 513 pendant plus de 10 min. Un grand λ ramène le pas vers la plus grande pente, avec une longueur qui tend vers 0, donc le pas finit toujours par rester dans les bornes si le point courant y est.
+- **Mesures (mêmes 7 départs que M025) :** le départ à i = 14,8° se termine en moins d'une seconde (faux minimum, χ² + Fmap = 509, mauvaise période de départ). Les autres départs finissent au même point qu'avec M025 seul. Avec M026 sans M025, la boucle sans fin disparaît aussi, mais les bons départs restent à χ² + Fmap ≈ 89,75 : les deux corrections sont indépendantes.
+- **Effet sur les résultats :** seulement le L-M. Les redémarrages au hasard deviennent rares, ce qui devrait aussi réduire l'effet de B14 sur le L-M (sur GG Tau, un passage dans un autre minimum environ une fois sur cent, venu de ces redémarrages ; non remesuré).
+- **Vérification :** `make test` passe, essai GG Tau compris.
+
+## M025 — Levenberg-Marquardt : jitter des vitesses par l'information de Fisher
+
+- **Date :** 2026-11-11
+- **Fichier :** `Code/mcmc/sub/mrqfit.f` (`MRQRADVEL`, trois blocs repérés).
+- **Changement :** dans la matrice `ALPHA` du L-M, la dérivée seconde par rapport à ln σ_jit est remplacée par son espérance (information de Fisher) : `DV*DV` devient `SIGV2P` = σᵢ² + σ_jit² dans le terme diagonal, et les termes croisés jitter × autres paramètres (`2*DV*FS*FS*DVF`), nuls en espérance, sont retirés. `BETA` (le gradient), `MRQMAP` et le χ² ne changent pas : le minimum cherché est le même.
+- **Pourquoi :** pour les paramètres orbitaux, `ALPHA` ne garde que les dérivées premières (Gauss-Newton), ce qui la rend toujours positive. Pour le jitter, elle prenait la vraie dérivée seconde, négative dès que les résidus dépassent σ (orbite encore fausse). Avec un terme diagonal négatif, augmenter λ ne ramène pas le pas vers une descente : le L-M s'arrêtait avant le minimum, le jitter glissant vers 0. L'information de Fisher est l'équivalent de Gauss-Newton pour un paramètre de variance ; avec le terme de normalisation de `MRQMAP`, le total vaut 2σ_jit⁴/(σᵢ²+σ_jit²)² par mesure, toujours positif.
+- **Mesures (vitesses de Lick de HD 114762, 74 mesures, L-M seul, 8 points de départ, 2026-11-11) :**
+  - avant : les départs proches de la solution s'arrêtent à χ² + Fmap = 89,750 à 89,761 (valeurs toutes différentes), avec σ_jit = 1,2 ± 1,6 m/s ;
+  - après : les quatre mêmes départs donnent tous χ² + Fmap = **80,048** (identique à 9 chiffres), σ_jit = 13,2 ± 3,0 m/s. P, e, ω et la masse bougent de moins de leur erreur ;
+  - un départ (i = 14,8°, période de départ 86,8 j) tournait sans fin avant M025 (voir M026) ; après, il se termine ;
+  - les départs avec une mauvaise période (80 à 87 j au lieu de 84 j) finissent comme avant dans un faux minimum (χ² + Fmap ≈ 440 à 460, σ_jit ≈ 0,3 km/s qui absorbe les résidus) : le L-M reste une méthode locale.
+- **Effet sur les résultats :** seulement le L-M avec jitter des vitesses (point de départ du MCMC et choix 4). Le MCMC n'utilise pas `ALPHA`. Les barres d'erreur du L-M (inverse de `ALPHA`) sur le jitter et les paramètres corrélés changent.
+- **Vérification :** `make test` passe (les dérivées testées par différences finies sont celles de `BETA`, inchangées).
 
 ## M024 — Directions du MCMC recalculées tôt après la chauffe
 

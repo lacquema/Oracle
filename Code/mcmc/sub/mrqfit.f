@@ -58,6 +58,10 @@ C
         IMPLICIT NONE
 
         REAL*8, PARAMETER :: LAMBDA0 = 1d-3
+c>>> [MOD M026] Pas hors des bornes : lambda augmente, redemarrage seulement
+c    au-dela de LAMBDAX
+        REAL*8, PARAMETER :: LAMBDAX = 1d8
+c<<< [MOD M026]
         INTEGER*4       N       ! Dimension of parameter space
         REAL*8          A(N,N),ATRY(N,N),! Trial matrix
      &                  ALPHA(N,N),     ! Matrix coefficients
@@ -118,9 +122,20 @@ c...    Improved Chi2. Accept step and decrease lambda
 c... Case where the trial step is out of bounds or erroneous. Restart
         ELSE  
           OK = .FALSE.
-          CALL MRQRENEW(N,P)
-          CALL MRQCOF(N,P,ALPHA,BETA,CHI2,FMAP) 
-          LAMBDA = LAMBDA0
+c>>> [MOD M026] Pas hors des bornes ou chi2 errone : refuse comme un pas
+c    qui degrade le chi2 (lambda x 10). On ne repart d'une nouvelle
+c    solution (MRQRENEW) que si lambda depasse LAMBDAX
+c    AVANT :          CALL MRQRENEW(N,P)
+c    AVANT :          CALL MRQCOF(N,P,ALPHA,BETA,CHI2,FMAP) 
+c    AVANT :          LAMBDA = LAMBDA0
+          IF (LAMBDA.LT.LAMBDAX) THEN
+            LAMBDA = 10.d0*MAX(LAMBDA,LAMBDA0)
+          ELSE
+            CALL MRQRENEW(N,P)
+            CALL MRQCOF(N,P,ALPHA,BETA,CHI2,FMAP)
+            LAMBDA = LAMBDA0
+          END IF
+c<<< [MOD M026]
 c          CHK = .TRUE.
 c          DO WHILE(CHK)
 c            A(1:N,1:N) = ALPHA(1:N,1:N)
@@ -292,14 +307,23 @@ c     &           sngl(sigm2x(i)),sngl(sigm2y(i)),sngl(chi2)
            DO J=1,N
              F2 = DVF(J)/SIGV2P
              ALPHA(J:N,J) = ALPHA(J:N,J)+F2*DVF(J:N)
-             IF (JITTER.AND.(SJ.GT.J))
-     &             ALPHA(SJ,J) = ALPHA(SJ,J)+2.d0*DV*FS*FS*DVF(J)
+c>>> [MOD M025] Jitter : information de Fisher (esperance de la derivee
+c    seconde, DV*DV -> SIGV2P), comme Gauss-Newton pour les autres
+c    parametres ; termes croises jitter x orbite nuls en esperance
+c    AVANT :             IF (JITTER.AND.(SJ.GT.J))
+c    AVANT :     &             ALPHA(SJ,J) = ALPHA(SJ,J)+2.d0*DV*FS*FS*DVF(J)
+c<<< [MOD M025]
            END DO  
            IF (JITTER) THEN
-              ALPHA(N,SJ) = ALPHA(N,SJ)+2.d0*DV*FS*FS*DVF(N)
+c>>> [MOD M025] Jitter : information de Fisher
+c    AVANT :              ALPHA(N,SJ) = ALPHA(N,SJ)+2.d0*DV*FS*FS*DVF(N)
+c<<< [MOD M025]
               BETA(SJ) = BETA(SJ)+FS*FS*DV*DV
               ALPHA(SJ,SJ) = ALPHA(SJ,SJ)
-     &                      +FS*FS*DV*DV*(4.d0*FS*SIGJV-2.d0)
+c>>> [MOD M025] Jitter : information de Fisher
+c    AVANT :     &                      +FS*FS*DV*DV*(4.d0*FS*SIGJV-2.d0)
+     &                      +FS*FS*SIGV2P*(4.d0*FS*SIGJV-2.d0)
+c<<< [MOD M025]
            END IF
         END DO
 

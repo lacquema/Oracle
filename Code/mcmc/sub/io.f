@@ -34,6 +34,14 @@ c        FORMAT(f6.1,a2,(f))
            WRITE(SD,*)'Give input for planet #',I
            READ(5,*)PLA(I)%MU,UNIT,PLA(I)%A,PLA(I)%EXC,PLA(I)%INC,
      &                        PLA(I)%O,PLA(I)%OM,PLA(I)%TP
+c>>> [MOD M027] e = 0 exactement : e*(cos w,sin w)/sqrt(1-e^2) = 0,
+c    d'ou 0/0 dans EXQ = EXC/S, CW, SW (ELEMENTS, MRQ...). On
+c    part d'une excentricite tres faible, sans effet sur l'orbite
+           IF (PLA(I)%EXC.LT.1.d-3) THEN
+              WRITE(SD,*)'Eccentricity < 0.001 replaced by 0.001'
+              PLA(I)%EXC = 1.d-3
+           END IF
+c<<< [MOD M027]
            CALL UPCASE(UNIT)
            IF (UNIT.EQ.'MS') PLA(I)%MUNIT = SMAS
            IF (UNIT.EQ.'MJ') PLA(I)%MUNIT = MJUP
