@@ -119,7 +119,10 @@ def main():
     for name, spec in cd.CASES.items():
         folder = os.path.join(HERE, "cases", name)
         os.makedirs(folder, exist_ok=True)
-        text, values = make_data(name, spec, rng)
+        # Cas avec sa propre graine : donnees independantes de sa place dans la liste
+        # (les cas publics et ceux du depot prive ne sont pas dans le meme ordre)
+        own = np.random.default_rng(spec["seed"]) if "seed" in spec else rng
+        text, values = make_data(name, spec, own)
         points = [cd.offset(o) for o in spec["orbits"]]
         with open(os.path.join(folder, "data.dat"), "w") as f:
             f.write(text)

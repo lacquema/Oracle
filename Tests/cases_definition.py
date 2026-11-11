@@ -39,8 +39,8 @@ CASES = {
     "rel_rv_rvp": dict(orbits=[INNER], rel=True, rv=True, rvp=True),
     "rv_seul": dict(orbits=[INNER], rv=True),
     # Orbite quasi parabolique (2026-11-11), classique et universel, borne sur e relevee.
-    # Doit rester le dernier cas : les donnees sont tirees dans l'ordre de la liste.
-    "rel_rv_jit_parab": dict(orbits=[PARAB], rel=True, rv=True, jitter=0.02, emax=0.995),
+    # Graine propre : ses donnees ne dependent pas de sa place dans la liste.
+    "rel_rv_jit_parab": dict(orbits=[PARAB], rel=True, rv=True, jitter=0.02, emax=0.995, seed=20261111),
 }
 
 MSTAR_TRUE = 1.0
