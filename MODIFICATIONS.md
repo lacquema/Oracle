@@ -196,6 +196,10 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
   - `make test` passe.
 - **Effet sur les résultats :** arrêt plus tôt quand l'échantillon est déjà assez riche ; remplissage plus long, avec une récolte plus espacée, quand il ne l'est pas. Choix de méthode à présenter à Hervé.
 
+- **Vérification du nouveau remplissage (2026-11-11), avec des copies où le seuil est artificiellement haut :**
+  - `arc_court` (`--rapide`), `ESSMIN` = 12 000 : ESS 5 760 au premier remplissage (p = 7,2, toutes les positions gardées), puis 11 370 à p = 0,24 et 15 710 à p = 0,114 ; arrêt normal, tous les éléments à moins de 1,4 σ de la vérité. Espacer la récolte augmente bien l'ESS, presque en proportion.
+  - `rel_vr_planete` (`--rapide`), `ESSMIN` = 50 000 (inatteignable avec 20 000 solutions) et `PESSMIN` = 0,05 pour abréger : p passe de 250 à 0,18 puis à 0,05, sous `MINPROB` ; à ce plancher, le run s'arrête avec l'avertissement prévu (ESS 18 340), tous les éléments à moins de 1,8 σ de la vérité. L'ESS plafonne vers 18 000 dès p = 0,18 : les solutions sont alors déjà presque indépendantes.
+  - Coût : un remplissage demande environ `NINFER` × 100 / p balayages (6,4 millions au total pour le second essai). Avec `PESSMIN` = 0,01 et `NINFER` = 50 000, le dernier remplissage peut atteindre 500 millions de balayages : à garder en tête pour les cas où l'ESS reste faible.
 ## M018 — `dump.dat` écrit sous un nom temporaire puis renommé
 
 - **Date :** 2026-11-08
