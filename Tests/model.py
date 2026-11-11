@@ -18,7 +18,9 @@ MPS = DAY / AU_KM  # 1 km/s en au/jour
 
 def kepler(mean_anomaly, e):
     """Resout M = u - e sin u par Newton."""
-    u = np.array(mean_anomaly, dtype=float)
+    mean_anomaly = np.array(mean_anomaly, dtype=float)
+    # Depart de Danby (1987) : converge aussi pres de e = 1 (cas quasi paraboliques)
+    u = mean_anomaly + 0.85 * e * np.sign(np.sin(mean_anomaly))
     for _ in range(100):
         u = u - (u - e * np.sin(u) - mean_anomaly) / (1.0 - e * np.cos(u))
     return u

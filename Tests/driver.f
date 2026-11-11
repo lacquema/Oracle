@@ -38,6 +38,7 @@ c-------------------------------------------------------------------------
      &                  MERIT,          ! Chi2+Fmap from MRQCOF
      &                  FMAP,           ! Fmap from MRQCOF
      &                  MPLUS,MMOINS,   ! Merit function at P+H, P-H
+     &                  MPLUS2,MMOINS2, ! Same at P+H/2, P-H/2
      &                  DUMMY,          ! Unused output
      &                  CL,SL,          ! cos,sin(longitude at T0)
      &                  RAPQ,           ! Prior ratio of the MCMC
@@ -133,8 +134,15 @@ c...  BETA = -1/2 d(Chi2+Fmap)/dP
            CALL MRQCOF(NPAR,PB,ALPHA,BETAB,MPLUS,DUMMY)
            PB(I) = P(I)-H
            CALL MRQCOF(NPAR,PB,ALPHA,BETAB,MMOINS,DUMMY)
+c...  Richardson : (4*D(H/2)-D(H))/3 removes the H**2 truncation error
+c...  (orbits close to e = 1, 2026-11-11)
+           PB(I) = P(I)+0.5d0*H
+           CALL MRQCOF(NPAR,PB,ALPHA,BETAB,MPLUS2,DUMMY)
+           PB(I) = P(I)-0.5d0*H
+           CALL MRQCOF(NPAR,PB,ALPHA,BETAB,MMOINS2,DUMMY)
            WRITE(SD,1)'BETA',I,BETA(I)
-           WRITE(SD,1)'BETAFD',I,-0.25d0*(MPLUS-MMOINS)/H
+           WRITE(SD,1)'BETAFD',I,
+     &        -0.25d0*(8.d0*(MPLUS2-MMOINS2)-(MPLUS-MMOINS))/(3.d0*H)
            WRITE(SD,1)'P',I,P(I)
         END DO
 

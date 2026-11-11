@@ -55,22 +55,18 @@ def universal_forward(x):
     Parametres 6 et 7 = (cos, sin)(lambda)/Pq, lambda = w + anomalie vraie a T0.
     """
     q, per, e, inc, angle, w, dt = x
+    # Orbite liee : anomalie vraie a T0 par l'equation de Kepler elliptique (depart de Danby),
+    # equivalente a la variable universelle s et sure pres de e = 1, ou un Newton en s parti
+    # de dt/q pouvait ne pas converger (cas quasi paraboliques, 2026-11-11)
     mu = (2.0 * np.pi / per) ** 2 * q**3
-    alpha = mu / q * (1.0 - e)
-    s = dt / q
-    for _ in range(200):
-        xx = alpha * s * s
-        c1, c3 = stumpff(xx)
-        c0 = np.cos(np.sqrt(xx))
-        c2 = (1.0 - c0) / xx
-        t = mu * c3 * s**3 + q * c1 * s
-        s = s - (t - dt) / (mu * c2 * s * s + q * c0)
-    xx = alpha * s * s
-    c1, c3 = stumpff(xx)
-    c2 = (1.0 - np.cos(np.sqrt(xx))) / xx
-    x_pos = q - mu * c2 * s * s
-    y_pos = np.sqrt(mu * q * (1.0 + e)) * c1 * s
-    lam = w + np.arctan2(y_pos, x_pos)
+    a = q / (1.0 - e)
+    m0 = np.sqrt(mu / a**3) * dt
+    m0 = np.arctan2(np.sin(m0), np.cos(m0))
+    u = m0 + 0.85 * e * np.sign(np.sin(m0))
+    for _ in range(100):
+        u = u - (u - e * np.sin(u) - m0) / (1.0 - e * np.cos(u))
+    nu = 2.0 * np.arctan2(np.sqrt(1.0 + e) * np.sin(u / 2.0), np.sqrt(1.0 - e) * np.cos(u / 2.0))
+    lam = w + nu
     si = np.sin(inc / 2.0)
     return np.array([np.log(q), e * np.cos(w), e * np.sin(w), si * np.cos(angle), si * np.sin(angle),
                      np.cos(lam) / per, np.sin(lam) / per])

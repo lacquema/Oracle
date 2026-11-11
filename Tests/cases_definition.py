@@ -7,6 +7,8 @@ de la vraie solution, pour que le gradient du chi2 ne soit pas nul.
 
 INNER = dict(m_mjup=10.0, a=2.0, e=0.3, i=60.0, node=30.0, w=70.0, tp=56000.0)
 OUTER = dict(m_mjup=5.0, a=8.0, e=0.1, i=65.0, node=40.0, w=200.0, tp=57000.0)
+# Quasi parabolique : passage au periastre pendant les mesures (point d'evaluation e = 0.99)
+PARAB = dict(m_mjup=10.0, a=3.0, e=0.97, i=50.0, node=30.0, w=70.0, tp=56200.0)
 
 
 def offset(orbit):
@@ -36,6 +38,9 @@ CASES = {
     "rel_rvp": dict(orbits=[INNER], rel=True, rvp=True),
     "rel_rv_rvp": dict(orbits=[INNER], rel=True, rv=True, rvp=True),
     "rv_seul": dict(orbits=[INNER], rv=True),
+    # Orbite quasi parabolique (2026-11-11), classique et universel, borne sur e relevee.
+    # Doit rester le dernier cas : les donnees sont tirees dans l'ordre de la liste.
+    "rel_rv_jit_parab": dict(orbits=[PARAB], rel=True, rv=True, jitter=0.02, emax=0.995),
 }
 
 MSTAR_TRUE = 1.0

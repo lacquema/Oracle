@@ -65,6 +65,20 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M028 — Tests : orbite quasi parabolique, et outils de test sûrs près de e = 1 (sans repère)
+
+- **Date :** 2026-11-11
+- **Fichiers :** `Tests/` seulement : `cases_definition.py` (orbite `PARAB` et cas `rel_rv_jit_parab`), `generate_cases.py` (borne sur e par cas, `emax`), `model.py` et `jacobian.py` (Kepler sûr près de e = 1), `driver.f` et `run_tests.py` (extrapolation de Richardson), référence complétée.
+- **Changement :**
+  1. Cas `rel_rv_jit_parab` : astrométrie relative, vitesses de l'étoile et jitter, orbite quasi parabolique (a = 3 au, e = 0,97, passage au périastre au milieu des mesures ; point d'évaluation à e = 0,99, borne de l'entrée relevée à 0,995), en variables classiques et universelles. Ajouté en dernier : les données des cas existants ne changent pas, car elles sont tirées dans l'ordre de la liste avec une seule graine.
+  2. `model.kepler` part de M + 0,85 e·signe(sin M) (Danby 1987) au lieu de M : le Newton pouvait diverger près de e = 1.
+  3. `jacobian.universal_forward` passe, pour une orbite liée, par l'équation de Kepler elliptique au lieu d'un Newton en variable universelle parti de s = dt/q, qui ne convergeait pas toujours quand q est petit (ln J sautait de 14 entre deux points voisins dans un cas Gaia du dépôt privé).
+  4. `driver.f` : la dérivée de référence par différences finies utilise l'extrapolation de Richardson, (4 D(h/2) − D(h))/3, qui retire l'erreur de troncature en h² ; tolérance de bruit d'arrondi multipliée par 3 (`run_tests.py`). Au pas h seul, cette erreur atteignait 3·10⁻⁴ (au-dessus de la tolérance de 10⁻⁴) sur une orbite à e = 0,99 du dépôt privé.
+- **Pourquoi :** vérifier le code près de e = 1, en particulier les variables universelles, faites pour ces orbites, sans que les outils de test eux-mêmes se trompent.
+- **Résultat :** le code passe tous les contrôles sur ce cas (χ² contre le modèle Python, classique = universel, rapport des priors, dérivées du L-M, éléments reconstruits). Résultats des anciens cas inchangés.
+- **Vérification :** `make test` : 368 OK. Référence complétée pour les 2 nouvelles entrées ; le diff ne contient que des ajouts.
+- **Effet sur les résultats :** aucun (tests seulement).
+
 ## M027 — Excentricité de départ nulle acceptée
 
 - **Date :** 2026-11-11

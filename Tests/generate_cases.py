@@ -110,7 +110,7 @@ def make_input(spec, points, univ):
         )
     if not univ:
         lines.append("0.0 1000000.0")
-    lines += ["0.0 1000.0", "0.0 0.95"]
+    lines += ["0.0 1000.0", f"0.0 {spec.get('emax', 0.95)}"]
     return "\n".join(lines) + "\n"
 
 

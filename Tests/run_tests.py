@@ -320,7 +320,7 @@ def test_cases(report, exes, update):
             # Chaque parametre a sa tolerance : ecart relatif, plus le bruit d'arrondi
             # des differences finies (arrondi du chi2 divise par le pas).
             step = 1e-6 * max(abs(res["P"][i]), 1e-2)
-            noise = 1e-11 * abs(res["MERIT"]) / step
+            noise = 3e-11 * abs(res["MERIT"]) / step  # Richardson : bruit environ 3 fois celui du pas h
             if abs(analytic - numeric) > TOL_GRADIENT * abs(numeric) + noise:
                 bad.append(f"p{i}: {analytic:.6g} / {numeric:.6g}")
         report.check(not bad, f"gradient {label}", "; ".join(bad[:5]), known=KNOWN_GRADIENT.get(label))
