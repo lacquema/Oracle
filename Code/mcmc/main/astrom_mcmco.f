@@ -37,6 +37,9 @@ c<<< [MOD M020]
 
         METHOD = 1
         CALL INIT_SIMU(CNEW,NMOD,FILES,NEW)
+c>>> [MOD M029] B14 : graine tiree (ou donnee par ORACLE_SEED) et ecrite
+        CALL INIT_SEED()
+c<<< [MOD M029]
 
         IF (CNEW.EQ.5) THEN
            CALL SIMUL_DATA(1,FILES)

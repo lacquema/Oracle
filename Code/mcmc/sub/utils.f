@@ -435,3 +435,46 @@ C
         END IF
 
         END
+c>>> [MOD M029] B14 : graine du generateur aleatoire tiree au hasard (ou
+c    donnee par la variable d'environnement ORACLE_SEED), puis ecrite a
+c    l'ecran et dans le journal, pour pouvoir refaire un run a l'identique
+C
+C -----------------------------------------------------------------------------
+C       Random seed : ORACLE_SEED (environment variable) if given, else
+C       drawn at random ; written on screen and in the log file
+C -----------------------------------------------------------------------------
+C
+        SUBROUTINE INIT_SEED()
+
+        USE DATA
+
+        IMPLICIT NONE
+
+        INTEGER*4 ::    NS,             ! Size of the seed array
+     &                  I,              ! Index
+     &                  ST,             ! Status
+     &                  SEED            ! Seed (given or drawn)
+        INTEGER*4, DIMENSION(:), ALLOCATABLE :: PUT ! Seed array
+        REAL*8 ::       R               ! Random number
+        CHARACTER*32 :: VAL             ! Value of ORACLE_SEED
+
+        CALL GET_ENVIRONMENT_VARIABLE('ORACLE_SEED',VAL,STATUS=ST)
+        IF (ST.EQ.0) READ(VAL,*,IOSTAT=ST)SEED
+        IF (ST.NE.0) THEN
+c...  No seed given : drawn from the default (random) generator state
+           CALL RANDOM_SEED()
+           CALL RANDOM_NUMBER(R)
+           SEED = 1+INT(R*2.d9)
+        END IF
+        CALL RANDOM_SEED(SIZE=NS)
+        ALLOCATE(PUT(NS))
+        DO I = 1,NS
+           PUT(I) = SEED+37*(I-1)
+        END DO
+        CALL RANDOM_SEED(PUT=PUT)
+        DEALLOCATE(PUT)
+        WRITE(SD,*)'Random seed (ORACLE_SEED) = ',SEED
+        WRITE(SDL,*)'Random seed (ORACLE_SEED) = ',SEED
+
+        END
+c<<< [MOD M029]
