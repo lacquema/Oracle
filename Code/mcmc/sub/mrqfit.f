@@ -36,7 +36,19 @@ C
             WRITE(SD,*)'        ----> ',sngl(CHI2),' <----',sngl(lambda)
          END IF
            ITS = ITS+1
-           if (chi2.ne.chi2) stop
+c>>> [MOD M031] Arret explique quand le chi2 n'est pas un nombre. Un pas
+c    d'essai NaN est deja refuse (MRQSTEP) : le chi2 en cours n'est NaN
+c    qu'au point de depart ou apres un redemarrage (MRQRENEW).
+c    AVANT :           if (chi2.ne.chi2) stop
+           IF (CHI2.NE.CHI2) THEN
+              WRITE(SD,*)'Error : Levenberg-Marquardt chi2 is NaN'
+              WRITE(SD,*)'at the starting point (or after a restart).'
+              WRITE(SD,*)'Check the starting orbit and the priors.'
+              WRITE(SD,*)'Iteration',ITS,'  lambda',SNGL(LAMBDA)
+              WRITE(SD,*)'Parameters :',SNGL(P(1:N))
+              STOP 1
+           END IF
+c<<< [MOD M031]
         END DO
         WRITE(SD,*)'End of Levenberg-Marquardt'
         CALL GAUSS(N,ALPHA,BETA,COV,DP,TEST)

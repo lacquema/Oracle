@@ -65,6 +65,15 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M031 — Levenberg-Marquardt : arrêt expliqué quand le χ² n'est pas un nombre
+
+- **Date :** 2026-11-12
+- **Fichier :** `Code/mcmc/sub/mrqfit.f` (`MRQMIN`, un bloc repéré).
+- **Changement :** la ligne `if (chi2.ne.chi2) stop` arrêtait le programme sans rien écrire. Elle écrit maintenant à l'écran (`out.txt`) que le χ² du Levenberg-Marquardt est NaN, au point de départ ou après un redémarrage, qu'il faut vérifier l'orbite de départ et les priors, puis le numéro d'itération, λ et les paramètres en cours (variables de l'ajustement). Le programme s'arrête avec le code 1 (`STOP 1`, comme M012) au lieu de 0.
+- **Pourquoi :** trouvé pendant la campagne de tests du 2026-11-11 : un run qui s'arrête ainsi laisse un `out.txt` qui finit sur une ligne de χ² ordinaire, sans cause visible, et un code de sortie 0. Choix d'Antoine (2026-11-12) : un message clair plutôt qu'un redémarrage automatique du L-M. Un pas d'essai dont le χ² est NaN est déjà refusé (`MRQSTEP`) ; le χ² en cours ne peut donc être NaN qu'au point de départ ou après `MRQRENEW`, et l'arrêt n'a lieu que si le pas suivant est aussi refusé (un pas accepté remplace le NaN, car `CTRY.GT.CHI2` est faux).
+- **Vérification (2026-11-12) :** copie hors du dépôt, vitesses seules (`rv_seul` de la campagne). χ² forcé à NaN au point de départ : le premier pas est accepté et le L-M finit normalement, comme avant. χ² forcé à NaN à la troisième itération : le message et les paramètres sont écrits, code de sortie 1. `make test` passe.
+- **Effet sur les résultats :** aucun ; un arrêt qui était silencieux est expliqué.
+
 ## M030 — Prior de Heaviside (masses positives) sans débordement de l'exponentielle
 
 - **Date :** 2026-11-12
