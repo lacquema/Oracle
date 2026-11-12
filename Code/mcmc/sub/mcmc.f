@@ -946,7 +946,12 @@ c<<< [MOD M010]
              IF (ST.LT.-1d3) THEN
                 RAPQ = 0.d0
              ELSE                
-                RAPQ = (1.d0+EXP(-S))/(1.d0+EXP(-ST)) 
+c>>> [MOD M030] Heaviside : meme rapport, sans EXP(-S) infini quand le
+c...  point de depart a une masse tres negative
+c    AVANT :      RAPQ = (1.d0+EXP(-S))/(1.d0+EXP(-ST))
+                RAPQ = EXP(MAX(-S,0.d0)+LOG(1.d0+EXP(-ABS(S)))
+     &                -MAX(-ST,0.d0)-LOG(1.d0+EXP(-ABS(ST))))
+c<<< [MOD M030]
              END IF
 c             print*,'xb',iv,sngl(extry),
 c     &             sngl(s),sngl(st),sngl(rapq)
@@ -1010,11 +1015,20 @@ C
              SIGMA = MPRIOR(IV)%SDEV
              XBAR = MPRIOR(IV)%MEAN
              S = (EX-XBAR)/SIGMA
-             ES = EXP(-S)
-             F = 2.d0*LOG(1.d0+ES)
-             FF = (1.d0+ES)*SIGMA
-             DF = -2.d0*EX*ES/FF
-             D2F = 2.d0*(EX-FF)*EX*ES/(FF*FF)
+c>>> [MOD M030] Heaviside : memes formules, ecrites sans EXP(-S) infini
+c...  pour une masse tres negative (S < -709 donnait F, DF et D2F infinis
+c...  ou NaN). G = ES/(1+ES) = 1/(1+EXP(S)), H = 1-G.
+c    AVANT :      ES = EXP(-S)
+c    AVANT :      F = 2.d0*LOG(1.d0+ES)
+c    AVANT :      FF = (1.d0+ES)*SIGMA
+c    AVANT :      DF = -2.d0*EX*ES/FF
+c    AVANT :      D2F = 2.d0*(EX-FF)*EX*ES/(FF*FF)
+             F = 2.d0*(MAX(-S,0.d0)+LOG(1.d0+EXP(-ABS(S))))
+             ES = 1.d0/(1.d0+EXP(S))
+             FF = 1.d0-ES
+             DF = -2.d0*EX*ES/SIGMA
+             D2F = 2.d0*EX*ES*(EX*FF-SIGMA)/(SIGMA*SIGMA)
+c<<< [MOD M030]
           END SELECT
         END
 

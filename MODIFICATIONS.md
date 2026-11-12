@@ -65,6 +65,15 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M030 — Prior de Heaviside (masses positives) sans débordement de l'exponentielle
+
+- **Date :** 2026-11-12
+- **Fichiers :** `Code/mcmc/sub/mcmc.f`, `USER_PRIOR_RATIO` (rapport du MCMC, type 6) et la routine des dérivées du prior pour le Levenberg-Marquardt (type 6, `F`, `DF`, `D2F`).
+- **Changement :** mêmes formules, réécrites pour ne jamais calculer `EXP(-S)` avec `S` très négatif (masse très négative devant la largeur du prior) : `LOG(1+EXP(-S)) = MAX(-S,0) + LOG(1+EXP(-|S|))`, et dans les dérivées `ES/(1+ES) = 1/(1+EXP(S))`. Le MAP (`USER_PRIOR_MAP`) était déjà protégé par M010.
+- **Pourquoi :** trouvé pendant la campagne de tests du 2026-11-11. Pour `S < -709`, `EXP(-S)` vaut l'infini : dans le Levenberg-Marquardt, `F` est infini et `DF`, `D2F` valent infini sur infini, donc NaN, ce qui arrête le programme sans message (`MRQMIN`, ligne `if (chi2.ne.chi2) stop`). Dans le MCMC, le rapport reste infini quand le point de départ a une masse très négative, comme avant (tout pas qui s'en éloigne est accepté) ; `make test` contient ce cas.
+- **Vérification (2026-11-12) :** en Python, les nouvelles formules donnent les mêmes `F`, `DF`, `D2F` et le même rapport que les anciennes partout où les anciennes sont finies (écart relatif maximal 4e-16, pour |S| < 600), et des valeurs finies au-delà (`S = -2000` : `F` = 4000, `DF` et `D2F` de l'ordre de 1e-6). `make test` passe.
+- **Effet sur les résultats :** aucun quand les masses restent raisonnables ; supprime un arrêt silencieux quand le Levenberg-Marquardt passe par une masse très négative.
+
 ## M029 — Graine du générateur aléatoire tirée puis écrite (corrige B14)
 
 - **Date :** 2026-11-11
