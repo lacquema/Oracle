@@ -1317,7 +1317,11 @@ c....... Internal routine : storing 1 solution .................
           IMPLICIT NONE
 
           INTEGER*4 :: DK       ! Position in DATA array
-          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+c>>> [MOD M033] B24 : P contient aussi le chi2 et le MAP (NPAR+1 et
+c    NPAR+2), lus plus bas ; PSTART et PSAV ont bien NPAR+2 elements
+c    AVANT :          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+          REAL*8 ::    P(NPAR+2)  ! Parameters, chi2, MAP
+c<<< [MOD M033]
           REAL*8, DIMENSION(NPLA) ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  O,OM,         ! Omega's ± Pi
@@ -1470,7 +1474,11 @@ c....... Internal routine : storing 1 solution .................
           IMPLICIT NONE
 
           INTEGER*4 :: DK       ! Position in DATA array
-          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+c>>> [MOD M033] B24 : P contient aussi le chi2 et le MAP (NPAR+1 et
+c    NPAR+2), lus plus bas ; PSTART et PSAV ont bien NPAR+2 elements
+c    AVANT :          REAL*8 ::    P(NPAR)  ! Parameters of the solution
+          REAL*8 ::    P(NPAR+2)  ! Parameters, chi2, MAP
+c<<< [MOD M033]
           REAL*8, DIMENSION(NPLA) ::
      &                  NN,           ! Mean motion (wrt/q if univ. var.)
      &                  CI,SI,        ! cos(i),sin(i)
