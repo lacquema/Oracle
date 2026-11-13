@@ -37,7 +37,8 @@ CASES = {
     "rel_rv_2orb_jit": dict(orbits=[INNER, OUTER], rel=True, rv=True, jitter=0.02),
     "rel_rvp": dict(orbits=[INNER], rel=True, rvp=True),
     "rel_rv_rvp": dict(orbits=[INNER], rel=True, rv=True, rvp=True),
-    "rv_seul": dict(orbits=[INNER], rv=True),
+    # Prior sur la masse de l'etoile depuis M032 : sans lui, le run est refuse.
+    "rv_seul": dict(orbits=[INNER], rv=True, prior="1 0\n1\n1.0 0.1 ms"),
     # Orbite quasi parabolique (2026-11-11), classique et universel, borne sur e relevee.
     # Graine propre : ses donnees ne dependent pas de sa place dans la liste.
     "rel_rv_jit_parab": dict(orbits=[PARAB], rel=True, rv=True, jitter=0.02, emax=0.995, seed=20261111),

@@ -383,6 +383,21 @@ c...       Variables #NPAR-2 = V0, #NPAR-1=ln(Jitter), #NPAR = ln(central mass)
 c...  NPAR+2 => #NPAR+1 = CHI2, #NPAR+2 = FMAP in output
               WRITE(SD,*)'Number of mass priors'
               READ(5,*)NPRIOR
+c>>> [MOD M032] Masses non determinees : sans astrometrie relative
+c    (type 1), sans VR du compagnon (type 3) et sans prior sur les
+c    masses (VR de l'etoile et/ou Gaia seules), rien ne fixe l'echelle
+c    des masses. Elles s'effondraient (0/0 dans CHI2SEUL) ou le run ne
+c    finissait pas. Run refuse.
+              IF ((.NOT.ISDATA(1)).AND.(.NOT.ISDATA(3))
+     &                            .AND.(NPRIOR.LE.0)) THEN
+                 WRITE(SD,*)'Error : the masses are not constrained'
+                 WRITE(SD,*)'by the data : stellar RV and/or Gaia'
+                 WRITE(SD,*)'astrometry alone (no relative astrometry,'
+                 WRITE(SD,*)'no companion RV). Add a prior on the'
+                 WRITE(SD,*)'stellar mass (or fix it : type 4).'
+                 STOP 1
+              END IF
+c<<< [MOD M032]
               IF (MULTIPLA) THEN
                  NPRIOR = NPRIOR+NPLA
               ELSE
