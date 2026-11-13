@@ -20,13 +20,13 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
-| B23 | `MRQMIN` (`mrqfit.f`), boucle du Levenberg-Marquardt | Aucun nombre maximal d'itérations : la boucle ne s'arrête que si deux χ² successifs diffèrent de moins de `EPS`. | Trouvée le 2026-11-13 : vitesses de l'étoile seules avec un prior plat borné sur la masse de l'étoile (type 3, 0,1 à 10 Msun) : le L-M oscille entre χ² = 14,5 et 14,9 pendant 8 h sans jamais finir ni passer au MCMC. Les masses y sont dégénérées (voir M032). |
+| B23 | Levenberg-Marquardt (prior de type 3, « Linear ») puis `SEARCH_BETA` (`mcmc.f`) | Le L-M ne respecte pas les bornes d'un prior plat sur une masse et peut finir hors de ces bornes, où le prior est nul (`MAP = −1e30`). Le MCMC part alors d'un point impossible : aucun pas n'est accepté, même un pas nul, les pas (`BETA`) tombent à 0 et `SEARCH_BETA` boucle sans fin, sans message (sa seule sortie d'échec est un pas trop grand, `BETAMAX`). | Trouvée le 2026-11-13 : vitesses de l'étoile seules, prior plat sur la masse de l'étoile de 0,1 à 10 Msun : le L-M finit à `M*` = 1e-9 Msun et `a` = 0,016 au, puis le run tourne 8 h sans écrire de ligne (la sortie, mise en tampon, faisait croire à un L-M qui ne finissait pas). Vu avec `sample` sur une copie compilée avec `-g`, et en écrivant `BETA` et le taux d'acceptation dans `SEARCH_BETA` : tous nuls après 1,3 million de balayages. Les cas normaux du L-M convergent en 4 à 17 itérations, GG Tau en 510. |
 | B24 | `STORE_SOLUTION` (`io.f`, les deux versions, l. 1320 et 1473) | `P` déclaré `P(NPAR)` mais lu jusqu'à `P(NPAR+2)` (χ² et MAP). | **Corrigée par M033.** Bénin : le tableau passé a bien `NPAR+2` éléments (`PSAV`). Signalé par `-fcheck=all` (campagne du 2026-11-11) ; contourné dans la copie de test. |
-| B25 | `MCMCP` (`mcmc.f:97`) et `WRITE_DUMP` (`io.f:637`) | `PROBINFER` est écrit dans `dump.dat` avant d'avoir reçu une valeur (il n'est fixé qu'au premier passage dans `GELMAN_RUBIN`). | Bénin : valeur relue puis recalculée à la reprise. Vu avec `-finit-real=snan` (campagne du 2026-11-11). |
+| B25 | `MCMCP` (`mcmc.f:97`) et `WRITE_DUMP` (`io.f:637`) | `PROBINFER` est écrit dans `dump.dat` avant d'avoir reçu une valeur (il n'est fixé qu'au premier passage dans `GELMAN_RUBIN`). | **Corrigée par M034.** Bénin : valeur relue puis recalculée à la reprise. Vu avec `-finit-real=snan` (campagne du 2026-11-11). |
 | B1 | `kepellip.f:1617`, `kepu.f:2161` | `IF (NPLA.GT.1)` au lieu de `IF (MULTIPLA)` | **Corrigée par M006.** Une orbite avec vitesses radiales : la masse de l'étoile est remplacée par la masse totale, et celle de la planète garde sa valeur d'entrée. Le MCMC démarre avec une planète de masse quasi nulle. Sur un cas simulé, χ² de départ 6227 au lieu de 38. |
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | **Corrigée par M006.** Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
 | B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | **Corrigée par M008.** Précision : les indices négatifs viennent de la remise à zéro faite après le bloc `IF (I.EQ.1)`, pas du bloc `ELSE`. Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
@@ -69,6 +69,15 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F5 | Excentricité légèrement surestimée (biais de Lucy et Sweeney 1971) : vérifier quel prior sur `e` le code impose réellement (jacobien des paramètres 2 et 3, `e (cos ϖ, sin ϖ)/√(1−e²)`) et le comparer à un prior uniforme sur `e` ; confirmer le biais avec des graines indépendantes entre les cas ; décider s'il faut changer le prior ou seulement l'expliquer. **Expliqué dans la documentation du site (section « Reading the results ») le 2026-11-13.** | Campagne de tests du 2026-11-11 au 13 (bilan dans le dépôt privé, `Tests/campagne/README.md`) : sur 96 runs à une orbite (vraie `e` = 0,3), quantile moyen de la vraie `e` 0,43 ± 0,03 ; elle tombe sous l'intervalle à 68 % dans 32 % des runs et au-dessus dans 8 %. Environ 2 σ. Le bruit allonge plus souvent qu'il ne raccourcit le vecteur `(e cos ω, e sin ω)`. Demandé par Antoine (2026-11-13). |
 
 ## Modifications
+
+## M034 — Corrige B25 : `PROBINFER` reçoit une valeur dès le départ
+
+- **Date :** 2026-11-13
+- **Fichier :** `Code/mcmc/sub/mcmc.f` (`INIT_MCMC`, branche d'un nouveau run, un bloc repéré).
+- **Changement :** `PROBINFER = 0` au démarrage d'un nouveau run, à côté de `INFER = .FALSE.`.
+- **Pourquoi :** B25. `PROBINFER` n'était fixé qu'à la convergence (`GELMAN_RUBIN`), mais `WRITE_DUMP` l'écrivait dans `dump.dat` avant : une valeur non initialisée. Elle ne sert qu'une fois `INFER` vrai, et elle est alors recalculée ; une reprise relit `INFER` faux et ne l'utilise pas non plus. Aucun effet sur le calcul, seulement un fichier propre.
+- **Vérification (2026-11-13) :** deux copies compilées avec `-finit-real=snan` (réels non initialisés à NaN), cas `rel` de la campagne, dump tous les 100 balayages, arrêt au bout de 3 s (balayage 301, avant la convergence) : `PROBINFER` vaut NaN dans `dump.dat` sans M034, 0 avec. `make test` passe.
+- **Effet sur les résultats :** aucun.
 
 ## M033 — Corrige B24 : dimension de `P` dans `STORE_SOLUTION`
 

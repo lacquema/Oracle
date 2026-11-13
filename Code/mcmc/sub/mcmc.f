@@ -402,6 +402,11 @@ c    AVANT :      END DO
 c<<< [MOD M015]
            LONG = 1_8
            INFER = .FALSE.
+c>>> [MOD M034] B25 : PROBINFER recoit une valeur des le depart. Il
+c    n'etait fixe qu'a la convergence (GELMAN_RUBIN), mais ecrit dans
+c    dump.dat avant. Il ne sert qu'une fois INFER vrai.
+           PROBINFER = 0.d0
+c<<< [MOD M034]
            NGEL = 100_8
            COUNTOK = 0
            NMOD = 0
