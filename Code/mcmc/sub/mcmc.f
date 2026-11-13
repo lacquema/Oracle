@@ -338,6 +338,9 @@ c>>> [MOD M015] B12 : variables des departs disperses
         INTEGER*4 ::    NTRY         ! Number of trials
         LOGICAL ::      OKSTART,BAD  ! Valid start, unreal solution
 c<<< [MOD M015]
+c>>> [MOD M035] B23 : depart hors des bornes
+        LOGICAL ::      OUT          ! Start out of bounds (MRQCHECK)
+c<<< [MOD M035]
 
         write(sd,*)'init_mcmc'
         DO C = 1,NCH
@@ -364,6 +367,19 @@ c<<< [MOD M015]
               CH0%COV = 0.d0
               CALL CHI2SEUL(CH0%P,CH0%CHI2)
 c              print*,'chi2seul',ch0%chi2
+c>>> [MOD M035] B23 : un depart hors des bornes (elements, masses,
+c    prior plat) n'accepte aucun pas : SEARCH_BETA bouclait sans fin,
+c    sans message. Arret explique.
+              CALL MRQCHECK(NPAR,CH0%P,OUT)
+              IF (OUT) THEN
+                 WRITE(SD,*)'Error : the starting point of the MCMC is'
+                 WRITE(SD,*)'outside the bounds (P, a, e, masses or a'
+                 WRITE(SD,*)'Linear mass prior). Check the starting'
+                 WRITE(SD,*)'orbit, the bounds and the priors.'
+                 WRITE(SD,*)'Parameters :',SNGL(CH0%P(1:NPAR))
+                 STOP 1
+              END IF
+c<<< [MOD M035]
               CALL SEARCH_BETA(CH0%P,DIRS(1:NPAR,1:NPAR),CH0%BETA,FAIL)
            END DO
            WRITE(SD,*)'beta initiation successful ! '

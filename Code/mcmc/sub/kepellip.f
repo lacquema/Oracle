@@ -1761,6 +1761,9 @@ C
      &                  S,S2,           ! e/sqrt(1-e^2) + carre
      &                  EXC             ! excentricite
 
+c>>> [MOD M035] B23 : combinaison de masses d'un prior
+        REAL*8 ::       MUF             ! Prior mass combination
+c<<< [MOD M035]
         LOGICAL ::      TEST
         
         TEST = .FALSE.
@@ -1803,6 +1806,18 @@ c          if (test) print*,'test a',test,a
         IF (MULTIPLA)
      &          TEST = TEST.OR.(MSTAR.LT.MTINY).OR.(MSTAR.GT.MHUGE)
 c        if (test) print*,'masses',mtiny,mstar,mhuge,a,per,exc
+c>>> [MOD M035] B23 : un pas qui sort des bornes d'un prior plat
+c    (type 3) sur les masses est refuse, comme dans le MCMC (rapport
+c    nul). Masses calculees comme dans COMPUTE_MAP.
+        DO J = 0,NPRIOR
+           IF (MPRIOR(J)%TYP.EQ.3) THEN
+              MUF = SUM(MPRIOR(J)%BCOF(1:NPLA)*MDYN(1:NPLA))
+              IF (MULTIPLA) MUF = MUF+MPRIOR(J)%BCOF(0)*MSTAR
+              TEST = TEST.OR.(MUF.LT.MPRIOR(J)%BOUND(1))
+     &                   .OR.(MUF.GT.MPRIOR(J)%BOUND(2))
+           END IF
+        END DO
+c<<< [MOD M035]
         DO I = 1,N
           IF (P(I).NE.P(I)) TEST = .TRUE.
         END DO
