@@ -19,7 +19,7 @@ import pandas as pd
 from scipy.optimize import least_squares
 
 BH3 = 4318465066420528000
-DEFAULT = os.path.expanduser("~/Oracle.env/GaiaDR4/GAIA_DR4_PRERELEASE_EPOCH_ASTROMETRY_RAW.csv.gz")
+DEFAULT = os.path.expanduser("~/Oracle.env/Gaia-DR4/GAIA_DR4_PRERELEASE_EPOCH_ASTROMETRY_RAW.csv.gz")
 
 # Valeurs affichees par le notebook de l'ESA (valeur, chiffres significatifs affiches)
 ESA_SINGLE = {"ra": 0.71001, "dec": 0.26549, "plx": 0.98329, "mura": -30.94602, "mudec": -148.54974}
