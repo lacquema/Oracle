@@ -370,7 +370,17 @@ c              print*,'chi2seul',ch0%chi2
 c>>> [MOD M035] B23 : un depart hors des bornes (elements, masses,
 c    prior plat) n'accepte aucun pas : SEARCH_BETA bouclait sans fin,
 c    sans message. Arret explique.
-              CALL MRQCHECK(NPAR,CH0%P,OUT)
+c<<< [MOD M035]
+c>>> [MOD M036] B26 : controle fait par RATIO_PRIORS, dans les
+c    parametres du MCMC. MRQCHECK lit ceux du L-M, differents en
+c    variables universelles (P6, P7) : masses fausses, refus a tort
+c    avec un prior plat sur une masse dynamique.
+c    AVANT :              CALL MRQCHECK(NPAR,CH0%P,OUT)
+              BAD = .FALSE.
+              CALL RATIO_PRIORS(CH0%P,CH0%P,RAPQ,BAD)
+              OUT = (BAD.OR.(.NOT.(RAPQ.GT.0.d0)))
+c<<< [MOD M036]
+c>>> [MOD M035] B23 (suite) : arret explique
               IF (OUT) THEN
                  WRITE(SD,*)'Error : the starting point of the MCMC is'
                  WRITE(SD,*)'outside the bounds (P, a, e, masses or a'
@@ -680,7 +690,24 @@ C        END DO
           ALPHA = 0.d0
         ELSE
            CALL CHI2SEUL(PTRY,CHI2TRY)
-           ALPHA = MIN(EXP(-0.5d0*(CHI2TRY-CHI2))*RAPQ,1.d0)
+c>>> [MOD M038] B28 : un chi2 d'essai NaN etait accepte (MIN(NaN,1)
+c    vaut 1 avec gfortran). Refuse, comme un rapport NaN ou 0*infini.
+c    Si le chi2 courant est lui-meme NaN, tout essai fini est accepte
+c    (comme avant), pour en sortir.
+c    AVANT :           ALPHA = MIN(EXP(-0.5d0*(CHI2TRY-CHI2))*RAPQ,1.d0)
+           IF ((CHI2TRY.NE.CHI2TRY).OR.(RAPQ.NE.RAPQ)) THEN
+              ALPHA = 0.d0
+           ELSE IF (CHI2.NE.CHI2) THEN
+              ALPHA = 1.d0
+           ELSE
+              ALPHA = EXP(-0.5d0*(CHI2TRY-CHI2))*RAPQ
+              IF (ALPHA.NE.ALPHA) THEN
+                 ALPHA = 0.d0
+              ELSE
+                 ALPHA = MIN(ALPHA,1.d0)
+              END IF
+           END IF
+c<<< [MOD M038]
         END IF
         CALL RANDOM_NUMBER(R)
         ACC = .FALSE.

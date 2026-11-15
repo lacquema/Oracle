@@ -45,9 +45,20 @@ def make_data(name, spec, rng):
                     lines.append(f"{ipla + 1} {t:.3f} {xo:.6f} {yo:.6f} {cd.SIG_POS_MAS:.6f} {cd.SIG_POS_MAS:.6f}{corr}")
         text += ["1", "I JD X Y dX dY Corr", "-" * 40] + lines
         separator = True
-        # En (Sep, PA), la conversion passe par io.f : pas de recalcul independant.
         if not seppa:
             values["rel"] = [[r[0], r[1], round(r[2], 6), round(r[3], 6), r[4], r[5], r[6]] for r in rows]
+        else:
+            # En (Sep, PA), conversion refaite ici, independamment de io.f (M037), a partir
+            # des valeurs ecrites dans le fichier : covariance = J C J^T, J = d(x,y)/d(sep,pa).
+            values["rel"] = []
+            for line in lines:
+                ipla, t, sep, pa, dsep, dpa, rsp = (float(v) for v in line.split())
+                c, s_ = math.cos(math.radians(pa)), math.sin(math.radians(pa))
+                dth = math.radians(dpa)
+                jac = np.array([[c, -sep * s_], [s_, sep * c]])
+                cov = jac @ np.array([[dsep**2, rsp * dsep * dth], [rsp * dsep * dth, dth**2]]) @ jac.T
+                sx, sy = math.sqrt(cov[0, 0]), math.sqrt(cov[1, 1])
+                values["rel"].append([int(ipla), t, sep * c, sep * s_, sx, sy, float(cov[0, 1] / (sx * sy))])
 
     if spec.get("rv"):
         if separator:

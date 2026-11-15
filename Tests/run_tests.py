@@ -265,8 +265,6 @@ def test_cases(report, exes, update):
     for label, res in sorted(usable.items()):
         case = label.split("/")[0]
         spec = json.load(open(os.path.join(TESTS, "cases", case, "point.json")))
-        if case == "rel_seppa":
-            continue
         value = model.chi2(spec["point"], spec["data"])
         known = KNOWN_CHI2_UNIV.get(case) if label.endswith("/univ") else None
         report.check(close(value, res["CHI2"], TOL_INDEPENDENT), f"indépendant {label}",

@@ -1197,7 +1197,11 @@ c... Conversion (sep,PA) -> (dec,RA)
      &               -2.d0*SEP*CPA*SPA*CV)                 
                 DYY = SQRT(SPA*SPA*VSEP+SEP*SEP*CPA*CPA*VPA
      &               +2.d0*SEP*CPA*SPA*CV)
-                RHO = (CPA*SPA*VSEP-SEP*SPA*CPA*VPA
+c>>> [MOD M037] B27 : covariance = cs*Vsep - S^2*sc*Vpa + S(c2-s2)*Cov ;
+c    il manquait un facteur SEP devant VPA
+c    AVANT :                RHO = (CPA*SPA*VSEP-SEP*SPA*CPA*VPA
+                RHO = (CPA*SPA*VSEP-SEP*SEP*SPA*CPA*VPA
+c<<< [MOD M037]
      &               +(CPA*CPA-SPA*SPA)*SEP*CV)/(DXX*DYY)                
              END IF
              IF (DATEINPUT.EQ.1) THEN
