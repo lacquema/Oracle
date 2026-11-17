@@ -73,6 +73,20 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M039 — Amélioration : arrêt demandé par un fichier `stop.flag`, avec sauvegarde
+
+- **Date :** 2026-11-17
+- **Fichiers :** `Code/mcmc/sub/mcmc.f` (`MCMCP`, une déclaration et un bloc à la fin de la boucle principale).
+- **Changement :** à chaque tour de la boucle principale de `MCMCP`, une fois la chauffe faite, le Fortran regarde s'il existe un fichier `stop.flag` dans son dossier. S'il le trouve, il écrit le dump (`WRITE_DUMP`, comme la sauvegarde périodique), retire le fichier, écrit `Stopped on request, dump file written` et s'arrête (`STOP`). Pendant la chauffe (1 000 balayages), il ne le lit pas : une reprise saute la chauffe (`BURNT = .NOT.NEW`, M015), donc un dump écrit avant sa fin serait faux. Le fichier peut être créé à la main (`touch stop.flag`) ou par un lanceur. Le lanceur `oracle run` (à venir dans ce dépôt), sur Ctrl-C ou SIGTERM, crée le fichier, attend au plus 25 s que le Fortran s'arrête, puis le tue s'il ne l'a pas fait (pendant le Levenberg-Marquardt, il n'y a rien à sauvegarder, et il le tue tout de suite). Le Fortran est lancé en ignorant SIGINT et SIGTERM, que le terminal et les gestionnaires de tâches envoient à tous les processus : seul `oracle run` les reçoit et fait l'arrêt propre.
+- **Pourquoi :** demandé par Antoine (2026-11-17). Avant, Ctrl-C ou un gestionnaire de tâches tuait le Fortran, et la reprise partait du dernier dump périodique. Avec `FREQDUMP` à 10 millions de balayages, ce dump n'existait souvent pas : le run ne pouvait pas reprendre, ou refaisait tout depuis l'ancien dump. Une simple pause (SIGSTOP) a été écartée : elle garde la mémoire et ne survit ni à un redémarrage ni à la limite de temps d'un serveur de calcul.
+- **Serveurs de calcul :** Slurm envoie SIGTERM à tous les processus du job à la limite de temps (ou à `scancel`), puis SIGKILL après `KillWait`, 30 s par défaut. L'arrêt propre tient dans ce délai : moins de 3 s dans l'essai ci-dessous, sur un petit système. Un gestionnaire au délai plus court, ou un gros système dont le dump est long à écrire, peut le couper : la reprise part alors du dump précédent, comme avant. Pour plus de marge, demander le signal avant la limite (Slurm : `#SBATCH --signal=TERM@120`, envoyé 120 s avant).
+- **Vérification (2026-11-17) :** système d'exemple à une orbite (astrométrie relative, 2 threads), lancé par `oracle run`, arrêt en pleine récolte (100 001 balayages, aucun dump périodique) :
+  - SIGINT à tout le groupe de processus, comme Ctrl-C dans un terminal : arrêt en 2,8 s, `dump.dat` écrit, `stop.flag` retiré, état `stopped`.
+  - SIGTERM à tout le groupe puis SIGKILL 30 s après, comme Slurm : même résultat.
+  - `oracle run --continue` sur le premier : `Here we go again`, `countok` repart de 1 005 (1 004 à l'arrêt) et `nmod` continue ; arrêté à son tour par `timeout` (SIGTERM), il se sauvegarde de nouveau.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun. Sans `stop.flag`, le calcul est inchangé (un `INQUIRE` par tour de boucle, soit tous les 100 balayages environ).
+
 ## M038 — Corrige B28 : un pas d'essai dont le χ² n'est pas un nombre est refusé
 
 - **Date :** 2026-11-14

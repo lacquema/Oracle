@@ -158,6 +158,9 @@ C
 c>>> [MOD M015] B12 : chauffe faite ou non
         LOGICAL ::      BURNT        ! True once burn-in is over
 c<<< [MOD M015]
+c>>> [MOD M039] Arret demande par le fichier stop.flag
+        LOGICAL ::      STOPREQ      ! True if a stop is requested
+c<<< [MOD M039]
 
         CALL INIT_MCMC(PROBINFER,CHN,CH0,DIRS,
      &              NMOD,COUNTOK,LONG,NGEL,INFER,NEW)
@@ -290,6 +293,24 @@ c......... Resume current status => dump file
             WRITE(SD,*)'ok'
           END IF
 
+c>>> [MOD M039] Arret demande : un fichier stop.flag dans le dossier
+c    du run (cree par oracle run, ou a la main). Apres la chauffe, le
+c    dump est ecrit, le fichier retire, puis arret : la reprise part
+c    de cet etat, sans rien refaire. Pendant la chauffe, il attend.
+          IF (BURNT) THEN
+            INQUIRE(FILE='stop.flag',EXIST=STOPREQ)
+            IF (STOPREQ) THEN
+              WRITE(SD,'(a)',ADVANCE='NO')'Dump file created...'
+              CALL  WRITE_DUMP(NMOD,COUNTOK,LONG,NGEL,INFER,
+     &             PROBINFER,CHN,DIRS,CH0%BETA,FILES)
+              WRITE(SD,*)'ok'
+              OPEN(19,FILE='stop.flag',STATUS='OLD')
+              CLOSE(19,STATUS='DELETE')
+              WRITE(SD,*)'Stopped on request, dump file written'
+              STOP
+            END IF
+          END IF
+c<<< [MOD M039]
         END DO
 c>>> [MOD M017] F3 : le fichier provisoire est retire a la fin
         CALL WRITE_PARTIAL(CHN,NMOD,LONG,INFER,FILES,.TRUE.)
