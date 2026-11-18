@@ -246,7 +246,11 @@ c                                                #3 = data
         IF (NEW) THEN
            OPEN(SDL,FILE=LOGFILE,STATUS='UNKNOWN')
         ELSE
-           OPEN(SDL,FILE=LOGFILE,STATUS='OLD',POSITION='APPEND')
+c>>> [MOD M049] Reprise sans logfile.dat : il est cree (avant, erreur
+c    de gfortran Cannot open file). Ce n'est qu'un journal.
+c    AVANT :           OPEN(SDL,FILE=LOGFILE,STATUS='OLD',POSITION='APPEND')
+           OPEN(SDL,FILE=LOGFILE,STATUS='UNKNOWN',POSITION='APPEND')
+c<<< [MOD M049]
         END IF
 
         IF (NEW) THEN
@@ -620,8 +624,11 @@ C -----------------------------------------------------------------------------
 C       Writing a dump file
 C -----------------------------------------------------------------------------
 C
+c>>> [MOD M049] Statut de l'ecriture renvoye a l'appelant (OKD)
+c    AVANT :     &           PROBINFER,CHN,DIRS,BETA0,FILES)
         SUBROUTINE WRITE_DUMP(NMOD,COUNTOK,LONG,NGEL,INFER,
-     &           PROBINFER,CHN,DIRS,BETA0,FILES)
+     &           PROBINFER,CHN,DIRS,BETA0,FILES,OKD)
+c<<< [MOD M049]
 
         USE DATA
 
@@ -648,10 +655,16 @@ c>>> [MOD M041] Controle du dump ecrit
         CHARACTER*12 :: TAIL         ! Its last 12 bytes
         LOGICAL ::      DUMPOK       ! True if it is complete
 c<<< [MOD M041]
+c>>> [MOD M049] Statut renvoye
+        LOGICAL ::      OKD          ! True if the dump was written
+c<<< [MOD M049]
         
 c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme
 c    AVANT :         OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
 c<<< [MOD M018]
+c>>> [MOD M049] Pas encore ecrit
+        OKD = .FALSE.
+c<<< [MOD M049]
 c>>> [MOD M041] A8 : echec d'ouverture du dump temporaire (dossier
 c    protege, quota) : avertissement, le run continue, ancien dump garde
 c    AVANT : OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='UNKNOWN')
@@ -741,6 +754,9 @@ c    tue pendant l'ecriture laisse le dump precedent intact
         LINE = 'mv -f '//TRIM(FILES(2))//'.tmp '//TRIM(FILES(2))
         CALL SYSTEM(LINE)
 c<<< [MOD M018]
+c>>> [MOD M049] Dump ecrit
+        OKD = .TRUE.
+c<<< [MOD M049]
 
         END
 C     

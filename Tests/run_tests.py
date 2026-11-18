@@ -152,10 +152,15 @@ def run_driver(exe, version, case):
         if parts[1] == "META":
             values.update(npar=int(parts[2]), npla=int(parts[3]), multipla=parts[5] == "T")
         elif len(parts) == 4:
-            values.setdefault(parts[1], {})[int(parts[2])] = float(parts[3])
+            values.setdefault(parts[1], {})[int(parts[2])] = fortran_float(parts[3])
         else:
-            values[parts[1]] = float(parts[2])
+            values[parts[1]] = fortran_float(parts[2])
     return values
+
+
+def fortran_float(text):
+    """Nombre ecrit par gfortran ; ES24.16 omet le E pour un exposant a trois chiffres (3.04-314)."""
+    return float(re.sub(r"(\d)([+-]\d{3})$", r"\1E\2", text))
 
 
 def close(a, b, tol):
@@ -333,6 +338,21 @@ def test_cases(report, exes, update):
         expected = res["COVLAST"] * mstar
         report.check(close(res["DMSTAR"], expected, 1e-9), f"erreur sur la masse {label}",
                      f"{res['DMSTAR']:.4g} au lieu de {expected:.4g}")  # B2 : M006
+    # B16, B17 : erreur sur i, recalculee depuis la covariance diagonale du programme de test
+    # (COV(j,j) = (1e-3*j)**2) : i = 2 atan(T), T = |(P4, P5)|, di/dPk = 2 Pk / (T (1+T^2))
+    for label, res in sorted(usable.items()):
+        bad = []
+        for k in range(1, res["npla"] + 1):
+            dkal = 7 * (k - 1)
+            qq, pp = res["P"][dkal + 4], res["P"][dkal + 5]
+            t = math.hypot(qq, pp)
+            inc = math.degrees(2 * math.atan(t))
+            dinc = math.degrees(2 / (t * (1 + t * t))
+                                * math.hypot(qq * 1e-3 * (dkal + 4), pp * 1e-3 * (dkal + 5)))
+            if not close(res["INC"][k], inc, 1e-9) or not close(abs(res["DINC"][k]), dinc, 1e-9):
+                bad.append(f"orbite {k} : i {res['INC'][k]:.6g} / {inc:.6g}, "
+                           f"erreur {abs(res['DINC'][k]):.4g} au lieu de {dinc:.4g}")
+        report.check(not bad, f"inclinaison et son erreur {label}", "; ".join(bad))
 
 
 def test_priors(report, exes):

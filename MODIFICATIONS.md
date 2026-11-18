@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038), B29 (M040), B30 (M041), B31 (M042), B32 (M043), B33 (M044), B34 (M045), B35 (M046), B36 (M047), B37 (M048).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038), B29 (M040), B30 (M041), B31 (M042), B32 (M043), B33 (M044), B34 (M045), B35 (M046), B36 (M047), B37 (M048), B38 (M049), B16 et B17 (M050).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -39,6 +39,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B35 | `KEPU` (`kepu.f`), équation de Kepler universelle non résolue | Le code écrit `epic fail !` puis s'arrête par `stop`, c'est-à-dire avec le code 0, comme un run réussi. | **Corrigée par M046.** Trouvée le 2026-11-18 (départ à i = 180°, universel). |
 | B36 | `MCMCP` (`mcmc.f`), taille des groupes de pas | `NGROUP = NGEL`, lu dans le dump à la reprise. Un dump d'avant M016 (`NGEL` = 0) donne une division entière par zéro, `NGEL` > 200 un débordement de `LL(NPAR,200)`. | **Corrigée par M047.** Relevée à l'audit (A4). Constaté le 2026-11-18 : `NGEL` = 0, arrêt en 23 lignes avec le code 0 ; `NGEL` = 300, SIGBUS. |
 | B37 | `JD_TO_DATE` (`utils.f`) | Jour julien vers date : le demi-jour de l'algorithme (jours comptés depuis midi) manque, et la fraction de jour est rangée dans un entier. Jusqu'à 1,5 jour d'écart sur l'aller-retour avec `DATE_TO_JD`. | **Corrigée par M048.** Relevée à l'audit. Ne sert qu'à écrire des données simulées au format date (choix 5). |
+| B38 | Messages autour du dump (`mcmc.f`, `io.f`) | Après M041, un dump non écrit était suivi de `ok`, et l'arrêt sur `stop.flag` annonçait `dump file written` même sans dump (`oracle run` le croyait). À la reprise, un `logfile.dat` absent arrêtait le run sur une erreur de gfortran. | **Corrigée par M049.** Limites relevées en écrivant M041 (2026-11-18). |
 | B1 | `kepellip.f:1617`, `kepu.f:2161` | `IF (NPLA.GT.1)` au lieu de `IF (MULTIPLA)` | **Corrigée par M006.** Une orbite avec vitesses radiales : la masse de l'étoile est remplacée par la masse totale, et celle de la planète garde sa valeur d'entrée. Le MCMC démarre avec une planète de masse quasi nulle. Sur un cas simulé, χ² de départ 6227 au lieu de 38. |
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | **Corrigée par M006.** Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
 | B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | **Corrigée par M008.** Précision : les indices négatifs viennent de la remise à zéro faite après le bloc `IF (I.EQ.1)`, pas du bloc `ELSE`. Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
@@ -54,8 +55,8 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B13 | `USER_PRIOR_MAP` et `USER_PRIOR_RATIO` (`mcmc.f`) | Type 0 : rapport du MCMC `ln m / ln m_essai` au lieu de `m / m_essai`. Type 3 : bornes lues mais jamais appliquées. Type 4 : largeur 1e-3 dans le MAP, 1e-6 dans le MCMC et le L-M. Type 6 : dans le MAP, `EX = EXP(X)` avec `X` non initialisé (en pratique 0, donc toute masse remplacée par 1) | **Corrigée par M010.** Le type 3 (« Uniform » de l'interface) ne bornait pas la masse. Le type 6 (masses positives, ajouté automatiquement) laissait le MAP sans pénalité pour une masse négative ; le MCMC n'était pas touché. Type 0 : jamais écrit par l'interface. |
 | B14 | Tous les appels à `RANDOM_NUMBER` (`mcmc.f`, `MRQRENEW` de `kepellip.f` et `kepu.f`, `io.f`), sans `RANDOM_SEED` | La graine du générateur aléatoire n'est jamais fixée. Avec gfortran, elle change alors à chaque exécution | **Corrigée par M029** (graine tirée puis écrite, choix d'Antoine du 2026-11-11). Deux lancements identiques ne donnaient pas le même résultat : on ne peut pas reproduire un run à l'identique. Le LM en dépend aussi, car `MRQRENEW` repart d'angles tirés au hasard après une solution impossible : sur GG Tau, il finit dans un autre minimum environ une fois sur cent (396 sur 400 avant M010, 398 sur 400 après). Choix à faire avec Hervé : graine fixe, graine donnée en entrée, ou graine écrite dans la sortie pour pouvoir refaire un run. Dans `make test`, l'essai GG Tau est relancé jusqu'à trois fois pour ne pas échouer au hasard. |
 | B15 | `MCMCP` (`mcmc.f`), intervalle entre deux contrôles de Gelman-Rubin une fois la convergence atteinte | `NGEL = MIN(NGROUP,NINT(LONG*1d-2/NGROUP)*NGROUP)` vaut 0 tant que `LONG` < 5 000 balayages : aucun pas entre deux contrôles | **Corrigée par M016.** Quand la convergence arrivait avant 5 000 balayages, les chaînes ne bougeaient plus et les mêmes 8 positions étaient gardées à chaque contrôle jusqu'à remplir la réserve. Constaté le 2026-11-08 sur `rel_vr_planete` (`--rapide`) : 9 solutions distinctes sur 20 001, ω hors de l'intervalle à 99,7 %. Explique aussi une partie de B12. Les longs runs réels (GG Tau, 51 Eri), qui convergent après des millions de pas, ne sont pas touchés. |
-| B16 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), erreur sur l'inclinaison | `PLA(I)%DINC` n'est calculée que dans la branche `RADVEL` : sans vitesses radiales, `DIDP` est rempli mais `ERR_COMB` n'est jamais appelée, et l'erreur affichée sur i vaut 0 | Non corrigée. Constaté le 2026-11-09 dans le dépôt Gaia (BH3 en Levenberg-Marquardt seul). Sans effet sur le MCMC : seul l'affichage du Levenberg-Marquardt (choix 4) est touché. |
-| B17 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), deux branches | `DIDP(4)` et `DIDP(5)` au lieu de `DIDP(DKAL+4)` et `DIDP(DKAL+5)` : pour la deuxième orbite et les suivantes, l'erreur sur i est calculée avec les paramètres de la première | Non corrigée. Constaté le 2026-11-09 en relisant B16. Même portée : affichage du Levenberg-Marquardt seulement. |
+| B16 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), erreur sur l'inclinaison | `PLA(I)%DINC` n'est calculée que dans la branche `RADVEL` : sans vitesses radiales, `DIDP` est rempli mais `ERR_COMB` n'est jamais appelée, et l'erreur affichée sur i vaut 0 | **Corrigée par M050.** Constaté le 2026-11-09 dans le dépôt Gaia (BH3 en Levenberg-Marquardt seul). Sans effet sur le MCMC : seul l'affichage du Levenberg-Marquardt (choix 4) est touché. |
+| B17 | `MRQELEMENTS` (`kepellip.f`, `kepu.f`), deux branches | `DIDP(4)` et `DIDP(5)` au lieu de `DIDP(DKAL+4)` et `DIDP(DKAL+5)` : pour la deuxième orbite et les suivantes, l'erreur sur i est calculée avec les paramètres de la première | **Corrigée par M050.** Constaté le 2026-11-09 en relisant B16. Même portée : affichage du Levenberg-Marquardt seulement. |
 | B18 | Programmes principaux (`CHARACTER*80 FILES`), `WRITE_DISTRIB` et `WRITE_DISTRIB_DOUBLING` (`CHARACTER*80 LINE`), `READ_DATAFILE` (`STATUS='UNKNOWN'`) | Les noms de fichiers sont coupés à 80 caractères. Le fichier de données au nom coupé est ouvert en `UNKNOWN`, donc créé vide s'il n'existe pas | **Corrigée par M020.** Avec un chemin de plus de 80 caractères (l'interface écrit des chemins absolus), le programme s'arrête sur `End of file` à la lecture des données, sans dire pourquoi. Le `gzip` des résultats avait la même limite. Constaté le 2026-11-10 en testant l'interface Gaia ; déjà connu d'Antoine. |
 | B19 | `MRQRENEW` (`kepellip.f`, `kepu.f`), redémarrage du L-M après une solution impossible | Pendant le premier passage sans jitter des vitesses (`MRQMIN(NPAR-1,...)`), la masse de l'étoile est en `P(NPAR-1)` = `P(NEL*NPLA+2)`. `MRQRENEW` y écrit ln(jitter) et met la masse en `P(NPAR)`, hors du tableau du passage (`P` déclaré `DIMENSION(NPAR)`) | **Corrigée par M022.** Vitesses de l'étoile avec jitter et prior fixe sur sa masse : après un redémarrage, la masse de l'étoile vaut exp(ln σ_jit) (0,0195 Msun pour un jitter initial de 0,01 km/s) ; le prior fixe donne alors une pénalité de 10¹² que le L-M ne rattrape plus, et la solution finale est fausse. Constaté le 2026-11-10 sur HD 114762 (vitesses de Lick seules, χ² = 2,3·10⁶ au lieu de 119). Sans jitter, pas d'effet. |
 | B20 | `MRQRADVEL` (`mrqfit.f`), matrice `ALPHA` du L-M | Pour ln σ_jit, vraie dérivée seconde du χ² (négative quand les résidus dépassent σ) et termes croisés jitter × orbite, alors que les autres paramètres sont en Gauss-Newton | **Corrigée par M025.** Le L-M s'arrête avant le minimum, le jitter glissant vers 0 : sur les vitesses de HD 114762, χ² + Fmap = 89,75 (σ_jit = 1,2 m/s) au lieu de 80,05 (13,2 m/s). Constaté le 2026-11-11. |
@@ -82,6 +83,35 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 
 ## Modifications
 
+## M050 — Corrige B16 et B17 : erreur sur l'inclinaison affichée par le Levenberg-Marquardt
+
+- **Date :** 2026-11-18
+- **Fichiers :** `Code/mcmc/sub/kepellip.f` et `kepu.f` (`MRQELEMENTS`, deux blocs chacun) ; `Tests/driver.f` (écrit i et son erreur) ; `Tests/run_tests.py` (nouveau contrôle, lecture des nombres à exposant à trois chiffres).
+- **Changement :** dans les deux branches (avec et sans VR), les dérivées de i sont rangées en `DIDP(DKAL+4)` et `DIDP(DKAL+5)`, les paramètres de l'orbite traitée, au lieu de `DIDP(4)` et `DIDP(5)`. Dans la branche sans VR, `PLA(I)%DINC` est maintenant calculée (`ERR_COMB`), comme dans l'autre.
+- **Pourquoi :** B16 (sans VR, erreur jamais calculée : 0 ou valeur indéfinie, jusqu'à 3e-314 dans le programme de test) et B17 (deuxième orbite et suivantes : erreur calculée avec les paramètres de la première). Les formules des dérivées étaient justes : i = 2 atan(T), T = |(P4, P5)|, di/dPk = 2 Pk / (T (1 + T²)).
+- **Vérification (2026-11-18) :**
+  - Nouveau contrôle de `make test`, « inclinaison et son erreur » : pour chaque cas, chaque version et chaque orbite, i et son erreur sont recalculés en Python à partir des paramètres et de la covariance diagonale du programme de test. Avant : 10 échecs sur 24 (B16 : `rel`, `rel_2orb`, `rel_corr`, `rel_seppa` ; B17 : orbite 2 de `rel_rv_2orb_jit`, 0,358° au lieu de 0,914°). Après : 24 sur 24, à 1e-9 près.
+  - Affichage réel du L-M (choix 4), classique : `rel`, `+/- 0.000000` devient `+/- 0.765222` ; `rel_2orb`, `0.000000` et `0.000000` deviennent `0.787620` et `0.520691` ; `rel_rv_2orb_jit`, orbite 1 inchangée (0,664372), orbite 2 de 0,638223 à 0,514802. Inclinaisons inchangées.
+  - `make test` passe (394 OK).
+- **Effet sur les résultats :** aucun sur le MCMC ni sur l'ajustement ; seule l'erreur sur i affichée par le L-M change.
+
+## M049 — Corrige B38 : messages du dump fidèles, `logfile.dat` recréé à la reprise
+
+- **Date :** 2026-11-18
+- **Fichiers :** `Code/mcmc/sub/io.f` (`WRITE_DUMP` : argument de sortie `OKD`, trois blocs ; `INIT_SIMU` : ouverture du journal) ; `Code/mcmc/sub/mcmc.f` (déclaration de `OKD` dans `MCMC` et `MCMCP`, les trois appels de `WRITE_DUMP`).
+- **Changement :**
+  - `WRITE_DUMP` renvoie `OKD`, vrai seulement si le dump a été écrit et renommé. Les appelants n'écrivent `ok` que dans ce cas.
+  - Arrêt sur `stop.flag` (M039) : si le dump n'a pas pu être écrit, `Stopped on request, dump file could not be written : previous dump kept` et `STOP 1`. `oracle run` cherche la phrase `Stopped on request, dump file written`, absente ici : il annonce un arrêt sans sauvegarde et la reprise depuis le dump précédent, ce qui est exact. Rien à changer côté Python.
+  - Reprise : `logfile.dat` ouvert en `STATUS='UNKNOWN'` (créé s'il manque, à la suite sinon) au lieu de `'OLD'`.
+- **Pourquoi :** B38, limites laissées par M041.
+- **Vérification (2026-11-18) :** cas `rel` classique, 1 thread, graine 1113 :
+  - disque virtuel plein (comme M041) sans `stop.flag` : `Dump file created... Warning : dump file could not be written (disk full ?), previous dump kept`, sans `ok` ; dump d'avant intact ; le run continue.
+  - disque plein avec `stop.flag` : avertissements, puis `Stopped on request, dump file could not be written : previous dump kept`, code 1 ; dump d'avant intact.
+  - disque normal avec `stop.flag` : `ok`, `Stopped on request, dump file written`, code 0, comme avant.
+  - reprise sans `logfile.dat` : `Here we go again`, le run continue, `logfile.dat` créé.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun.
+
 ## M048 — Corrige B37 : conversion jour julien vers date
 
 - **Date :** 2026-11-18
@@ -91,7 +121,8 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 - **Vérification (2026-11-18) :** petit programme qui appelle les deux routines du code, extraites telles quelles.
   - Avant : 2451544,5 (1er janvier 2000 à 0 h) donne le 31 décembre 1999, puis 2451543,5 au retour ; écart maximal de 1,5 jour sur 200 000 dates tirées entre 1582 et 2100.
   - Après : 2451544,5 donne le 1,000 janvier 2000 ; 2451545,25 donne le 1,750 ; écart maximal sur l'aller-retour nul (0,0 j) pour les 200 000 dates.
-  - `make test` passe. Pas d'essai de bout en bout du choix 5.
+  - `make test` passe.
+  - De bout en bout (ajouté avec M049) : choix 5, une orbite, format jour/mois/année, cinq dates données avec des fractions de jour. Avant : `15.25 6 2010` écrit `14.00 6 2010`, `1.00 1 2000` écrit `31.00 12 1999`, `1.00 3 2024` écrit `29.00 2 2024`. Après : les cinq dates ressortent telles qu'entrées ; positions simulées identiques (même graine).
 - **Effet sur les résultats :** aucun sur les ajustements. Les données simulées au format date sont maintenant aux bons instants.
 
 ## M047 — Corrige B36 : taille des groupes de pas fixe, indépendante du dump

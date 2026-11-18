@@ -2302,8 +2302,13 @@ c<<< [MOD M008]
               PLA(I)%CO = QQ/PLA(I)%TI ! cos(Omega)
               PLA(I)%SO = PP/PLA(I)%TI         ! sin(Omega)
               PLA(I)%O = ATAN2(PLA(I)%SO,PLA(I)%CO)*DR
-              DIDP(4) =  2.d0*PLA(I)%CO/(1.d0+T2)
-              DIDP(5) =  2.d0*PLA(I)%SO/(1.d0+T2)
+c>>> [MOD M050] B17 : derivees de i rangees aux parametres de l'orbite
+c    I (DKAL+4, DKAL+5), et non a ceux de la premiere
+c    AVANT :              DIDP(4) =  2.d0*PLA(I)%CO/(1.d0+T2)
+c    AVANT :              DIDP(5) =  2.d0*PLA(I)%SO/(1.d0+T2)
+              DIDP(DKAL+4) =  2.d0*PLA(I)%CO/(1.d0+T2)
+              DIDP(DKAL+5) =  2.d0*PLA(I)%SO/(1.d0+T2)
+c<<< [MOD M050]
               PLA(I)%DOO = ERR_COMB(NPAR,DWDP(1:NPAR),
      &                               COV(1:NPAR,1:NPAR))*DR
               PLA(I)%OM = PLA(I)%W-PLA(I)%O
@@ -2333,8 +2338,15 @@ c<<< [MOD M008]
               PLA(I)%CP = QQ/PLA(I)%TI         ! cos(omega-Omega)
               PLA(I)%SP = PP/PLA(I)%TI ! sin(omega-Omega)
               PLA(I)%PHI = ATAN2(PLA(I)%SP,PLA(I)%CP)*DR  
-              DIDP(4) =  2.d0*PLA(I)%CP/(1.d0+T2)
-              DIDP(5) =  2.d0*PLA(I)%SP/(1.d0+T2)
+c>>> [MOD M050] B17 (meme correction) et B16 : sans VR, l'erreur sur i
+c    n'etait jamais calculee (0 ou valeur indefinie a l'affichage)
+c    AVANT :              DIDP(4) =  2.d0*PLA(I)%CP/(1.d0+T2)
+c    AVANT :              DIDP(5) =  2.d0*PLA(I)%SP/(1.d0+T2)
+              DIDP(DKAL+4) =  2.d0*PLA(I)%CP/(1.d0+T2)
+              DIDP(DKAL+5) =  2.d0*PLA(I)%SP/(1.d0+T2)
+              PLA(I)%DINC = ERR_COMB(NPAR,DIDP(1:NPAR),
+     &                               COV(1:NPAR,1:NPAR))*DR
+c<<< [MOD M050]
               PLA(I)%DPHI = ERR_COMB(NPAR,DWDP(1:NPAR),
      &                               COV(1:NPAR,1:NPAR))*DR
               PLA(I)%OM = 0.5d0*(PLA(I)%W+PLA(I)%PHI)

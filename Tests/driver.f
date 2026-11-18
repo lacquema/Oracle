@@ -158,6 +158,8 @@ c...  Elements rebuilt from the parameters
         WRITE(SD,2)'PLAST',P(NPAR)
         DO I = 1,NPLA
            WRITE(SD,1)'MU',I,PLA(I)%MU
+           WRITE(SD,1)'INC',I,PLA(I)%INC
+           WRITE(SD,1)'DINC',I,PLA(I)%DINC
            WRITE(SD,1)'MDYN',I,PLA(I)%MDYN
         END DO
 

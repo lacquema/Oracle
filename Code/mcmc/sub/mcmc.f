@@ -14,6 +14,9 @@ C
         IMPLICIT NONE
      
         CHARACTER*(*),DIMENSION(NFIL) :: FILES
+c>>> [MOD M049] Statut du dump (WRITE_DUMP)
+        LOGICAL ::      OKD          ! True if the dump was written
+c<<< [MOD M049]
 
         TYPE(CHAIN), DIMENSION(NCH) :: CHN
         TYPE(CHAIN) ::  CH0,CHC      ! Starting & current chain  
@@ -93,9 +96,13 @@ c......... Resume current status => dump file
 
           IF (MOD(LONG,FREQDUMP).LE.1) THEN
             WRITE(SD,'(a)',ADVANCE='NO')'Dump file created...'
+c>>> [MOD M049] ok ecrit seulement si le dump l'est (M041)
+c    AVANT :     &         PROBINFER,CHN,DIRS,CH0%BETA,FILES)
+c    AVANT :            WRITE(SD,*)'ok'
             CALL  WRITE_DUMP(NMOD,COUNTOK,LONG,NGEL,INFER,
-     &         PROBINFER,CHN,DIRS,CH0%BETA,FILES)
-            WRITE(SD,*)'ok'
+     &         PROBINFER,CHN,DIRS,CH0%BETA,FILES,OKD)
+            IF (OKD) WRITE(SD,*)'ok'
+c<<< [MOD M049]
           END IF
 
         END DO
@@ -161,6 +168,9 @@ c<<< [MOD M015]
 c>>> [MOD M039] Arret demande par le fichier stop.flag
         LOGICAL ::      STOPREQ      ! True if a stop is requested
 c<<< [MOD M039]
+c>>> [MOD M049] Statut du dump (WRITE_DUMP)
+        LOGICAL ::      OKD          ! True if the dump was written
+c<<< [MOD M049]
 
         CALL INIT_MCMC(PROBINFER,CHN,CH0,DIRS,
      &              NMOD,COUNTOK,LONG,NGEL,INFER,NEW)
@@ -295,9 +305,13 @@ c......... Resume current status => dump file
 
           IF (MOD(LONG,FREQDUMP).LT.10) THEN
             WRITE(SD,'(a)',ADVANCE='NO')'Dump file created...'
+c>>> [MOD M049] ok ecrit seulement si le dump l'est (M041)
+c    AVANT :     &           PROBINFER,CHN,DIRS,CH0%BETA,FILES)
+c    AVANT :            WRITE(SD,*)'ok'
             CALL  WRITE_DUMP(NMOD,COUNTOK,LONG,NGEL,INFER,
-     &           PROBINFER,CHN,DIRS,CH0%BETA,FILES)
-            WRITE(SD,*)'ok'
+     &           PROBINFER,CHN,DIRS,CH0%BETA,FILES,OKD)
+            IF (OKD) WRITE(SD,*)'ok'
+c<<< [MOD M049]
           END IF
 
 c>>> [MOD M039] Arret demande : un fichier stop.flag dans le dossier
@@ -308,11 +322,24 @@ c    de cet etat, sans rien refaire. Pendant la chauffe, il attend.
             INQUIRE(FILE='stop.flag',EXIST=STOPREQ)
             IF (STOPREQ) THEN
               WRITE(SD,'(a)',ADVANCE='NO')'Dump file created...'
+c<<< [MOD M039]
+c>>> [MOD M049] Dump non ecrit (M041) : on le dit et on s'arrete en
+c    erreur ; oracle run ne voit pas sa phrase de succes et annonce un
+c    arret sans sauvegarde (reprise depuis le dump precedent).
+c    AVANT :     &             PROBINFER,CHN,DIRS,CH0%BETA,FILES)
+c    AVANT :              WRITE(SD,*)'ok'
               CALL  WRITE_DUMP(NMOD,COUNTOK,LONG,NGEL,INFER,
-     &             PROBINFER,CHN,DIRS,CH0%BETA,FILES)
-              WRITE(SD,*)'ok'
+     &             PROBINFER,CHN,DIRS,CH0%BETA,FILES,OKD)
               OPEN(19,FILE='stop.flag',STATUS='OLD')
               CLOSE(19,STATUS='DELETE')
+              IF (.NOT.OKD) THEN
+                 WRITE(SD,*)'Stopped on request, dump file could not',
+     &                      ' be written : previous dump kept'
+                 STOP 1
+              END IF
+              WRITE(SD,*)'ok'
+c<<< [MOD M049]
+c>>> [MOD M039] (suite)
               WRITE(SD,*)'Stopped on request, dump file written'
               STOP
             END IF
