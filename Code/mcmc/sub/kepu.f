@@ -56,7 +56,14 @@ c..     laguerre's method, in case newton's method fails.
              if (iflg.ne.0) then
                 WRITE(SD,*)'epic fail !',
      &                sngl(dt),sngl(q),sngl(mu),sngl(alpha)
-               stop
+c>>> [MOD M046] Arret en erreur (code 1), avec un message lisible :
+c    avant, STOP sans code, comme un run reussi.
+c    AVANT :               stop
+                WRITE(SD,*)'Error : universal Kepler equation not ',
+     &                     'solved (dt, q, mu, alpha above : NaN or ',
+     &                     'extreme values). Check the starting orbit.'
+                STOP 1
+c<<< [MOD M046]
              end if
            end if
         endif

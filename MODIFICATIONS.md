@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038), B29 (M040).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038), B29 (M040), B30 (M041), B31 (M042), B32 (M043), B33 (M044), B34 (M045), B35 (M046), B36 (M047), B37 (M048).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -31,6 +31,14 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B27 | `READ_INPUTLINE` (`io.f`), conversion (Sep, PA) → (Dec, RA) | Covariance des erreurs : `Sep` au lieu de `Sep²` devant la variance de l'angle de position. | **Corrigée par M037.** Trouvée à l'audit du 2026-11-14 : coefficient de corrélation faux (exemple : −0,163 au lieu de +0,151), donc χ² faux pour toutes les données en (Sep, PA). Jamais testé auparavant. |
 | B28 | `METRO_STEP` (`mcmc.f`), probabilité d'acceptation | `MIN(NaN, 1)` vaut 1 avec gfortran : un pas d'essai dont le χ² est NaN est accepté. | **Corrigée par M038.** Trouvée à l'audit du 2026-11-14. La chaîne garde un χ² NaN et accepte ensuite tout. Aucun NaN dans les runs normaux testés ; vu seulement dans les cas dégénérés refusés depuis par M032. |
 | B29 | `SEARCH_BETA` (`mcmc.f`), réglage des pas avant le MCMC | Sa seule sortie d'échec est un pas trop grand (`BETAMAX`). Si aucun pas n'est accepté (départ où le prior est nul ou le χ² NaN), les pas tombent à 0 et la boucle tourne sans fin, sans message. | **Corrigée par M040.** Cause du run de 8 h sans sortie de B23 ; M035 et M036 refusent depuis les départs interdits connus, M040 est le filet de sécurité pour les autres. Trouvée à l'audit du 2026-11-14 (A3). |
+| B30 | `WRITE_DUMP` et `READ_DUMP0` (`io.f`), fichier de sauvegarde | Les erreurs d'écriture du dump ne sont pas vérifiées : un dump incomplet (disque plein, quota) remplace le bon. À la reprise, un `dump.dat` absent donne une erreur obscure de gfortran. | **Corrigée par M041.** Trouvée à l'audit du 2026-11-14 (A8). Reproduite le 2026-11-18 sur un petit disque virtuel : le dump de 9,4 Mo remplacé par un fichier de 6,9 Mo, et `Dump file created... ok`. |
+| B31 | `CHANGE_DIRS` (`mcmc.f`), nouvelles directions pendant le run | L'échec de `SEARCH_BETA` (un pas au-delà de `BETAMAX`, direction que les données ne contraignent pas) est ignoré : la chaîne garde ce pas. Au départ (`INIT_MCMC`), le même échec est rattrapé par un nouvel essai. | **Corrigée par M042.** Relevée à l'audit du 2026-11-14 (avec A3). Jamais vue dans un run. |
+| B32 | `READ_INPUT` (`io.f`), question sur le jitter | `JITNUM` n'est lu que s'il y a des VR de l'étoile (type 2), mais `COMPUTE_MAP` le teste dès qu'il y a des VR (type 2 ou 3). Sans VR de l'étoile, il n'est jamais fixé. | **Corrigée par M043.** Relevée à l'audit du 2026-11-14 (A6). Sans effet constaté : une variable de module part à 0 avec gfortran. Une autre valeur fausserait le MAP (voir M043). |
+| B33 | `ENTER_ORBITS`, `CONVERT_UNIT`, lecture de la distance et du jitter (`io.f`) | Unités non vérifiées : une unité de masse autre que `ms`/`mj` (orbite ou prior) ou de distance autre que `pc`/`mas` laisse la valeur indéfinie, sans message. Une réponse sur le jitter autre que 0 ou 1 ajoute un paramètre jamais utilisé. | **Corrigée par M044.** Relevée à l'audit du 2026-11-14 (A7). Constaté le 2026-11-18 : avec `mx` ou un prior en `xx`, le run tourne normalement, sur des masses fausses. |
+| B34 | `ENTER_ORBITS` (`io.f`), inclinaison de départ | i = 0 exactement : 0/0 (nœud indéfini) et χ² NaN dès le L-M. i = 180 exactement : `tan(i/2)` infini, le L-M oscille sans finir. | **Corrigée par M045.** Relevée à l'audit (A7). |
+| B35 | `KEPU` (`kepu.f`), équation de Kepler universelle non résolue | Le code écrit `epic fail !` puis s'arrête par `stop`, c'est-à-dire avec le code 0, comme un run réussi. | **Corrigée par M046.** Trouvée le 2026-11-18 (départ à i = 180°, universel). |
+| B36 | `MCMCP` (`mcmc.f`), taille des groupes de pas | `NGROUP = NGEL`, lu dans le dump à la reprise. Un dump d'avant M016 (`NGEL` = 0) donne une division entière par zéro, `NGEL` > 200 un débordement de `LL(NPAR,200)`. | **Corrigée par M047.** Relevée à l'audit (A4). Constaté le 2026-11-18 : `NGEL` = 0, arrêt en 23 lignes avec le code 0 ; `NGEL` = 300, SIGBUS. |
+| B37 | `JD_TO_DATE` (`utils.f`) | Jour julien vers date : le demi-jour de l'algorithme (jours comptés depuis midi) manque, et la fraction de jour est rangée dans un entier. Jusqu'à 1,5 jour d'écart sur l'aller-retour avec `DATE_TO_JD`. | **Corrigée par M048.** Relevée à l'audit. Ne sert qu'à écrire des données simulées au format date (choix 5). |
 | B1 | `kepellip.f:1617`, `kepu.f:2161` | `IF (NPLA.GT.1)` au lieu de `IF (MULTIPLA)` | **Corrigée par M006.** Une orbite avec vitesses radiales : la masse de l'étoile est remplacée par la masse totale, et celle de la planète garde sa valeur d'entrée. Le MCMC démarre avec une planète de masse quasi nulle. Sur un cas simulé, χ² de départ 6227 au lieu de 38. |
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | **Corrigée par M006.** Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
 | B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | **Corrigée par M008.** Précision : les indices négatifs viennent de la remise à zéro faite après le bloc `IF (I.EQ.1)`, pas du bloc `ELSE`. Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
@@ -73,6 +81,113 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F5 | Excentricité légèrement surestimée (biais de Lucy et Sweeney 1971) : vérifier quel prior sur `e` le code impose réellement (jacobien des paramètres 2 et 3, `e (cos ϖ, sin ϖ)/√(1−e²)`) et le comparer à un prior uniforme sur `e` ; confirmer le biais avec des graines indépendantes entre les cas ; décider s'il faut changer le prior ou seulement l'expliquer. **Expliqué dans la documentation du site (section « Reading the results ») le 2026-11-13.** | Campagne de tests du 2026-11-11 au 13 (bilan dans le dépôt privé, `Tests/campagne/README.md`) : sur 96 runs à une orbite (vraie `e` = 0,3), quantile moyen de la vraie `e` 0,43 ± 0,03 ; elle tombe sous l'intervalle à 68 % dans 32 % des runs et au-dessus dans 8 %. Environ 2 σ. Le bruit allonge plus souvent qu'il ne raccourcit le vecteur `(e cos ω, e sin ω)`. Demandé par Antoine (2026-11-13). |
 
 ## Modifications
+
+## M048 — Corrige B37 : conversion jour julien vers date
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/utils.f` (`JD_TO_DATE`, un bloc).
+- **Changement :** `I = INT(JD+0.5)` et `F = JD+0.5-I`, `F` réel. Le reste de l'algorithme (Duffett-Smith et Zwart, 2011 ; le même que Meeus) est inchangé.
+- **Pourquoi :** B37. L'algorithme compte les jours depuis midi (JD + 0,5) ; le code prenait `INT(JD)` et rangeait la fraction dans un entier. `JD_TO_DATE` ne sert qu'à écrire des données simulées au format jour/mois/année (choix 5, format `f5.2` pour le jour) : les dates écrites étaient décalées de 0,5 à 1,5 jour par rapport aux instants du modèle.
+- **Vérification (2026-11-18) :** petit programme qui appelle les deux routines du code, extraites telles quelles.
+  - Avant : 2451544,5 (1er janvier 2000 à 0 h) donne le 31 décembre 1999, puis 2451543,5 au retour ; écart maximal de 1,5 jour sur 200 000 dates tirées entre 1582 et 2100.
+  - Après : 2451544,5 donne le 1,000 janvier 2000 ; 2451545,25 donne le 1,750 ; écart maximal sur l'aller-retour nul (0,0 j) pour les 200 000 dates.
+  - `make test` passe. Pas d'essai de bout en bout du choix 5.
+- **Effet sur les résultats :** aucun sur les ajustements. Les données simulées au format date sont maintenant aux bons instants.
+
+## M047 — Corrige B36 : taille des groupes de pas fixe, indépendante du dump
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/mcmc.f` (`MCMCP`, un bloc).
+- **Changement :** `NGROUP = 100` au lieu de `NGROUP = NGEL`, et `NGEL` ramené à 100 s'il vaut autre chose après `INIT_MCMC`.
+- **Pourquoi :** B36. Le code écrit toujours `NGEL` = 100 (départ et contrôles de `GELMAN_RUBIN`, M016), mais à la reprise `NGEL` vient du dump.
+- **Vérification (2026-11-18) :** reprise (choix 1) pendant 30 s d'un dump du cas `rel` classique, `NGEL` mis à 0, 100 et 300 dans le dump :
+  - avant : 0, arrêt après 23 lignes avec le code 0 (`IEEE_INVALID_FLAG`), sans rien calculer ; 300, plantage (SIGBUS) ; 100, normal ;
+  - après : les trois reprennent, sorties identiques ligne à ligne (1 346 lignes) ; 100 identique à l'ancien code.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun pour un dump écrit par le code actuel.
+
+## M046 — Corrige B35 : échec de l'équation de Kepler universelle signalé comme une erreur
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/kepu.f` (`KEPU`, un bloc).
+- **Changement :** après `epic fail !` et ses valeurs, le code écrit `Error : universal Kepler equation not solved (dt, q, mu, alpha above : NaN or extreme values). Check the starting orbit.` et s'arrête par `STOP 1` au lieu de `stop`.
+- **Pourquoi :** B35. Le code de sortie 0 faisait passer l'échec pour un run réussi (`oracle run`, scripts). Vu avec un départ à i = 180° en universel : le L-M finit dans un minimum absurde (masse de l'étoile 1e-9 Msun), puis la masse NaN arrive dans `KEPU` au départ du MCMC. La cause en amont (départ très loin de la vraie orbite) n'est pas traitée ici.
+- **Vérification (2026-11-18) :** même entrée (cas `rel_rv` universel, i de départ 180°, ramenée à 179,9° par M045) : avant, `epic fail !` et code 0 ; après, `epic fail !`, le message d'erreur et code 1. `make test` passe.
+- **Effet sur les résultats :** aucun ; seul le code de sortie change.
+
+## M045 — Corrige B34 : inclinaison de départ ramenée dans [0,1° ; 179,9°]
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/io.f` (`ENTER_ORBITS`, un bloc après celui de M027).
+- **Changement :** une inclinaison de départ inférieure à 0,1° est remplacée par 0,1°, une inclinaison supérieure à 179,9° par 179,9°, avec un message, comme M027 pour e = 0.
+- **Pourquoi :** B34. i = 0 : `tan(i/2)` = 0 et le nœud est indéfini (`CO`, `SO`, `CP`, `SP` en 0/0 dans `ELEMENTS`) : χ² NaN, arrêt par M031 sur un message qui n'indique pas la cause. i = 180 : `tan(i/2)` ≈ 1,6e16, le L-M oscille sans finir (plus de 5 000 lignes en 30 s).
+- **Vérification (2026-11-18) :** cas `rel_rv` (vraie i = 62°), classique et universel, 30 s, départs à différentes inclinaisons, code M040 :
+  - 0 : χ² NaN dans le L-M (code 1) ; 180 : L-M sans fin ;
+  - 0,1°, 1°, 150°, 170°, 175° : bon minimum (χ² 48,76), dans les deux versions ;
+  - 0,001°, 0,01°, 0,05°, 120°, 178°, 179°, 179,5°, 179,9° : mauvais minimum dans l'une ou les deux versions (χ² de 5 800 à 23 000), parfois `epic fail` en universel (voir M046). Le L-M dépend du point de départ ; ce n'est pas propre aux inclinaisons extrêmes.
+  - Après M045 : départ à 0 → 0,1°, bon minimum (χ² 48,76) dans les deux versions ; départ à 180 → 179,9°, le L-M finit (mauvais minimum, comme 179,9° avant). Départ à 62° : inchangé.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun pour une inclinaison de départ entre 0,1° et 179,9°.
+
+## M044 — Corrige B33 : unités et réponse sur le jitter vérifiées à la lecture
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/io.f` (`ENTER_ORBITS`, `CONVERT_UNIT`, lecture de la distance et du jitter : quatre blocs).
+- **Changement :** arrêt avec un message (`STOP 1`) si l'unité de masse d'une orbite ou d'un prior n'est ni `ms` ni `mj`, si l'unité de distance n'est ni `pc` ni `mas` (majuscules ou minuscules), ou si la réponse sur le jitter n'est ni 0 ni 1. Dans `CONVERT_UNIT`, `UPCASE` porte maintenant sur l'argument `UNT` et non sur `UNIT`, variable de l'appelant passée comme `UNT` : même effet.
+- **Pourquoi :** B33. Le lanceur `oracle` du dépôt privé écrit toujours `ms`, `mj`, `pc` ou `mas` ; une entrée écrite à la main pouvait se tromper sans message.
+- **Vérification (2026-11-18) :** cas `rel_rv` classique (et `rv_seul` pour le prior), 30 s, code M040 contre M044 :
+  - masse en `mx` : avant, le run tourne normalement (masse fausse) ; après, `Error : unknown mass unit for planet # 1 : MX (ms or mj)`, code 1.
+  - prior en `xx` : avant, le run tourne ; après, `Error : unknown mass unit in a prior : XX (ms or mj)`, code 1.
+  - distance en `kpc` : avant, χ² NaN dans le L-M (code 1, M031) ; après, `Error : unknown distance unit : KPC (pc or mas)`, code 1.
+  - jitter `2` : avant, rien en 30 s ; après, `Error : jitter answer must be 1 or 0, not 2`, code 1.
+  - `MJ` et `PC` en majuscules : acceptés, comme avant.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun pour une entrée valide.
+
+## M043 — Corrige B32 : `JITNUM` fixé à 0 avant la question sur le jitter
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/io.f` (`READ_INPUT`, un bloc).
+- **Changement :** `JITNUM = 0` juste avant la question sur le jitter, posée seulement s'il y a des VR de l'étoile.
+- **Pourquoi :** B32. Avec des VR relatives seules (type 3), `COMPUTE_MAP` teste `RADVEL.AND.(JITNUM.EQ.1)` sans que `JITNUM` ait été lu. Il vaut 0 parce que gfortran met les variables de module à 0, ce que la norme ne garantit pas.
+- **Vérification (2026-11-18) :** cas `rel_rvp` (astrométrie relative et VR relatives, pas de VR de l'étoile), classique, 40 s, 1 thread, graine 1113. Copies où `JITNUM` vaut 1 au départ (déclaration `JITNUM = 1` dans `commons.f`), pour simuler une valeur non nulle :
+  - sans M043 : MAP de départ faux (−28,796846 au lieu de −28,796788 : terme de prior du jitter compté à tort), puis toute la suite diffère ;
+  - avec M043 : sortie identique ligne à ligne (1 417 lignes) à celle du code normal ;
+  - code normal avec M043 : identique au code M040.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun avec gfortran.
+
+## M042 — Corrige B31 : échec de la recherche des pas après un changement de directions
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/mcmc.f` (`CHANGE_DIRS`, une déclaration et un bloc).
+- **Changement :** pour chaque chaîne, les pas d'avant sont gardés ; si `SEARCH_BETA` échoue, elle est relancée depuis ces pas, au plus 10 fois en tout. Si elle échoue encore, la chaîne garde ses pas d'avant et le code écrit `Warning : step search failed for chain`. Sans échec, le calcul est le même qu'avant (une seule recherche, partie des mêmes pas).
+- **Pourquoi :** B31. Au départ, `INIT_MCMC` relance la recherche tant qu'elle échoue ; `CHANGE_DIRS` ignorait l'échec, et la chaîne gardait un pas supérieur à 1e10 jusqu'au changement de directions suivant. La limite de 10 essais évite de boucler sans fin sur une direction qui ne se contraint pas.
+- **Vérification (2026-11-18) :** copie hors du dépôt, `NINFER` = 5000, 1 thread, graine 1113.
+  - Cas normaux (`rel`, `rel_rv`, `rel_2orb`, `rel_seppa` en classique et universel, `rel_rv_jit_parab` en universel), 90 s, 2 à 4 changements de directions chacun : sortie identique ligne à ligne à celle du code M040.
+  - Échec forcé (copie où `FAIL` est mis à vrai après chaque recherche de `CHANGE_DIRS`), cas `rel`, 120 s : 4 changements de directions, 32 avertissements (8 chaînes × 4), le run continue (`countok` augmente jusqu’à la fin des 120 s).
+  - Échec forcé aux deux premiers essais seulement : aucun avertissement, le troisième essai réussit, le run continue.
+  - `make test` passe.
+- **Effet sur les résultats :** aucun quand la recherche réussit, c'est-à-dire dans tous les runs vus jusqu'ici.
+
+## M041 — Corrige B30 : un dump incomplet ne remplace plus le précédent ; dump manquant signalé à la reprise
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/io.f` (`WRITE_DUMP` : une déclaration et deux blocs ; `READ_DUMP0` : un bloc).
+- **Changement :**
+  - `WRITE_DUMP` écrit une dernière ligne témoin, `END OF DUMP`, ferme le fichier temporaire, puis relit ses 12 derniers octets (accès direct, sans relire tout le fichier). Si la ligne n'y est pas, le fichier temporaire est effacé, le dump précédent est gardé, le code écrit `Warning : dump file could not be written (disk full ?), previous dump kept` et le run continue. Sinon, renommage comme avant (M018).
+  - Si le fichier temporaire ne peut pas être ouvert (dossier protégé, disque plein) : même avertissement, le run continue. Avant, le run s'arrêtait sur une erreur de gfortran.
+  - `READ_DUMP0` (reprise, choix 1) : `dump.dat` ouvert en `STATUS='OLD'` ; s'il manque, `Error : dump file not found` et `STOP 1`, comme M020 pour le fichier de données.
+- **Pourquoi :** B30 (point A8 de l'audit). Toutes les écritures du dump avaient `IOSTAT=ERROR`, mais `ERROR` n'était jamais lu. Surtout, **gfortran (16.2, macOS) ne signale pas le disque plein** : `IOSTAT` reste à 0, même avec `FLUSH`, et les écritures sont perdues sans bruit (vérifié par un petit programme : 20 000 lignes écrites sur un disque de 4 Mo, aucune erreur, fichier de 4 Mo ; Python voit bien l'erreur `No space left on device`). Vérifier `IOSTAT` ne suffit donc pas, d'où la ligne témoin : les écritures après le disque plein sont perdues, elle manque. `READ_DUMP` s'arrête avant elle : les anciens dumps (sans elle) et les nouveaux se relisent pareil. Le Python (`oracle`) ne lit pas le contenu du dump.
+- **Vérification (2026-11-18) :** copie hors du dépôt, `NINFER` = 5000, cas `rel` classique, 1 thread, graine 1113. Disque virtuel de 16 Mo (`hdiutil`) contenant déjà un bon `dump.dat` de 9,4 Mo, run de 40 s qui écrit son premier dump au départ du MCMC :
+  - ancien code (M040) : `dump.dat` remplacé par un fichier tronqué de 6,9 Mo, sortie `Dump file created... ok` ;
+  - nouveau code : `dump.dat` intact (identique octet par octet), fichier temporaire effacé, avertissement écrit, le run continue.
+  - Disque normal : dump identique octet par octet à celui de l'ancien code, plus la ligne témoin (12 octets).
+  - Reprise (choix 1) pendant 30 s depuis un dump nouveau, depuis un ancien dump, et d'un dump nouveau avec l'ancien code : `Here we go again`, sorties identiques ligne à ligne entre les trois.
+  - Reprise sans `dump.dat` : nouveau code, `Error : dump file not found : dump.dat`, code 1 ; ancien code, `Sequential READ or WRITE not allowed after EOF marker`, code 2.
+  - `make test` passe.
+- **Limites :** l'appelant écrit encore `ok` après l'avertissement (`Dump file created... Warning ...` puis ` ok`). Arrêt sur `stop.flag` (M039) : si le dump échoue, le message `Stopped on request, dump file written` est quand même écrit, et `oracle run` le croit. Constat : une reprise sans `logfile.dat` s'arrête aussi sur une erreur de gfortran (`Cannot open file 'logfile.dat'`) ; `oracle` le garde toujours avec le dump.
+- **Effet sur les résultats :** aucun. Le dump gagne une ligne à la fin.
 
 ## M040 — Corrige B29 : `SEARCH_BETA` s'arrête avec un message si aucun pas n'est accepté
 

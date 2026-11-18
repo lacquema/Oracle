@@ -42,9 +42,29 @@ c    part d'une excentricite tres faible, sans effet sur l'orbite
               PLA(I)%EXC = 1.d-3
            END IF
 c<<< [MOD M027]
+c>>> [MOD M045] A7 : i = 0 exactement donne 0/0 (noeud indefini :
+c    CO, SO, CP, SP dans ELEMENTS) et un chi2 NaN ; i = 180 donne
+c    tan(i/2) infini et un L-M qui oscille. On part tout pres.
+           IF (PLA(I)%INC.LT.0.1d0) THEN
+              WRITE(SD,*)'Inclination < 0.1 deg replaced by 0.1 deg'
+              PLA(I)%INC = 0.1d0
+           END IF
+           IF (PLA(I)%INC.GT.179.9d0) THEN
+              WRITE(SD,*)'Inclination > 179.9 deg replaced by 179.9 deg'
+              PLA(I)%INC = 179.9d0
+           END IF
+c<<< [MOD M045]
            CALL UPCASE(UNIT)
            IF (UNIT.EQ.'MS') PLA(I)%MUNIT = SMAS
            IF (UNIT.EQ.'MJ') PLA(I)%MUNIT = MJUP
+c>>> [MOD M044] A7 : unite de masse inconnue -> arret explique (avant,
+c    MUNIT restait indefini, sans message)
+           IF ((UNIT.NE.'MS').AND.(UNIT.NE.'MJ')) THEN
+              WRITE(SD,*)'Error : unknown mass unit for planet #',I,
+     &                   ' : ',UNIT,' (ms or mj)'
+              STOP 1
+           END IF
+c<<< [MOD M044]
            PLA(I)%MU = PLA(I)%MU*PLA(I)%MUNIT
            SIGMA = SIGMA+PLA(I)%MU
            PLA(I)%MDYN = SIGMA
@@ -175,7 +195,17 @@ c...    Internal routine : treatment of the mass unit character
           CHARACTER*2 :: UNT
           REAL*8 :: FC
           
-          CALL UPCASE(UNIT)
+c>>> [MOD M044] A7 : unite de masse d'un prior inconnue -> arret
+c    explique (avant, FC restait indefini). UPCASE portait sur UNIT,
+c    variable de l'appelant, passee ici comme UNT : meme effet.
+c    AVANT :          CALL UPCASE(UNIT)
+          CALL UPCASE(UNT)
+          IF ((UNT.NE.'MS').AND.(UNT.NE.'MJ')) THEN
+             WRITE(SD,*)'Error : unknown mass unit in a prior : ',UNT,
+     &                  ' (ms or mj)'
+             STOP 1
+          END IF
+c<<< [MOD M044]
           IF (UNT.EQ.'MS') FC = SMAS
           IF (UNT.EQ.'MJ') FC = MJUP        
 
@@ -252,9 +282,23 @@ c...  or when information on stellar proper motion is present (Type 2 & 4 data)
            DATATYP(2) = DATEINPUT
            DATATYP(3) = DATEINPUT
            DATATYP(4) = DATATYP(1)
+c>>> [MOD M043] A6 : JITNUM fixe aussi sans VR de l'etoile (type 2).
+c    Il valait 0 seulement parce qu'une variable de module part a 0 ;
+c    COMPUTE_MAP le lit des qu'il y a des VR (type 2 ou 3).
+           JITNUM = 0
+c<<< [MOD M043]
            IF (ISDATA(2)) THEN
               WRITE(SD,*)'Should we consider a jitter (1=yes, 0=no) ?'
               READ(5,*)JITNUM
+c>>> [MOD M044] A7 : reponse sur le jitter autre que 0 ou 1 -> arret
+c    (avant, une valeur 2 etait prise pour 0 par le chi2 mais comptee
+c    dans NPAR, un parametre de plus jamais utilise)
+              IF ((JITNUM.NE.0).AND.(JITNUM.NE.1)) THEN
+                 WRITE(SD,*)'Error : jitter answer must be 1 or 0, not',
+     &                      JITNUM
+                 STOP 1
+              END IF
+c<<< [MOD M044]
            END IF                 
 
 c...  Recall chosen input formats :           
@@ -349,6 +393,14 @@ c... Distance or parallax
               STAR%PARX = STAR%DIST
               STAR%DIST = 1.d3/STAR%PARX
            END IF
+c>>> [MOD M044] A7 : unite de distance inconnue -> arret explique
+c    (avant, la parallaxe restait indefinie, sans message)
+           IF ((UNIT.NE.'PC').AND.(UNIT.NE.'MAS')) THEN
+              WRITE(SD,*)'Error : unknown distance unit : ',TRIM(UNIT),
+     &                   ' (pc or mas)'
+              STOP 1
+           END IF
+c<<< [MOD M044]
 c... Central mass
            WRITE(SD,*)'Mass of central body (Msun) (Initial guess) ?'
            READ(5,*)STAR%MASS
@@ -590,11 +642,27 @@ C
 c>>> [MOD M018] Commande de renommage
         CHARACTER*1100 :: LINE       ! Command line
 c<<< [MOD M018]
+c>>> [MOD M041] Controle du dump ecrit
+        INTEGER*4 ::    ERRC         ! Status
+        INTEGER*8 ::    TSIZE        ! Size of the temporary dump
+        CHARACTER*12 :: TAIL         ! Its last 12 bytes
+        LOGICAL ::      DUMPOK       ! True if it is complete
+c<<< [MOD M041]
         
 c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme
 c    AVANT :         OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
-        OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='UNKNOWN')
 c<<< [MOD M018]
+c>>> [MOD M041] A8 : echec d'ouverture du dump temporaire (dossier
+c    protege, quota) : avertissement, le run continue, ancien dump garde
+c    AVANT : OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='UNKNOWN')
+        OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='UNKNOWN',
+     &       IOSTAT=ERROR)
+        IF (ERROR.NE.0) THEN
+           WRITE(SD,*)'Warning : dump file could not be opened,',
+     &                ' previous dump kept'
+           RETURN
+        END IF
+c<<< [MOD M041]
         WRITE(18,*,IOSTAT=ERROR)ISDATA(1:NDATATYP),CORR
         WRITE(18,*,IOSTAT=ERROR)NPAR,NPLA,NPRIOR,JITNUM,
      &                          DATEINPUT,XYFORMAT,CORRNUM
@@ -639,7 +707,35 @@ c<<< [MOD M018]
 c>>> [MOD M015] B12 : remplissage apres convergence commence ou non
         WRITE(18,*,IOSTAT=ERROR)REFILL
 c<<< [MOD M015]
-        CLOSE(18)  
+c>>> [MOD M041] A8 : un dump incomplet (disque plein, quota) ne
+c    remplace plus le dump precedent. gfortran ne signale pas le disque
+c    plein (IOSTAT reste 0, ecritures perdues) : une ligne temoin est
+c    ecrite en dernier, puis relue apres fermeture. READ_DUMP ne la lit
+c    pas : les dumps avec ou sans elle se relisent pareil.
+c    AVANT :        CLOSE(18)  
+        WRITE(18,'(a)',IOSTAT=ERROR)'END OF DUMP'
+        CLOSE(18,IOSTAT=ERRC)
+        DUMPOK = .FALSE.
+        TSIZE = -1
+        INQUIRE(FILE=TRIM(FILES(2))//'.tmp',SIZE=TSIZE)
+        IF (TSIZE.GE.12) THEN
+           OPEN(18,FILE=TRIM(FILES(2))//'.tmp',ACCESS='STREAM',
+     &          FORM='UNFORMATTED',STATUS='OLD',IOSTAT=ERRC)
+           IF (ERRC.EQ.0) THEN
+              READ(18,POS=TSIZE-11,IOSTAT=ERRC)TAIL
+              DUMPOK = ((ERRC.EQ.0).AND.(TAIL(1:11).EQ.'END OF DUMP'))
+              CLOSE(18,IOSTAT=ERRC)
+           END IF
+        END IF
+        IF (.NOT.DUMPOK) THEN
+           OPEN(18,FILE=TRIM(FILES(2))//'.tmp',STATUS='OLD',
+     &          IOSTAT=ERRC)
+           CLOSE(18,STATUS='DELETE',IOSTAT=ERRC)
+           WRITE(SD,*)'Warning : dump file could not be written',
+     &                ' (disk full ?), previous dump kept'
+           RETURN
+        END IF
+c<<< [MOD M041]
 c>>> [MOD M018] Dump ecrit sous un nom temporaire puis renomme : un run
 c    tue pendant l'ecriture laisse le dump precedent intact
         LINE = 'mv -f '//TRIM(FILES(2))//'.tmp '//TRIM(FILES(2))
@@ -662,7 +758,14 @@ C
         INTEGER*4 ::    ERROR,I,NP1,
      &                  NMOD             ! Number of models   
 
-        OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
+c>>> [MOD M041] A8 : arret clair si le dump a reprendre manque
+c    AVANT :        OPEN(18,FILE=FILES(2),STATUS='UNKNOWN')
+        OPEN(18,FILE=FILES(2),STATUS='OLD',IOSTAT=ERROR)
+        IF (ERROR.NE.0) THEN
+           WRITE(SD,*)'Error : dump file not found : ',TRIM(FILES(2))
+           STOP 1
+        END IF
+c<<< [MOD M041]
         READ(18,*,IOSTAT=ERROR)ISDATA(1:NDATATYP),CORR
         RADVEL = (ISDATA(2).OR.ISDATA(3))
         READ(18,*,IOSTAT=ERROR)NPAR,NPLA,NPRIOR,JITNUM,

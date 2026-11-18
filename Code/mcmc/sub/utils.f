@@ -367,10 +367,18 @@ C
 
         INTEGER*4 ::   MM,YY    ! Month, Year
         REAL*8 ::      JJ,JD    ! Day, date
-        INTEGER*4 :: A,B,C,D,I,E,F,G
-
-        I = INT(JD)
-        F = JD-I
+c>>> [MOD M048] JD_TO_DATE : jour entier (I) et fraction (FR) comptes
+c    depuis midi, comme dans l'algorithme (JD + 0,5) ; fraction reelle.
+c    Avant, F entier perdait la fraction et le demi-jour manquait :
+c    jusqu'a 1,4 jour d'ecart sur l'aller-retour avec DATE_TO_JD.
+c    AVANT :        INTEGER*4 :: A,B,C,D,I,E,F,G
+c    AVANT :        I = INT(JD)
+c    AVANT :        F = JD-I
+        INTEGER*4 :: A,B,C,D,I,E,G
+        REAL*8 ::    F
+        I = INT(JD+0.5d0)
+        F = JD+0.5d0-I
+c<<< [MOD M048]
         A = FLOOR((DBLE(I)-1867216.25d0)/36524.25d0)
 
         IF (I.GT.2299160) THEN

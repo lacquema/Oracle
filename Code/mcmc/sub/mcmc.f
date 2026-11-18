@@ -164,7 +164,14 @@ c<<< [MOD M039]
 
         CALL INIT_MCMC(PROBINFER,CHN,CH0,DIRS,
      &              NMOD,COUNTOK,LONG,NGEL,INFER,NEW)
-        NGROUP = NGEL
+c>>> [MOD M047] A4 : taille des groupes fixe. Elle venait de NGEL, lu
+c    dans le dump a la reprise : un dump d'avant M016 (NGEL = 0) donnait
+c    une division par zero, NGEL > 200 un debordement de LL(NPAR,200).
+c    Le code ecrit toujours NGEL = 100 : sans effet sur un run normal.
+c    AVANT :        NGROUP = NGEL
+        NGROUP = 100_8
+        IF (NGEL.NE.NGROUP) NGEL = NGROUP
+c<<< [MOD M047]
 c>>> [MOD M015] B12 : une reprise (dump) a deja fait sa chauffe
         BURNT = .NOT.NEW
 c<<< [MOD M015]
@@ -624,6 +631,10 @@ C
      &                  VP(NPAR),        ! Eigenvalues
      &                  DIRS(NPAR,NPAR) ! Directions
         LOGICAL ::      FAIL            ! True if search beta failed
+c>>> [MOD M042] Pas d'avant et nombre d'essais
+        REAL*8 ::       BSAV(NPAR)      ! Steps before the search
+        INTEGER*4 ::    NTRY            ! Number of tries
+c<<< [MOD M042]
         
 c...  Computing averaged covariances
 
@@ -658,7 +669,25 @@ c...    Computing eigenvectors of COVP matrix => new directions
         CALL JACOBI(COVP,NPAR,NPAR,VP,DIRS,NROT)
         WRITE(SD,'(a)',ADVANCE='NO')'beta ok..'
         DO C = 1,NCH
-           CALL SEARCH_BETA(CHN(C)%P,DIRS,CHN(C)%BETA,FAIL)    
+c>>> [MOD M042] A3 (suite) : l'echec de SEARCH_BETA (un pas au-dela
+c    de BETAMAX) etait ignore, la chaine gardait ce pas. Nouvel essai
+c    depuis les pas d'avant, comme au depart (INIT_MCMC), au plus 10
+c    fois ; sinon les pas d'avant sont gardes, avec un avertissement.
+c    AVANT :           CALL SEARCH_BETA(CHN(C)%P,DIRS,CHN(C)%BETA,FAIL)
+           BSAV(1:NPAR) = CHN(C)%BETA(1:NPAR)
+           FAIL = .TRUE.
+           NTRY = 0
+           DO WHILE (FAIL.AND.(NTRY.LT.10))
+              CHN(C)%BETA(1:NPAR) = BSAV(1:NPAR)
+              CALL SEARCH_BETA(CHN(C)%P,DIRS,CHN(C)%BETA,FAIL)
+              NTRY = NTRY+1
+           END DO
+           IF (FAIL) THEN
+              CHN(C)%BETA(1:NPAR) = BSAV(1:NPAR)
+              WRITE(SD,*)'Warning : step search failed for chain',C,
+     &                   ', previous steps kept'
+           END IF
+c<<< [MOD M042]
            WRITE(SD,'(I3)',ADVANCE='NO')C
         END DO
         WRITE(SD,*)' '
