@@ -20,7 +20,7 @@ En Python et dans le `Makefile`, le repère s'écrit `# >>> [MOD M001]` et `# <<
 
 ## Anomalies connues, non corrigées
 
-Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038).
+Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme `CONNU`. Une fois corrigée, une anomalie passe dans une entrée `M...` ci-dessous. Corrigées à ce jour : B5 et B6 (M005), B1, B2 et B4 (M006), B8 (M007), B3 (M008), B7 (M009), B13 (M010), B10 (M011), B9 (M012), B11 (M013), B12 (M015), B15 (M016), B18 (M020), B19 (M022), B20 (M025), B21 (M026), B22 (M027), B14 (M029), B24 (M033), B25 (M034), B23 (M035), B26 (M036), B27 (M037), B28 (M038), B29 (M040).
 
 | N° | Où | Problème | Effet constaté |
 |---|---|---|---|
@@ -30,6 +30,7 @@ Ces anomalies existent dans le code de `bcced4b`. `make test` les affiche comme 
 | B26 | `INIT_MCMC` (`mcmc.f`), contrôle du départ ajouté par M035 | `MRQCHECK` (paramètres du L-M) appelée avec les paramètres du MCMC, différents en variables universelles (paramètres 6 et 7). | **Corrigée par M036.** Trouvée à l'audit du 2026-11-14 : en universel, run refusé à tort avec un prior plat sur une masse dynamique. Régression de M035, restée un jour, jamais poussée. |
 | B27 | `READ_INPUTLINE` (`io.f`), conversion (Sep, PA) → (Dec, RA) | Covariance des erreurs : `Sep` au lieu de `Sep²` devant la variance de l'angle de position. | **Corrigée par M037.** Trouvée à l'audit du 2026-11-14 : coefficient de corrélation faux (exemple : −0,163 au lieu de +0,151), donc χ² faux pour toutes les données en (Sep, PA). Jamais testé auparavant. |
 | B28 | `METRO_STEP` (`mcmc.f`), probabilité d'acceptation | `MIN(NaN, 1)` vaut 1 avec gfortran : un pas d'essai dont le χ² est NaN est accepté. | **Corrigée par M038.** Trouvée à l'audit du 2026-11-14. La chaîne garde un χ² NaN et accepte ensuite tout. Aucun NaN dans les runs normaux testés ; vu seulement dans les cas dégénérés refusés depuis par M032. |
+| B29 | `SEARCH_BETA` (`mcmc.f`), réglage des pas avant le MCMC | Sa seule sortie d'échec est un pas trop grand (`BETAMAX`). Si aucun pas n'est accepté (départ où le prior est nul ou le χ² NaN), les pas tombent à 0 et la boucle tourne sans fin, sans message. | **Corrigée par M040.** Cause du run de 8 h sans sortie de B23 ; M035 et M036 refusent depuis les départs interdits connus, M040 est le filet de sécurité pour les autres. Trouvée à l'audit du 2026-11-14 (A3). |
 | B1 | `kepellip.f:1617`, `kepu.f:2161` | `IF (NPLA.GT.1)` au lieu de `IF (MULTIPLA)` | **Corrigée par M006.** Une orbite avec vitesses radiales : la masse de l'étoile est remplacée par la masse totale, et celle de la planète garde sa valeur d'entrée. Le MCMC démarre avec une planète de masse quasi nulle. Sur un cas simulé, χ² de départ 6227 au lieu de 38. |
 | B2 | `kepellip.f:1553`, `kepu.f:2117` | `COV(NPLA,NPLA)` au lieu de `COV(NPAR,NPAR)` | **Corrigée par M006.** Mauvaise erreur affichée sur la masse de l'étoile quand elle est ajustée. |
 | B3 | `kepu.f:2179-2181` | `DMUDP(DKAL+1-NEL)` et `DMUDP(DKAL+6-NEL)` pour la première orbite, soit des indices négatifs | **Corrigée par M008.** Précision : les indices négatifs viennent de la remise à zéro faite après le bloc `IF (I.EQ.1)`, pas du bloc `ELSE`. Écriture hors du tableau dans `MRQELEMENTS`, à chaque exécution de la version universelle. Effet réel non déterminé. |
@@ -72,6 +73,19 @@ Correction de B5 et B6 essayée sur une copie : `kepu.f` retrouve alors le χ² 
 | F5 | Excentricité légèrement surestimée (biais de Lucy et Sweeney 1971) : vérifier quel prior sur `e` le code impose réellement (jacobien des paramètres 2 et 3, `e (cos ϖ, sin ϖ)/√(1−e²)`) et le comparer à un prior uniforme sur `e` ; confirmer le biais avec des graines indépendantes entre les cas ; décider s'il faut changer le prior ou seulement l'expliquer. **Expliqué dans la documentation du site (section « Reading the results ») le 2026-11-13.** | Campagne de tests du 2026-11-11 au 13 (bilan dans le dépôt privé, `Tests/campagne/README.md`) : sur 96 runs à une orbite (vraie `e` = 0,3), quantile moyen de la vraie `e` 0,43 ± 0,03 ; elle tombe sous l'intervalle à 68 % dans 32 % des runs et au-dessus dans 8 %. Environ 2 σ. Le bruit allonge plus souvent qu'il ne raccourcit le vecteur `(e cos ω, e sin ω)`. Demandé par Antoine (2026-11-13). |
 
 ## Modifications
+
+## M040 — Corrige B29 : `SEARCH_BETA` s'arrête avec un message si aucun pas n'est accepté
+
+- **Date :** 2026-11-18
+- **Fichier :** `Code/mcmc/sub/mcmc.f` (`SEARCH_BETA`, un bloc repéré après le calcul de `FAIL`).
+- **Changement :** à chaque balayage du réglage des pas, si l'un des pas (`BETA`) est tombé sous 1e-30 en valeur absolue, le code écrit `Error : no MCMC step accepted (step size -> 0)` et `forbidden starting point (priors, bounds) or chi2 not a number`, puis s'arrête (`STOP 1`).
+- **Pourquoi :** B29 (point A3 de l'audit du 2026-11-14). Un pas ne tombe à 0 que si aucun essai n'est accepté, même minuscule : le point de départ est alors interdit (prior nul, hors des bornes, χ² NaN). `UPDATE_BETA` divise le pas par 100 à chaque mise à jour sans acceptation : il passe sous 1e-30 en quelques dizaines de mises à jour, d'où un arrêt en moins d'une seconde. Les pas légitimes les plus petits sont de l'ordre de 1e-10 : le seuil ne gêne pas un run normal. M035 et M036 refusent déjà les départs interdits connus ; M040 couvre les autres. `CHANGE_DIRS` appelle aussi `SEARCH_BETA` (chaînes en cours de run) : une chaîne bloquée y arrête maintenant le run au lieu de le faire tourner sans fin. Constat sans correction : `CHANGE_DIRS` ignore le `FAIL` renvoyé par `SEARCH_BETA`.
+- **Vérification (2026-11-18) :** copie hors du dépôt, `NINFER` = 5000, 1 thread, graine 1113, quatre variantes : avec et sans M040, avec et sans le contrôle de départ de M036.
+  - Départ interdit voulu (cas `rv_seul`, choix 3, prior plat de 2 à 10 Msun sur la masse de l'étoile, masse de départ 1,02), contrôle de M036 neutralisé : sans M040, rien en 60 s (boucle sans fin, B23 reproduite), classique et universel ; avec M040, arrêt avec le message, code 1, en moins d'une seconde, classique et universel.
+  - Même cas avec le code complet : refusé par M036 (« outside the bounds »), comme avant.
+  - Cas normaux (`rel`, `rel_rv`, `rel_2orb`, `rel_seppa` en classique et universel, `rel_rv_jit_parab` en universel), 90 s chacun avec et sans M040 : `beta initiation successful` partout, et la sortie écran est identique ligne à ligne entre les deux versions (de 68 à 1 072 lignes comparées).
+  - `make test` passe.
+- **Effet sur les résultats :** aucun pour un run qui démarre normalement. Un run qui tournait sans fin sans rien écrire s'arrête maintenant avec un message.
 
 ## M039 — Amélioration : arrêt demandé par un fichier `stop.flag`, avec sauvegarde
 

@@ -829,6 +829,16 @@ c          I = FLOOR(R*FACTN)
             SOK = (SOK.AND.OK(IU))
             FAIL = (FAIL.OR.(ABS(BETA(IU)).GT.BETAMAX))           
           END DO
+c>>> [MOD M040] A3 : un depart interdit (prior nul, hors bornes, chi2
+c    NaN) n'accepte aucun pas ; les pas tendent vers 0 et la boucle
+c    tournait sans fin sans message (B23). Arret explique.
+          IF (MINVAL(ABS(BETA(1:NPAR))).LT.1.d-30) THEN
+            WRITE(SD,*)'Error : no MCMC step accepted (step size -> 0)'
+            WRITE(SD,*)'forbidden starting point (priors, bounds)',
+     &                 ' or chi2 not a number'
+            STOP 1
+          END IF
+c<<< [MOD M040]
           IF (FAIL)
      &          WRITE(SD,*)'Beta initiation process failed. Retrying...'
           
