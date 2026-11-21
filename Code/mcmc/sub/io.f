@@ -559,6 +559,18 @@ c                                                #3--NFIL = data
            END SELECT
            OK=(ERROR.EQ.0)
            IF (OK) THEN   
+c>>> [MOD M059] C6 : au plus NMW dates, indice de compagnon controle
+c    (avant, ecriture hors des tableaux IPLW, JDW et PLA)
+              IF (NDAT.GE.NMW) THEN
+                 WRITE(SD,*)'Error : more than',NMW,' dates'
+                 STOP 1
+              END IF
+              IF ((IPLA.LT.1).OR.(IPLA.GT.NPLA)) THEN
+                 WRITE(SD,*)'Error : companion index',IPLA,
+     &                      ' but',NPLA,' orbit(s)'
+                 STOP 1
+              END IF
+c<<< [MOD M059]
               NDAT = NDAT+1
               PLA(IPLA)%NDATAS = PLA(IPLA)%NDATAS+1
               IPLW(NDAT) = IPLA
@@ -964,6 +976,12 @@ C
  8      FORMAT(I1,1x,f11.3,5(1x,f9.3))
 
         OPEN(15,FILE=FILNAM,STATUS='UNKNOWN')                                   
+c>>> [MOD M059] C5 : en-tete lu par READ_DATAFILE (decalage JD, une
+c    ligne, numero du type), pour relire le fichier simule tel quel
+        WRITE(15,*)STAR%JDOFFSET
+        WRITE(15,'(a)')'----------------------------------------'
+        WRITE(15,'(a)')'1'
+c<<< [MOD M059]
         SELECT CASE(DATATYP(IDAT))
         CASE(1,2,5,6)
            WRITE(15,'(a)')
@@ -975,7 +993,9 @@ C
      &    'I JD     DEC(mas)  RA(mas)  DDec(mas)  DRa(mas) Corr'
            WRITE(15,'(a)')
      &    '----------------------------------------------------'
-           WRITE(15,*)STAR%JDOFFSET        
+c>>> [MOD M059] C5 : decalage JD ecrit en tete (plus haut)
+c    AVANT :           WRITE(15,*)STAR%JDOFFSET        
+c<<< [MOD M059]
         END SELECT
         PX = STAR%PARX
         DO I = 1,NPLA
@@ -1053,8 +1073,14 @@ c>>> [MOD M020] B18 : arret clair si le fichier de donnees manque
 c    AVANT :         OPEN(15,FILE=FILNAM,STATUS='UNKNOWN')                                   
         OPEN(15,FILE=FILNAM,STATUS='OLD',IOSTAT=ERROR)
         IF (ERROR.NE.0) THEN
-           WRITE(SD,*)'Data file not found : ',TRIM(FILNAM)
-           STOP
+c<<< [MOD M020]
+c>>> [MOD M056] C2 : arret en erreur (code 1)
+c    AVANT :           WRITE(SD,*)'Data file not found : ',TRIM(FILNAM)
+c    AVANT :           STOP
+           WRITE(SD,*)'Error : data file not found : ',TRIM(FILNAM)
+           STOP 1
+c<<< [MOD M056]
+c>>> [MOD M020] (suite)
         END IF
 c<<< [MOD M020]
 
@@ -1078,6 +1104,15 @@ c... First reading to determine sizes
                  CALL READ_INPUTLINE(IDAT,IPLA,JD,XX,YY,DXX,DYY,
      &                                              RHO,VV,DVV,OK)
                  IF (OK) THEN
+c>>> [MOD M057] C4 : indice de compagnon hors de 1..NPLA (types 1 et 3)
+c    -> arret explique ; avant, ecriture hors du tableau PLA (plantage)
+                    IF (((IDAT.EQ.1).OR.(IDAT.EQ.3)).AND.
+     &                  ((IPLA.LT.1).OR.(IPLA.GT.NPLA))) THEN
+                       WRITE(SD,*)'Error : companion index',IPLA,
+     &                     ' in the data file, but',NPLA,' orbit(s)'
+                       STOP 1
+                    END IF
+c<<< [MOD M057]
                     SELECT CASE(IDAT)
                     CASE(1)
                        PLA(IPLA)%NDATAS = PLA(IPLA)%NDATAS+1
@@ -1092,6 +1127,31 @@ c... First reading to determine sizes
               END DO
            END IF
         END DO
+c>>> [MOD M051] Avertissement : type annonce sans aucune mesure lue.
+c    La lecture s'arrete sans message des qu'un numero de type manque
+c    (par exemple deux lignes de tirets a la suite) : le run tournait
+c    alors sans ces donnees (chi2 nul sans aucune donnee).
+        DO I = 1,NDATATYP
+           SELECT CASE(I)
+           CASE(1)
+              NDAT = SUM(PLA%NDATAS)
+           CASE(2)
+              NDAT = STAR%NDATVR
+           CASE(3)
+              NDAT = SUM(PLA%NDATVR)
+           CASE(4)
+              NDAT = STAR%NDATAS
+           END SELECT
+           IF (ISDATA(I).AND.(NDAT.EQ.0)) THEN
+              WRITE(SD,*)'Warning : no data of type ',I,' read in ',
+     &                   TRIM(FILNAM)
+              WRITE(SD,*)'although this type was declared present.'
+              WRITE(SD,*)'Check the file : number of the type, two'
+              WRITE(SD,*)'header lines, then the data, and a line'
+              WRITE(SD,*)'that is not a number before the next type.'
+           END IF
+        END DO
+c<<< [MOD M051]
 c...  Allocate data arrays to the exact needed size
         DO I = 1,NPLA
            NDAT = PLA(I)%NDATAS

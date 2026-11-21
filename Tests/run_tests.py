@@ -55,6 +55,7 @@ def known_memory(stderr):
 TOL_REFERENCE = 1e-10
 TOL_INDEPENDENT = 1e-7
 TOL_GRADIENT = 1e-4
+TOL_D2MAP = 1e-4  # C9 : derivees secondes du terme de loi a priori (M054)
 TOL_PRIOR = 1e-4
 
 
@@ -327,6 +328,12 @@ def test_cases(report, exes, update):
             if abs(analytic - numeric) > TOL_GRADIENT * abs(numeric) + noise:
                 bad.append(f"p{i}: {analytic:.6g} / {numeric:.6g}")
         report.check(not bad, f"gradient {label}", "; ".join(bad[:5]), known=KNOWN_GRADIENT.get(label))
+
+    # C9 (audit du 2026-11-18, corrige par M054) : derivees secondes du terme de loi a priori
+    # (MRQMAP) contre les differences finies de son gradient, ecart relatif par colonne
+    for label, res in sorted(usable.items()):
+        bad = [f"p{j}: {e:.2g}" for j, e in sorted(res.get("D2MAP", {}).items()) if not e <= TOL_D2MAP]
+        report.check("D2MAP" in res and not bad, f"dérivées secondes du prior {label}", "; ".join(bad[:5]))
 
     report.section("Reconstruction des éléments (MRQELEMENTS)")
     for label, res in sorted(usable.items()):

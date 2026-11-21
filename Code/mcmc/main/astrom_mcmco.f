@@ -33,6 +33,9 @@ c    AVANT :         CHARACTER*80, DIMENSION(NFIL) :: FILES ! #1 = output, #2 = 
 c                                                #3 = data
 c<<< [MOD M020]
         INTEGER*4 ::         CNEW
+c>>> [MOD M052] C8 : jitter initial des VR donne par l'utilisateur
+        REAL*8 ::            SJV0
+c<<< [MOD M052]
         LOGICAL ::          OK,NEW
 
         METHOD = 1
@@ -54,6 +57,11 @@ c<<< [MOD M029]
         
         IF (NEW) THEN           
            COV = 0.d0
+c>>> [MOD M052] C8 : jitter initial garde avant le premier passage du
+c    L-M : MRQELEMENTS relit ensuite la case du jitter, qui contient la
+c    masse de l'etoile pendant ce passage (STAR%SIGJV devenait m0)
+           SJV0 = STAR%SIGJV
+c<<< [MOD M052]
            IF ((CNEW.EQ.2).OR.(CNEW.EQ.4)) THEN
               IF (ISDATA(2).AND.(JITNUM.EQ.1)) THEN 
 c...  If RV & jitter, first perform a L-M fit with no Jitter
@@ -69,13 +77,23 @@ c...  If RV & jitter, first perform a L-M fit with no Jitter
 c...  Then use the result of the first L-M fit as starting point for
 c..   a new fit including jitter                 
                  P(NPAR) = P(NPAR-1)
-                 P(NEL*NPLA+2) = LOG(STAR%SIGJV)
+c>>> [MOD M052] C8 : depart du second passage au jitter donne
+c    AVANT :                  P(NEL*NPLA+2) = LOG(STAR%SIGJV)
+                 P(NEL*NPLA+2) = LOG(SJV0)
+c<<< [MOD M052]
               END IF
               CALL MRQMIN(NPAR,P,COV,CHI2,FMAP)
               WRITE(SD,*)'Chi2+Fmap =',SNGL(CHI2),
      &             'Chi2 =',SNGL(CHI2-FMAP),
      &             'Fmap =',SNGL(FMAP)         
            END IF
+c>>> [MOD M052] C8 : choix 3 (sans L-M) : P est encore range comme
+c    pour le premier passage (masse dans la case du jitter)
+           IF ((CNEW.EQ.3).AND.ISDATA(2).AND.(JITNUM.EQ.1)) THEN
+              P(NPAR) = P(NPAR-1)
+              P(NEL*NPLA+2) = LOG(SJV0)
+           END IF
+c<<< [MOD M052]
 
            CALL MRQELEMENTS(P,COV)
 

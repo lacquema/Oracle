@@ -47,6 +47,14 @@ c-------------------------------------------------------------------------
      &                  COMPUTE_MAP     ! Function to compute MAP
         CHARACTER*80, DIMENSION(NFIL) :: FILES ! Output, dump, data
         CHARACTER*8 ::  ARG             ! Command line argument
+        REAL*8, DIMENSION(:), ALLOCATABLE ::
+     &                  DF0,DFP,DFM     ! Gradients of the prior term
+        REAL*8, DIMENSION(:,:), ALLOCATABLE ::
+     &                  D2F0,D2X        ! Its second derivatives
+        REAL*8 ::       F0,F1,          ! Prior term (MRQMAP)
+     &                  ERR,SC          ! Error, finite difference
+        INTEGER*4 ::    J               ! Index
+        LOGICAL ::      JIT             ! Jitter in MRQMAP
         LOGICAL ::      NEW,            ! New simulation
      &                  BAD             ! Unreal solution
 
@@ -61,6 +69,8 @@ c-------------------------------------------------------------------------
         ALLOCATE(BETAB(NPAR))
         ALLOCATE(COV(NPAR,NPAR))
         ALLOCATE(ALPHA(NPAR,NPAR))
+        ALLOCATE(DF0(NPAR),DFP(NPAR),DFM(NPAR))
+        ALLOCATE(D2F0(NPAR,NPAR),D2X(NPAR,NPAR))
         CALL INIT_DATA(NPAR,P,COV,FILES,NEW)
 
 c...  Same shift as ASTROM_MCMCO when there is a jitter
@@ -144,6 +154,27 @@ c...  (orbits close to e = 1, 2026-11-11)
            WRITE(SD,1)'BETAFD',I,
      &        -0.25d0*(8.d0*(MPLUS2-MMOINS2)-(MPLUS-MMOINS))/(3.d0*H)
            WRITE(SD,1)'P',I,P(I)
+        END DO
+
+c...  Second derivatives of the prior term (MRQMAP) against central
+c...  finite differences of its gradient (C9, audit of 2026-11-18) :
+c...  largest relative error in each column
+        JIT = ISDATA(2).AND.(JITNUM.EQ.1)
+        CALL MRQMAP(JIT,NPAR,P,F0,DF0,D2F0)
+        DO J = 1,NPAR
+           H = 1.d-5*MAX(ABS(P(J)),1.d-3)
+           PB = P
+           PB(J) = P(J)+H
+           CALL MRQMAP(JIT,NPAR,PB,F1,DFP,D2X)
+           PB(J) = P(J)-H
+           CALL MRQMAP(JIT,NPAR,PB,F1,DFM,D2X)
+           ERR = 0.d0
+           DO I = 1,NPAR
+              SC = (DFP(I)-DFM(I))/(2.d0*H)
+              ERR = MAX(ERR,ABS(D2F0(I,J)-SC)
+     &                  /MAX(ABS(SC),ABS(D2F0(I,J)),1.d0))
+           END DO
+           WRITE(SD,1)'D2MAP',J,ERR
         END DO
 
 c...  Elements rebuilt from the parameters

@@ -275,7 +275,12 @@ c------------------------------------------------------------
           Z(IP) = 0.D0
         END DO
       END DO
-      STOP 'too many iterations in Jacobi'
+c>>> [MOD M056] C2 : arret en erreur (code 1) ; STOP 'texte' rend 0
+c    AVANT :       STOP 'too many iterations in Jacobi'
+      WRITE(6,*)'Error : too many iterations in Jacobi (covariance ',
+     &          'of the chains with NaN ?)'
+      STOP 1
+c<<< [MOD M056]
       RETURN
       END
  

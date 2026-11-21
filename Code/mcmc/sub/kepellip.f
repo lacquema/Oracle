@@ -62,8 +62,15 @@ c          END IF
         END DO
         U = U*S
         if (i.gt.300) then
+c>>> [MOD M056] C2 : arret en erreur (code 1) avec un message lisible ;
+c    avant, STOP sans code, comme un run reussi (M046 en universel)
+c    AVANT :           WRITE(SD,*)'glup',i,e,m,u,f
+c    AVANT :           stop
            WRITE(SD,*)'glup',i,e,m,u,f
-           stop
+           WRITE(SD,*)'Error : Kepler equation not solved (mean ',
+     &                'anomaly NaN or extreme). Check the orbit.'
+           STOP 1
+c<<< [MOD M056]
         end if
         
         END
@@ -776,6 +783,13 @@ c...  Initialize offset velocity & jitter
               READ(5,*)STAR%V0,STAR%SIGJV
               STAR%SIGJV = STAR%SIGJV*MPS
               STAR%V0 = STAR%V0*MPS
+c>>> [MOD M052] C8 : jitter initial nul ou negatif -> SIGV0 (0,1 km/s),
+c    sinon LOG(0) au depart du L-M ou du MCMC (A10 de l'audit du 14)
+              IF ((JITNUM.EQ.1).AND.(STAR%SIGJV.LE.0.d0)) THEN
+                 WRITE(SD,*)'Initial jitter <= 0 replaced by 0.1 km/s'
+                 STAR%SIGJV = SIGV0
+              END IF
+c<<< [MOD M052]
            END IF             
         END IF
 
@@ -1807,6 +1821,10 @@ c             IF (TEST) print*,'Bahhh !'
           S = SQRT(S2)        ! e/sqrt(1-e^2)
           EXC = S/SQRT(1.d0+S2)
           TEST = TEST.OR.(EXC.GT.VPRIOR(3)%BOUND(2))
+c>>> [MOD M053] C11 : borne inferieure de e aussi, comme RATIO_PRIORS
+c    (sinon le L-M finit sous la borne et le MCMC refuse de partir)
+          TEST = TEST.OR.(EXC.LT.VPRIOR(3)%BOUND(1))
+c<<< [MOD M053]
 c          if (test) print*,'test exc',test,exc,k,h
           TEST = TEST.OR.(PER.GT.VPRIOR(1)%BOUND(2))
      &               .OR.(PER.LT.VPRIOR(1)%BOUND(1))
@@ -2000,8 +2018,12 @@ c...  Taking into account priors on masses in FMAP (-2*ln(prior(m)))
                     FF2 = FF1*MPRIOR(J)%BCOF(K)*MDYN(K)/MUF
                     KM = NEL*(K-1)
                     D2LMUF(IM+1,KM+1) = -9.d0*FF2
-                    D2LMUF(IM+1,KM+6) = -6.d0*PER2(K)*P(KM+6)
-                    D2LMUF(IM+1,KM+7) = -6.d0*PER2(K)*P(KM+7)
+c>>> [MOD M054] C9 : facteur FF2 manquant (le terme symetrique l'a)
+c    AVANT :                    D2LMUF(IM+1,KM+6) = -6.d0*PER2(K)*P(KM+6)
+c    AVANT :                    D2LMUF(IM+1,KM+7) = -6.d0*PER2(K)*P(KM+7)
+                    D2LMUF(IM+1,KM+6) = -6.d0*FF2*PER2(K)*P(KM+6)
+                    D2LMUF(IM+1,KM+7) = -6.d0*FF2*PER2(K)*P(KM+7)
+c<<< [MOD M054]
                     D2LMUF(IM+6,KM+1) = -6.d0*FF2*PER2(I)*P(IM+6)
                     D2LMUF(IM+7,KM+1) = -6.d0*FF2*PER2(I)*P(IM+7)
                     D2LMUF(IM+6,KM+6) = -4.d0*FF2*PER2(I)*PER2(K)*
@@ -2058,7 +2080,10 @@ c...  Idem for semi-major axis
           DFMAP(IM+7) = DFMAP(IM+7)-2.d0*P7*PER2(I)
           D2FMAP(IM+6,IM+6) = D2FMAP(IM+6,IM+6)
      &                    +2.d0*(P6*P6-P7*P7)*PER2(I)*PER2(I)
-          D2FMAP(IM+7,IM+7) = D2FMAP(IM+6,IM+6)
+c>>> [MOD M054] C9 : partir de la case (7,7), pas de (6,6)
+c    AVANT :          D2FMAP(IM+7,IM+7) = D2FMAP(IM+6,IM+6)
+          D2FMAP(IM+7,IM+7) = D2FMAP(IM+7,IM+7)
+c<<< [MOD M054]
      &                    +2.d0*(-P6*P6+P7*P7)*PER2(I)*PER2(I)          
           D2FMAP(IM+6,IM+7) = D2FMAP(IM+6,IM+7)
      &                    +4.d0*P6*P7*PER2(I)*PER2(I)

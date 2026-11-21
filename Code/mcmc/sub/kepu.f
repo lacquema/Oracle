@@ -293,7 +293,11 @@ c...  Internals:
 c----
 c...  Executable code 
 
-	denom = - alpha*q/6.d0
+c>>> [MOD M058] C10 : f(s) ~ q*s+(mu-alpha*q)*s**3/6 au periastre :
+c    le terme mu manquait (Swift, drift_kepu_p3solve, avec r0 = q)
+c    AVANT : 	denom = - alpha*q/6.d0
+	denom = (mu-alpha*q)/6.d0
+c<<< [MOD M058]
 	a1 = q/denom
 	a0 =-dt/denom
 
@@ -1211,6 +1215,13 @@ c...  Initialize offset velocity & jitter
               READ(5,*)STAR%V0,STAR%SIGJV
               STAR%SIGJV = STAR%SIGJV*MPS
               STAR%V0 = STAR%V0*MPS
+c>>> [MOD M052] C8 : jitter initial nul ou negatif -> SIGV0 (0,1 km/s),
+c    sinon LOG(0) au depart du L-M ou du MCMC (A10 de l'audit du 14)
+              IF ((JITNUM.EQ.1).AND.(STAR%SIGJV.LE.0.d0)) THEN
+                 WRITE(SD,*)'Initial jitter <= 0 replaced by 0.1 km/s'
+                 STAR%SIGJV = SIGV0
+              END IF
+c<<< [MOD M052]
            END IF             
         END IF
 
@@ -2439,6 +2450,10 @@ c             TEST = TEST.OR.(MFRAC.LE.0.d0)
 c             IF (TEST) print*,'Bahhh !'
           END IF
           TEST = TEST.OR.(EXC.GT.VPRIOR(3)%BOUND(2))
+c>>> [MOD M053] C11 : borne inferieure de e aussi, comme RATIO_PRIORS
+c    (sinon le L-M finit sous la borne et le MCMC refuse de partir)
+          TEST = TEST.OR.(EXC.LT.VPRIOR(3)%BOUND(1))
+c<<< [MOD M053]
 c          if (test) print*,'test exc',test,exc,k,h
 c          TEST = TEST.OR.(PER.GT.VPRIOR(1)%BOUND(2))
 c     &               .OR.(PER.LT.VPRIOR(1)%BOUND(1))

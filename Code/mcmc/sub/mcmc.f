@@ -396,6 +396,9 @@ c<<< [MOD M015]
 c>>> [MOD M035] B23 : depart hors des bornes
         LOGICAL ::      OUT          ! Start out of bounds (MRQCHECK)
 c<<< [MOD M035]
+c>>> [MOD M055] C1 : nombre d'echecs de la recherche des pas
+        INTEGER*4 ::    NFAIL        ! Failed step searches
+c<<< [MOD M055]
 
         write(sd,*)'init_mcmc'
         DO C = 1,NCH
@@ -411,6 +414,9 @@ c<<< [MOD M035]
         
         IF (NEW) THEN
            FAIL = .TRUE.
+c>>> [MOD M055] C1 : compteur des echecs
+           NFAIL = 0
+c<<< [MOD M055]
            DO WHILE(FAIL)
               DIRS = 0.d0
               DO I=1,NPAR
@@ -446,6 +452,22 @@ c>>> [MOD M035] B23 (suite) : arret explique
               END IF
 c<<< [MOD M035]
               CALL SEARCH_BETA(CH0%P,DIRS(1:NPAR,1:NPAR),CH0%BETA,FAIL)
+c>>> [MOD M055] C1 : un pas qui depasse BETAMAX a chaque essai signale
+c    un parametre que ni les donnees ni les priors ne limitent ; la
+c    boucle recommencait sans fin (7 millions de lignes en 45 min).
+c    Arret explique apres 20 essais.
+              IF (FAIL) NFAIL = NFAIL+1
+              IF (NFAIL.GE.20) THEN
+                 WRITE(SD,*)'Error : no step size found for the MCMC'
+                 WRITE(SD,*)'(20 tries). Parameters with an unbounded'
+                 WRITE(SD,*)'step (not constrained by the data nor the'
+                 WRITE(SD,*)'priors) :'
+                 DO I = 1,NPAR
+                    IF (ABS(CH0%BETA(I)).GT.BETAMAX) WRITE(SD,*)I
+                 END DO
+                 STOP 1
+              END IF
+c<<< [MOD M055]
            END DO
            WRITE(SD,*)'beta initiation successful ! '
            WRITE(SD,*)'beta values = ',sngl(ch0%beta)
